@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # === Leaderboard Schemas ===
@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 
 class ModelRankingResponse(BaseModel):
     """Single model ranking in the leaderboard."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     model_id: str
     model_name: str
@@ -24,9 +26,6 @@ class ModelRankingResponse(BaseModel):
     rank_change: int
     release_date: str | None
     avatar_color: str
-
-    class Config:
-        from_attributes = True
 
 
 class LeaderboardResponse(BaseModel):
@@ -75,6 +74,8 @@ class TriggerGameResponse(BaseModel):
 class GameParticipantResponse(BaseModel):
     """Participant in a game."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     model_id: str
     model_name: str
     player_number: int
@@ -83,12 +84,11 @@ class GameParticipantResponse(BaseModel):
     won: bool | None
     survived: bool | None
 
-    class Config:
-        from_attributes = True
-
 
 class GameResponse(BaseModel):
     """Full game details response."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     game_id: str
     status: GameStatusEnum
@@ -99,9 +99,6 @@ class GameResponse(BaseModel):
     participants: list[GameParticipantResponse]
     log_url: str | None = None
     error_message: str | None = None
-
-    class Config:
-        from_attributes = True
 
 
 # === Model Registry Schemas ===
@@ -121,12 +118,11 @@ class ModelCreateRequest(BaseModel):
 class ModelResponse(BaseModel):
     """Model details response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     model_id: str
     model_name: str
     provider: str
     openrouter_id: str
     release_date: date | None
     avatar_color: str
-
-    class Config:
-        from_attributes = True

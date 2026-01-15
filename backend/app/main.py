@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import init_db
-from app.api import leaderboard, games
+from app.api import leaderboard, games, models
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(leaderboard.router, prefix=settings.api_prefix)
     app.include_router(games.router, prefix=settings.api_prefix)
+    app.include_router(models.router, prefix=settings.api_prefix)
 
     @app.get("/health")
     async def health_check():
