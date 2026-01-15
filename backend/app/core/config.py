@@ -1,9 +1,12 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Database
     database_url: str = "sqlite:///./leaderboard.db"
@@ -23,10 +26,6 @@ class Settings(BaseSettings):
 
     # API settings
     api_prefix: str = "/api"
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache
