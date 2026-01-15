@@ -1,0 +1,52 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import get_settings
+from app.core.database import init_db
+from app.api import leaderboard, games
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events."""
+    # Startup
+    init_db()
+    yield
+    # Shutdown
+    pass
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    settings = get_settings()
+
+    app = FastAPI(
+        title="Among Us LLM Leaderboard API",
+        description="API for the Among Us LLM agent leaderboard",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    # Configure CORS for frontend
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Configure appropriately for production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Include routers
+    app.include_router(leaderboard.router, prefix=settings.api_prefix)
+    app.include_router(games.router, prefix=settings.api_prefix)
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy"}
+
+    return app
+
+
+app = create_app()
