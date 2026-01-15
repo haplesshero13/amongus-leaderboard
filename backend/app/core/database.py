@@ -37,4 +37,7 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
+    # Import models to register them with Base metadata
+    from app.models import Model, ModelRating, Game, GameParticipant  # noqa: F401
+
     Base.metadata.create_all(bind=engine)
