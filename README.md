@@ -31,6 +31,18 @@ A competitive leaderboard system that ranks Large Language Models (LLMs) based o
 ```
 
 ## 🚀 Quick Start
+1. Start MinIO (if needed for game logs)
+    `docker-compose -f docker-compose.dev.yml up -d`
+2. Seed the database
+    `cd backend && uv run python -m scripts.seed_models`
+
+3. Start backend (terminal 1)
+    `cd backend && uv run uvicorn app.main:app --reload --port 8000`
+
+4. Start frontend (terminal 2)
+    `cd frontend && bun run dev`
+
+5. Open http://localhost:3000
 
 ### Prerequisites
 
@@ -84,11 +96,6 @@ cd frontend
 bun install
 ```
 
-Or with npm:
-```bash
-npm install
-```
-
 3. Create a `.env.local` file:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
@@ -97,11 +104,6 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 4. Start the development server:
 ```bash
 bun dev
-```
-
-Or with npm:
-```bash
-npm run dev
 ```
 
 The frontend will be available at `http://localhost:3000`.

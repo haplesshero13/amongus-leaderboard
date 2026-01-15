@@ -1,4 +1,4 @@
-# Claude Code Instructions
+# Agentic Coder Instructions
 
 You are working on an AI Deception & Persuasion Leaderboard project. This is a full-stack web application with a Python FastAPI backend (forked from existing LLM agent codebase) and a TypeScript Next.js frontend.
 
