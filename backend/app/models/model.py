@@ -73,33 +73,36 @@ class ModelRating(Base, TimestampMixin):
     @property
     def total_games(self) -> int:
         """Total games played across both roles."""
-        return self.impostor_games + self.crewmate_games
+        return (self.impostor_games or 0) + (self.crewmate_games or 0)
 
     @property
     def impostor_rating(self) -> float:
-        """Conservative TrueSkill rating for impostor role (mu - 3*sigma)."""
-        return self.impostor_mu - 3 * self.impostor_sigma
+        """OpenSkill mu for impostor role."""
+        return self.impostor_mu if self.impostor_mu is not None else 25.0
 
     @property
     def crewmate_rating(self) -> float:
-        """Conservative TrueSkill rating for crewmate role (mu - 3*sigma)."""
-        return self.crewmate_mu - 3 * self.crewmate_sigma
+        """OpenSkill mu for crewmate role."""
+        return self.crewmate_mu if self.crewmate_mu is not None else 25.0
 
     @property
     def overall_rating(self) -> float:
         """
-        Weighted average of impostor and crewmate ratings.
+        Weighted average of impostor and crewmate mu values.
         Weights are based on games played in each role.
         Falls back to simple average if no games played.
         """
         total = self.total_games
-        if total == 0:
-            # Default: average of both starting ratings
-            return (self.impostor_rating + self.crewmate_rating) / 2
+        imp_mu = self.impostor_rating
+        crew_mu = self.crewmate_rating
 
-        impostor_weight = self.impostor_games / total
-        crewmate_weight = self.crewmate_games / total
-        return (self.impostor_rating * impostor_weight) + (self.crewmate_rating * crewmate_weight)
+        if total == 0:
+            # Default: average of both starting mu values
+            return (imp_mu + crew_mu) / 2
+
+        impostor_weight = (self.impostor_games or 0) / total
+        crewmate_weight = (self.crewmate_games or 0) / total
+        return (imp_mu * impostor_weight) + (crew_mu * crewmate_weight)
 
     def __repr__(self) -> str:
         return f"<ModelRating model_id={self.model_id} overall={self.overall_rating:.1f}>"
