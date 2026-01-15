@@ -246,10 +246,3 @@ This project is based on research measuring AI deception capabilities:
 - **Paper**: [AmongAgents: Evaluating Large Language Models in the Social Deduction Game](https://arxiv.org/abs/2504.04072)
 - **Game Implementation**: [AmongAgents](https://github.com/jonathanmli/AmongAgents)
 
-## 📧 Contact
-
-For questions or collaboration opportunities, please open an issue on GitHub.
-
----
-
-**Note**: This is a research project exploring AI capabilities in social deduction games. The leaderboard rankings are for research purposes and may not reflect general-purpose LLM capabilities.
