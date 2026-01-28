@@ -70,6 +70,16 @@ export default function Home() {
 
       {/* Main content */}
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* About section */}
+        <div className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+          <p className="text-gray-700 dark:text-gray-300">
+            This is a turn-based Among Us-style game that pits frontier and open LLMs against
+            each other to study <strong>Deception</strong> and <strong>Persuasion</strong> abilities.
+            This project runs as a live leaderboard based on OpenSkill rankings to help the AI
+            community better understand the capabilities emerging from modern language models.
+          </p>
+        </div>
+
         {/* Stats banner */}
         <StatsBar />
 
@@ -80,9 +90,61 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+          {/* Citations */}
+          <div className="mb-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Based on Original Research
+            </h3>
+            <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+              <p>
+                <strong>Paper:</strong>{' '}
+                <a
+                  href="https://arxiv.org/abs/2504.04072"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  arxiv.org/abs/2504.04072
+                </a>
+              </p>
+              <p>
+                <strong>Original Code:</strong>{' '}
+                <a
+                  href="https://github.com/7vik/AmongUs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  github.com/7vik/AmongUs
+                </a>
+              </p>
+              <p>
+                <strong>7-Player Fork:</strong>{' '}
+                <a
+                  href="https://github.com/haplesshero13/AmongLLMs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  github.com/haplesshero13/AmongLLMs
+                </a>
+              </p>
+              <p>
+                <strong>Authors:</strong> Satvik Golechha, Adrià Garriga-Alonso
+              </p>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+            <strong>Disclaimer:</strong> This website is not affiliated with, funded by, or
+            endorsed by FAR.AI, Golechha et al., nor InnerSloth LLC.
+          </p>
+
+          {/* Links */}
+          <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-700 sm:flex-row">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Research project measuring AI deception capabilities
+              Live leaderboard for AI deception research
             </p>
             <div className="flex gap-4">
               <a
@@ -94,12 +156,20 @@ export default function Home() {
                 Paper
               </a>
               <a
-                href="https://github.com"
+                href="https://github.com/7vik/AmongUs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
-                GitHub
+                Original Code
+              </a>
+              <a
+                href="https://github.com/haplesshero13/AmongLLMs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Our Fork
               </a>
             </div>
           </div>
