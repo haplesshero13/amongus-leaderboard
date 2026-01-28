@@ -134,7 +134,24 @@ OPENROUTER_API_KEY=sk-or-v1-...
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## Deployment (Railway)
+## Deployment
+
+### Auto-Deploy (GitHub Actions)
+
+Push to `main` triggers automatic deployment. Set up once:
+
+1. Get your Railway token: `railway login` then `railway whoami --token`
+2. Add `RAILWAY_TOKEN` to GitHub repo secrets (Settings > Secrets > Actions)
+3. Push to main - both services deploy automatically
+
+### Manual Deploy (One-liner)
+
+```bash
+# Deploy everything
+cd backend && railway up --service backend -d && cd ../frontend && railway up --service frontend -d
+```
+
+### Railway Setup
 
 The app is deployed on Railway with:
 - PostgreSQL database plugin
@@ -158,3 +175,13 @@ Uses OpenSkill (Weng-Lin rating system) with:
 - Separate ratings for Impostor and Crewmate roles
 - Overall rating is weighted average
 - Starting rating: 2500 (μ=25, σ=8.333)
+
+## Credits
+
+This project is based on the research by Satvik Golechha and Adrià Garriga-Alonso.
+
+- **Paper**: [arxiv.org/abs/2504.04072](https://arxiv.org/abs/2504.04072)
+- **Original Code**: [github.com/7vik/AmongUs](https://github.com/7vik/AmongUs)
+- **7-Player Fork**: [github.com/haplesshero13/AmongLLMs](https://github.com/haplesshero13/AmongLLMs)
+
+**Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, Golechha et al., nor InnerSloth LLC.
