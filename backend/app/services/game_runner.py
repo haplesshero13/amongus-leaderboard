@@ -5,7 +5,9 @@ updating ratings, and storing game logs.
 """
 
 import asyncio
+import os
 import random
+import tempfile
 import traceback
 from datetime import datetime, timezone
 
@@ -155,6 +157,11 @@ async def execute_amongagents_game(
     Returns:
         tuple of (winner_code, winner_reason, summary_dict, agent_logs_list)
     """
+    # Set up experiment path for amongagents (required for agent logging)
+    experiment_dir = tempfile.mkdtemp(prefix=f"game_{game.id}_")
+    os.environ["EXPERIMENT_PATH"] = experiment_dir
+    os.environ["OPENROUTER_API_KEY"] = openrouter_api_key
+
     # Import amongagents here to avoid import errors if not installed
     try:
         from amongagents import AmongUs
