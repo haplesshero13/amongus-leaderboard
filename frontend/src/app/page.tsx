@@ -1,4 +1,50 @@
+'use client';
+
 import { Leaderboard } from '../components/features/Leaderboard';
+import { useRankings } from '../lib/hooks/useRankings';
+
+function StatsBar() {
+  const { data, isLoading } = useRankings(1, 100);
+
+  const stats = {
+    modelsRanked: data?.total ?? 0,
+    gamesPlayed: data?.data.reduce((sum, m) => sum + m.games_played, 0) ?? 0,
+    topImpostor: data?.data.reduce((max, m) => Math.max(max, m.impostor_rating), 0) ?? 0,
+    topCrewmate: data?.data.reduce((max, m) => Math.max(max, m.crewmate_rating), 0) ?? 0,
+  };
+
+  const formatNumber = (n: number) => n.toLocaleString();
+  const formatRating = (n: number) => Math.round(n).toLocaleString();
+
+  return (
+    <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {isLoading ? '...' : formatNumber(stats.modelsRanked)}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
+      </div>
+      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {isLoading ? '...' : formatNumber(stats.gamesPlayed)}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
+      </div>
+      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+          {isLoading ? '...' : formatRating(stats.topImpostor)}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Top Impostor</div>
+      </div>
+      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+        <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+          {isLoading ? '...' : formatRating(stats.topCrewmate)}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Top Crewmate</div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -12,10 +58,10 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-                LLM Among Us
+                LM Deception Arena
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                TrueSkill Rankings for AI Agents
+                OpenSkill Rankings for AI Agents
               </p>
             </div>
           </div>
@@ -25,24 +71,7 @@ export default function Home() {
       {/* Main content */}
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Stats banner */}
-        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">18</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
-          </div>
-          <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">2,456</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
-          </div>
-          <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">1,892</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Top Impostor</div>
-          </div>
-          <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-            <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">1,802</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Top Crewmate</div>
-          </div>
-        </div>
+        <StatsBar />
 
         {/* Leaderboard */}
         <Leaderboard />
