@@ -1,4 +1,4 @@
-import { LeaderboardResponse } from '@/types/leaderboard';
+import { LeaderboardResponse } from '../../types/leaderboard';
 import { getMockLeaderboard } from './mock-data';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';

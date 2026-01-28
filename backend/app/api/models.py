@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_api_key
 from app.api.schemas import ModelCreateRequest, ModelResponse
 from app.core.database import get_db
 from app.models import Model, ModelRating
@@ -9,7 +10,11 @@ router = APIRouter(tags=["models"])
 
 
 @router.post("/models", response_model=ModelResponse, status_code=201)
-async def create_model(request: ModelCreateRequest, db: Session = Depends(get_db)):
+async def create_model(
+    request: ModelCreateRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
     """
     Register a new model in the leaderboard.
 
@@ -85,7 +90,11 @@ async def get_model(model_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/models/{model_id}", status_code=204)
-async def delete_model(model_id: str, db: Session = Depends(get_db)):
+async def delete_model(
+    model_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
     """Delete a model from the registry."""
     model = db.query(Model).filter(Model.model_id == model_id).first()
     if not model:

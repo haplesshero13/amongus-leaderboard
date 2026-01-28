@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_api_key
 from app.api.schemas import (
     TriggerGameRequest,
     TriggerGameResponse,
@@ -22,6 +23,7 @@ async def trigger_game(
     request: TriggerGameRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
 ):
     """
     Trigger a new game with the specified models.

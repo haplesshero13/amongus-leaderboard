@@ -1,5 +1,5 @@
-import { ModelRanking } from '@/types/leaderboard';
-import { RankBadge, RankChange } from '@/components/ui/RankIndicator';
+import { ModelRanking } from '../../types/leaderboard';
+import { RankBadge, RankChange } from '../ui/RankIndicator';
 
 interface LeaderboardCardsProps {
   rankings: ModelRanking[];

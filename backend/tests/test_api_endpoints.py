@@ -1,12 +1,14 @@
 """Tests for API endpoints using FastAPI TestClient."""
 
 import pytest
+from fastapi import Header, HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
+from app.api.deps import require_api_key
 from app.main import app
 from app.models import Model, ModelRating, Game, GameParticipant, GameStatus, PlayerRole
 
@@ -19,6 +21,9 @@ TEST_ENGINE = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=TEST_ENGINE)
 
+# Test API key
+TEST_API_KEY = "test-api-key-12345"
+
 
 def override_get_db():
     """Override database dependency with test database."""
@@ -29,8 +34,15 @@ def override_get_db():
         db.close()
 
 
-# Apply the override globally for this test module
+def override_require_api_key(x_api_key: str = Header(None, alias="X-API-Key")):
+    """Override API key check for testing - accepts the test API key."""
+    if x_api_key != TEST_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+
+# Apply the overrides globally for this test module
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[require_api_key] = override_require_api_key
 
 
 @pytest.fixture(autouse=True)
@@ -57,6 +69,12 @@ def db_session():
 def client():
     """Create a test client."""
     return TestClient(app, raise_server_exceptions=False)
+
+
+@pytest.fixture
+def auth_headers():
+    """Return headers with valid API key for protected endpoints."""
+    return {"X-API-Key": TEST_API_KEY}
 
 
 @pytest.fixture
@@ -197,7 +215,7 @@ class TestLeaderboardEndpoint:
 class TestModelsEndpoint:
     """Tests for /api/models endpoints."""
 
-    def test_create_model(self, client):
+    def test_create_model(self, client, auth_headers):
         """Should create a new model."""
         response = client.post("/api/models", json={
             "model_id": "new-model",
@@ -205,7 +223,7 @@ class TestModelsEndpoint:
             "provider": "Test Corp",
             "openrouter_id": "test/new-model",
             "avatar_color": "#123456",
-        })
+        }, headers=auth_headers)
 
         assert response.status_code == 201
         data = response.json()
@@ -213,14 +231,14 @@ class TestModelsEndpoint:
         assert data["model_name"] == "New Model"
         assert data["provider"] == "Test Corp"
 
-    def test_create_duplicate_model(self, client, sample_model):
+    def test_create_duplicate_model(self, client, sample_model, auth_headers):
         """Should reject duplicate model IDs."""
         response = client.post("/api/models", json={
             "model_id": "claude-opus-4",  # Already exists
             "model_name": "Duplicate",
             "provider": "Test",
             "openrouter_id": "test/duplicate",
-        })
+        }, headers=auth_headers)
 
         assert response.status_code == 409
 
@@ -246,51 +264,51 @@ class TestModelsEndpoint:
         response = client.get("/api/models/nonexistent")
         assert response.status_code == 404
 
-    def test_delete_model(self, client, sample_model):
+    def test_delete_model(self, client, sample_model, auth_headers):
         """Should delete a model."""
-        response = client.delete("/api/models/claude-opus-4")
+        response = client.delete("/api/models/claude-opus-4", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify it's gone
         response = client.get("/api/models/claude-opus-4")
         assert response.status_code == 404
 
-    def test_delete_nonexistent_model(self, client):
+    def test_delete_nonexistent_model(self, client, auth_headers):
         """Should return 404 when deleting nonexistent model."""
-        response = client.delete("/api/models/nonexistent")
+        response = client.delete("/api/models/nonexistent", headers=auth_headers)
         assert response.status_code == 404
 
 
 class TestGamesEndpoint:
     """Tests for /api/games endpoints."""
 
-    def test_trigger_game_validates_model_count(self, client, sample_model):
+    def test_trigger_game_validates_model_count(self, client, sample_model, auth_headers):
         """Should require exactly 7 models."""
         response = client.post("/api/games/trigger", json={
             "model_ids": ["claude-opus-4"]  # Only 1 model
-        })
+        }, headers=auth_headers)
 
         assert response.status_code == 422  # Validation error
 
-    def test_trigger_game_validates_models_exist(self, client, seven_models):
+    def test_trigger_game_validates_models_exist(self, client, seven_models, auth_headers):
         """Should validate all models exist."""
         model_ids = [m.model_id for m in seven_models[:6]]
         model_ids.append("nonexistent-model")
 
         response = client.post("/api/games/trigger", json={
             "model_ids": model_ids
-        })
+        }, headers=auth_headers)
 
         assert response.status_code == 404
         assert "nonexistent-model" in response.json()["detail"]
 
-    def test_trigger_game_creates_game(self, client, db_session, seven_models):
+    def test_trigger_game_creates_game(self, client, db_session, seven_models, auth_headers):
         """Should create a game and return game ID."""
         model_ids = [m.model_id for m in seven_models]
 
         response = client.post("/api/games/trigger", json={
             "model_ids": model_ids
-        })
+        }, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()

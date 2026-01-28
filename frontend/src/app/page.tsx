@@ -1,4 +1,4 @@
-import { Leaderboard } from '@/components/features/Leaderboard';
+import { Leaderboard } from '../components/features/Leaderboard';
 
 export default function Home() {
   return (

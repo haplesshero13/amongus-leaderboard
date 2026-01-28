@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { LeaderboardResponse } from '@/types/leaderboard';
-import { fetchLeaderboard } from '@/lib/api/leaderboard';
+import { LeaderboardResponse } from '../../types/leaderboard';
+import { fetchLeaderboard } from '../api/leaderboard';
 
 interface UseRankingsResult {
   data: LeaderboardResponse | null;

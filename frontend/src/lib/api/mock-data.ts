@@ -1,4 +1,4 @@
-import { ModelRanking, LeaderboardResponse } from '@/types/leaderboard';
+import { ModelRanking, LeaderboardResponse } from '../../types/leaderboard';
 
 const AVATAR_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',

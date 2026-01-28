@@ -1,17 +1,23 @@
-FROM oven/bun:1 AS base
-
+FROM oven/bun:1
 WORKDIR /app
 
-# Install dependencies
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
-
-# Copy application code
+# Copy all files first
 COPY . .
 
-# Development mode - hot reload
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Set build-time environment variable
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Build the application
+RUN bun run build
+
+# Production settings
+ENV NODE_ENV=production
+ENV PORT=3000
 EXPOSE 3000
 
-ENV NODE_ENV=development
-
-CMD ["bun", "run", "dev"]
+# Start the application - use the standalone output
+CMD ["bun", "run", ".next/standalone/server.js"]
