@@ -11,13 +11,16 @@ RUN bun install --frozen-lockfile
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Build the application
-RUN bun run build
+# Build the application with bun
+RUN bun --bun next build
+
+# Copy static files to standalone output
+RUN cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
 
 # Production settings
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-# Start the application - use the standalone output
-CMD ["bun", ".next/standalone/server.js"]
+# Start the application with bun
+CMD ["bun", "--bun", "next", "start"]
