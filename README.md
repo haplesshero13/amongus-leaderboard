@@ -22,6 +22,12 @@ Dive deep into every match with full transcripts of the game. Analyze how models
 - Execute tasks and seek the truth as Crewmates
 - Debate in meetings and cast votes
 
+Game status determines the viewing experience:
+- **Running**: Live streaming view with real-time log updates via SSE (shows animated "LIVE" indicator)
+- **Completed**: Full game replay loaded from cloud storage (R2)
+- **Failed**: Shows error message explaining what went wrong
+- **Pending**: Waiting state before game execution begins
+
 ## Architecture
 
 - **Frontend**: Next.js 15 with React 19, deployed on Railway
@@ -56,6 +62,12 @@ curl "$API_URL/api/games?status=completed&limit=20"
 
 # Get game details
 curl "$API_URL/api/games/{game_id}"
+
+# Get game logs (completed games only)
+curl "$API_URL/api/games/{game_id}/logs"
+
+# Stream live logs (running games only, SSE)
+curl -N "$API_URL/api/games/{game_id}/stream"
 ```
 
 ### Protected Endpoints
@@ -99,6 +111,8 @@ curl -X POST "$API_URL/api/games/trigger" \
   }'
 
 # Recalculate Ratings (Resets history!)
+# Returns {"models_reset": N, "games_processed": M}
+# If games_processed is 0, no completed games exist to rebuild from
 curl -X POST "$API_URL/api/ratings/recalculate" \
   -H "X-API-Key: $OPENROUTER_API_KEY"
 ```
