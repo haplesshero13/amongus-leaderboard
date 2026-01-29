@@ -22,6 +22,7 @@ from app.core.database import SessionLocal
 from app.models import Game, GameParticipant, GameStatus, Model, PlayerRole
 from app.services.rating_service import update_ratings_for_game
 from app.services.storage_service import upload_game_logs
+from app.services import live_logs
 
 
 class EmptyResponseError(Exception):
@@ -83,6 +84,50 @@ def read_agent_logs(experiment_dir: str) -> list:
             if line:
                 logs.append(json.loads(line))  # Let JSON errors propagate
     return logs
+
+
+async def poll_logs_to_stream(game_id: str, experiment_dir: str, stop_event: asyncio.Event) -> None:
+    """Poll the agent log file and push new entries to the live stream.
+
+    This runs concurrently with the game execution, checking for new log
+    entries every 1.5 seconds and pushing them to connected SSE clients.
+
+    Args:
+        game_id: The game ID to stream logs for
+        experiment_dir: Path to the experiment directory containing logs
+        stop_event: Event to signal when to stop polling
+    """
+    log_path = Path(experiment_dir) / "agent-logs-compact.json"
+    lines_read = 0
+
+    while not stop_event.is_set():
+        try:
+            if log_path.exists():
+                with open(log_path) as f:
+                    all_lines = f.readlines()
+
+                # Push any new lines since last read
+                for line in all_lines[lines_read:]:
+                    line = line.strip()
+                    if line:
+                        try:
+                            entry = json.loads(line)
+                            live_logs.push_log(game_id, entry)
+                        except json.JSONDecodeError:
+                            # Incomplete line, will retry next poll
+                            pass
+                lines_read = len(all_lines)
+
+            # Wait before next poll, but check stop_event periodically
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=1.5)
+                break  # stop_event was set
+            except asyncio.TimeoutError:
+                pass  # Continue polling
+        except Exception as e:
+            # Log but don't crash - streaming is best-effort
+            print(f"Error polling logs for game {game_id}: {e}")
+            await asyncio.sleep(1.5)
 
 
 def validate_model_assignment(
@@ -205,6 +250,9 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         game.model_ids = [m.id for m in models]
         db.commit()
 
+        # Start live log streaming for this game
+        live_logs.start_game(game_id)
+
         # Run the actual game
         winner, winner_reason, summary, agent_logs, experiment_dir = await execute_amongagents_game(
             game, models, settings.openrouter_api_key
@@ -290,6 +338,9 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         # Update ratings
         update_ratings_for_game(db, game)
 
+        # End live streaming with summary
+        live_logs.end_game(game_id, summary)
+
         db.commit()
 
         # Call webhook if configured
@@ -299,6 +350,8 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
     except Exception as e:
         # Handle any errors
         db.rollback()
+        # End live streaming on failure
+        live_logs.end_game(game_id, None)
         game = db.query(Game).filter(Game.id == game_id).first()
         if game:
             game.status = GameStatus.FAILED
@@ -348,7 +401,16 @@ async def execute_amongagents_game(
         game_index=0,
     )
 
-    winner = await game_instance.run_game()
+    # Start log polling for live streaming
+    stop_polling = asyncio.Event()
+    polling_task = asyncio.create_task(poll_logs_to_stream(game.id, experiment_dir, stop_polling))
+
+    try:
+        winner = await game_instance.run_game()
+    finally:
+        # Stop the polling task
+        stop_polling.set()
+        await polling_task
 
     # Extract summary and logs
     summary = game_instance.summary_json.get("Game 0", {})

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Markdown from 'react-markdown';
 import { Virtuoso } from 'react-virtuoso';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
+import { useGameStream } from '@/lib/hooks/useGameStream';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary } from '@/types/game';
@@ -369,17 +370,36 @@ export default function GameDetailPage() {
   const [hideThinking, setHideThinking] = useState(false);
   const [filterStep, setFilterStep] = useState<number | null>(null);
 
-  const { data: game, isLoading: gameLoading, error: gameError } = useGame(gameId);
+  const { data: game, isLoading: gameLoading, error: gameError, refetch: refetchGame } = useGame(gameId);
   const { data: logs, isLoading: logsLoading, error: logsError } = useGameLogs(gameId);
 
-  const isLoading = gameLoading || logsLoading;
-  const error = gameError || logsError;
+  // Use streaming for running games
+  const isRunningGame = game?.status === 'running' || game?.status === 'pending';
+  const { logs: streamLogs, summary: streamSummary, status: streamStatus } = useGameStream(gameId, isRunningGame);
+
+  // Poll for game status updates when game is running
+  useEffect(() => {
+    if (!isRunningGame) return;
+
+    const interval = setInterval(() => {
+      refetchGame();
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isRunningGame, refetchGame]);
+
+  // Determine which logs to use: streaming or static
+  const effectiveLogs = isRunningGame && streamLogs.length > 0 ? streamLogs : logs?.agent_logs;
+  const effectiveSummary = isRunningGame && streamSummary ? streamSummary : logs?.summary;
+
+  const isLoading = gameLoading || (logsLoading && !isRunningGame);
+  const error = gameError || (!isRunningGame && logsError);
 
   // Parse raw logs into display entries
   const parsedEntries = useMemo(() => {
-    if (!logs?.agent_logs) return [];
-    return parseAgentLogs(logs.agent_logs, logs.summary);
-  }, [logs]);
+    if (!effectiveLogs) return [];
+    return parseAgentLogs(effectiveLogs, effectiveSummary);
+  }, [effectiveLogs, effectiveSummary]);
 
   // Get unique steps for filtering
   const steps = useMemo(() => {
@@ -394,7 +414,10 @@ export default function GameDetailPage() {
   }, [parsedEntries, filterStep]);
 
   // Extract winner reason from summary if available
-  const winnerReason = logs?.summary?.winner_reason as string | undefined;
+  const winnerReason = effectiveSummary?.winner_reason as string | undefined;
+
+  // Show live indicator when streaming
+  const isLive = isRunningGame && streamStatus === 'connected';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -403,9 +426,20 @@ export default function GameDetailPage() {
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Game Log
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  Game Log
+                </h1>
+                {isLive && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    LIVE
+                  </span>
+                )}
+              </div>
               <p className="mt-1 font-mono text-sm text-gray-600 dark:text-gray-400">
                 {gameId}
               </p>
@@ -464,10 +498,10 @@ export default function GameDetailPage() {
                     {game.participants
                       .filter((p) => p.role === 'Impostor')
                       .map((p) => {
-                        const displayColor = logs?.summary 
-                          ? getPlayerColorFromSummary(logs.summary, p.player_number) 
+                        const displayColor = effectiveSummary
+                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
-                        
+
                         return (
                           <div key={p.player_number} className="flex items-center gap-2">
                             <PlayerBadge
@@ -492,8 +526,8 @@ export default function GameDetailPage() {
                     {game.participants
                       .filter((p) => p.role === 'Crewmate')
                       .map((p) => {
-                        const displayColor = logs?.summary 
-                          ? getPlayerColorFromSummary(logs.summary, p.player_number) 
+                        const displayColor = effectiveSummary
+                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
                           
                         return (

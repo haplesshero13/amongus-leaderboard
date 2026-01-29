@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_api_key
@@ -13,6 +16,7 @@ from app.api.schemas import (
 from app.core.database import get_db
 from app.models import Game, GameStatus, Model
 from app.services.storage_service import get_game_logs, delete_game_logs
+from app.services import live_logs
 
 router = APIRouter(tags=["games"])
 
@@ -168,6 +172,53 @@ async def get_game_logs_endpoint(game_id: str, db: Session = Depends(get_db)):
         game_id=game_id,
         agent_logs=log_data.get("agent_logs", []),
         summary=log_data.get("summary"),
+    )
+
+
+@router.get("/games/{game_id}/stream")
+async def stream_game_logs(game_id: str, db: Session = Depends(get_db)):
+    """
+    Stream live game logs via Server-Sent Events (SSE).
+
+    Returns a stream of log entries as they happen during game execution.
+    Events:
+    - "log": A new log entry from the game
+    - "end": Game has completed, includes summary
+
+    Returns 400 if game is not currently running/streaming.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Only allow streaming for games that are pending or running
+    if game.status not in (GameStatus.PENDING, GameStatus.RUNNING):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Game is not streaming (status: {game.status.value})",
+        )
+
+    # Check if we have a live stream for this game
+    if not live_logs.is_streaming(game_id) and game.status != GameStatus.PENDING:
+        raise HTTPException(
+            status_code=400,
+            detail="Live stream not available for this game",
+        )
+
+    async def event_generator():
+        """Generate SSE events from the live log stream."""
+        async for event_type, data in live_logs.subscribe(game_id):
+            # Format as SSE: event type + JSON data
+            yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
 
 
