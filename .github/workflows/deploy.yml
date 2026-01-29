@@ -65,10 +65,27 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+  # === Check for Running Games (blocks backend deploy if games in progress) ===
+  check-running-games:
+    runs-on: ubuntu-latest
+    needs: [frontend-ci, backend-ci]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check for running games
+        run: |
+          RUNNING_GAMES=$(curl -sf https://api.lmdeceptionarena.averyyen.dev/api/games?status=running)
+          if [ "$RUNNING_GAMES" != "[]" ]; then
+            echo "ERROR: Games are currently running. Cannot deploy backend."
+            echo "Running games: $RUNNING_GAMES"
+            exit 1
+          fi
+          echo "No games running. Safe to deploy."
+
   # === Deploy (only on push to main, after CI passes) ===
   deploy-backend:
     runs-on: ubuntu-latest
-    needs: [frontend-ci, backend-ci]
+    needs: [frontend-ci, backend-ci, check-running-games]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
