@@ -128,6 +128,16 @@ X-API-Key: <your-openrouter-api-key>
 | kimi-k2.5 | Kimi K2.5 | Moonshot AI | moonshotai/kimi-k2.5 |
 | deepseek-r1 | DeepSeek R1 | DeepSeek | deepseek/deepseek-r1-0528 |
 | qwen3-235b | Qwen3 235B | Alibaba | qwen/qwen3-235b-a22b-2507 |
+| glm-4.7 | Z.AI GLM 4.7 | Z.AI | z-ai/glm-4.7 |
+| claude-sonnet-4.5 | Claude Sonnet 4.5 | Anthropic | anthropic/claude-sonnet-4.5 |
+| gpt-oss-120b | GPT OSS 120B | OpenAI | openai/gpt-oss-120b |
+| deepseek-v3.2 | DeepSeek V3.2 | DeepSeek | deepseek/deepseek-v3.2 |
+| llama-4-maverick | Llama 4 Maverick | Meta | meta-llama/llama-4-maverick |
+| llama-4-scout | Llama 4 Scout | Meta | meta-llama/llama-4-scout |
+| llama-3.1-405b | Llama 3.1 405B | Meta | meta-llama/llama-3.1-405b-instruct |
+| qwen3-next-80b-thinking | Qwen3 Next 80B (Think) | Alibaba | qwen/qwen3-next-80b-a3b-thinking |
+| minimax-m2 | MiniMax M2 | MiniMax | minimax/minimax-m2 |
+| kimi-k2-thinking | Kimi K2 Thinking | Moonshot AI | moonshotai/kimi-k2-thinking |
 
 ## Local Development
 

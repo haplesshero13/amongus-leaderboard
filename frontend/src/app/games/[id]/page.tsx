@@ -96,7 +96,7 @@ function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
   });
 }
 
-function PlayerBadge({ name, color, role }: { name: string; color: string; role: string }) {
+function PlayerBadge({ name, color, role, playerNumber }: { name: string; color: string; role: string; playerNumber: number }) {
   const bgColor = PLAYER_COLORS[color.toLowerCase()] || '#808080';
   const isImpostor = role === 'Impostor';
 
@@ -109,7 +109,9 @@ function PlayerBadge({ name, color, role }: { name: string; color: string; role:
       <span className={`text-sm font-medium ${isImpostor ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
         {name}
       </span>
-      <span className="text-xs text-gray-500 dark:text-gray-400">({role})</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400">
+        (P{playerNumber} &bull; {color})
+      </span>
     </div>
   );
 }
@@ -303,28 +305,38 @@ function GameEndBanner({ winner, winnerReason }: { winner: number; winnerReason:
   );
 }
 
+function isPlayerSummary(data: unknown): data is PlayerSummary {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'color' in data &&
+    typeof (data as Record<string, unknown>).color === 'string'
+  );
+}
+
+function hasName(data: unknown): data is { name: string } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'name' in data &&
+    typeof (data as Record<string, unknown>).name === 'string'
+  );
+}
+
 // Helper to extract color from summary
 function getPlayerColorFromSummary(summary: GameSummary, playerNumber: number): string {
   const playerKey = `Player ${playerNumber}`;
   const playerData = summary[playerKey];
 
   // Runtime check to distinguish PlayerSummary from GameConfig/number/string
-  if (
-    playerData &&
-    typeof playerData === 'object' &&
-    'color' in playerData
-  ) {
-    return (playerData as PlayerSummary).color;
+  if (isPlayerSummary(playerData)) {
+    return playerData.color;
   }
 
   // Try parsing name if color field missing
-  if (
-    playerData &&
-    typeof playerData === 'object' &&
-    'name' in playerData
-  ) {
-    const name = (playerData as PlayerSummary).name;
-    if (typeof name === 'string' && name.includes(':')) {
+  if (hasName(playerData)) {
+    const name = playerData.name;
+    if (name.includes(':')) {
       const parts = name.split(':');
       if (parts.length > 1) return parts[1].trim();
     }
@@ -444,6 +456,7 @@ export default function GameDetailPage() {
                               name={p.model_name}
                               color={displayColor}
                               role={p.role}
+                              playerNumber={p.player_number}
                             />
                             {p.won !== null && (
                               <span className="text-xs">{p.won ? '(Won)' : '(Lost)'}</span>
@@ -471,6 +484,7 @@ export default function GameDetailPage() {
                               name={p.model_name}
                               color={displayColor}
                               role={p.role}
+                              playerNumber={p.player_number}
                             />
                             {p.survived !== null && (
                               <span className="text-xs">

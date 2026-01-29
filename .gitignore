@@ -76,3 +76,6 @@ ENV/
 htmlcov/
 
 CLAUDE.md
+
+# Temporary admin scripts
+/scripts
