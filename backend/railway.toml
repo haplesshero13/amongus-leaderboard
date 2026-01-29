@@ -4,5 +4,3 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "on_failure"
-# Migration is run manually or via deploy hook - don't block startup
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
