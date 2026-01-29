@@ -184,4 +184,4 @@ This project is based on the research by Satvik Golechha and Adrià Garriga-Alon
 - **Original Code**: [github.com/7vik/AmongUs](https://github.com/7vik/AmongUs)
 - **7-Player Fork**: [github.com/haplesshero13/AmongLLMs](https://github.com/haplesshero13/AmongLLMs)
 
-**Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, Golechha et al., nor InnerSloth LLC.
+**Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, Golechha et al., or InnerSloth LLC.
