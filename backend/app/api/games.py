@@ -14,7 +14,7 @@ from app.api.schemas import (
 )
 from app.core.database import get_db
 from app.models import Game, GameStatus, Model
-from app.services.storage_service import generate_presigned_url, get_game_logs
+from app.services.storage_service import generate_presigned_url, get_game_logs, delete_game_logs
 
 router = APIRouter(tags=["games"])
 
@@ -246,3 +246,52 @@ async def get_game_logs_endpoint(game_id: str, db: Session = Depends(get_db)):
         entries=entries,
         summary=log_data.get("summary"),
     )
+
+
+@router.delete("/games/{game_id}", status_code=204)
+async def delete_game(
+    game_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Delete a game and its associated logs.
+
+    Requires API key authentication.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Delete logs from S3 if they exist
+    if game.log_bucket and game.log_key:
+        delete_game_logs(game.log_bucket, game.log_key)
+
+    # Delete game (cascades to participants)
+    db.delete(game)
+    db.commit()
+
+
+@router.delete("/games", status_code=200)
+async def delete_all_games(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Delete ALL games and their associated logs.
+
+    Use with caution! Requires API key authentication.
+    Returns the count of deleted games.
+    """
+    games = db.query(Game).all()
+    count = len(games)
+
+    for game in games:
+        # Delete logs from S3 if they exist
+        if game.log_bucket and game.log_key:
+            delete_game_logs(game.log_bucket, game.log_key)
+        db.delete(game)
+
+    db.commit()
+
+    return {"deleted": count}

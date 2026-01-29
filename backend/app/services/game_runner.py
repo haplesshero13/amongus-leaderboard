@@ -5,11 +5,13 @@ updating ratings, and storing game logs.
 """
 
 import asyncio
+import json
 import os
 import random
 import tempfile
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 
@@ -25,6 +27,37 @@ PLAYER_COLORS = [
     "red", "blue", "green", "pink", "orange", "yellow", "black", "white",
     "purple", "brown", "cyan", "lime"
 ]
+
+
+def read_agent_logs(experiment_dir: str) -> list:
+    """
+    Read agent logs from the experiment directory.
+
+    The amongagents package writes logs in JSONL format (one JSON object per line)
+    to agent-logs-compact.json.
+    """
+    # Prefer the compact JSONL format
+    agent_logs_path = Path(experiment_dir) / "agent-logs-compact.json"
+    if not agent_logs_path.exists():
+        # Fall back to the pretty-printed version
+        agent_logs_path = Path(experiment_dir) / "agent-logs.json"
+        if not agent_logs_path.exists():
+            return []
+
+    try:
+        logs = []
+        with open(agent_logs_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        logs.append(json.loads(line))
+                    except json.JSONDecodeError as e:
+                        print(f"Failed to parse log line: {e}")
+        return logs
+    except Exception as e:
+        print(f"Failed to read agent logs: {e}")
+        return []
 
 
 def run_game_task(game_id: str, model_ids: list[str]) -> None:
@@ -195,7 +228,9 @@ async def execute_amongagents_game(
 
     # Extract summary and logs
     summary = game_instance.summary_json.get("Game 0", {})
-    agent_logs = []  # Would extract from game_instance if available
+
+    # Read agent logs from the experiment directory
+    agent_logs = read_agent_logs(experiment_dir)
 
     winner_reasons = {
         1: "Impostors win! (Crewmates outnumbered)",
