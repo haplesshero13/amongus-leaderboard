@@ -77,5 +77,6 @@ htmlcov/
 
 CLAUDE.md
 
-# Temporary admin scripts
+# Temporary admin scripts and testing data
 /scripts
+/test-logs

@@ -12,7 +12,7 @@ import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, P
 /**
  * Parse raw agent logs into display-friendly entries
  */
-function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
+function parseAgentLogs(rawLogs: RawAgentLog[], summary?: GameSummary | null): GameLogEntry[] {
   return rawLogs.map((log) => {
     const player = log.player || {};
     const interaction = log.interaction || {};
@@ -23,6 +23,21 @@ function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
     let playerColor = 'gray';
     if (playerName.includes(':')) {
       playerColor = playerName.split(':')[1].trim();
+    }
+    
+    // Extract player number from name for summary lookup
+    // "Player 1: brown" -> "1"
+    const playerNumMatch = playerName.match(/Player (\d+)/);
+    const playerNumber = playerNumMatch ? parseInt(playerNumMatch[1]) : null;
+
+    // Determine model name: try summary first (source of truth), then log
+    let modelName = player.model || 'Unknown';
+    
+    if (summary && playerNumber !== null) {
+      const summaryPlayer = summary[`Player ${playerNumber}`];
+      if (isPlayerSummary(summaryPlayer)) {
+        modelName = summaryPlayer.model;
+      }
     }
 
     // Extract action from response - ensure it's always a string
@@ -85,7 +100,7 @@ function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
       player_name: playerName,
       player_color: playerColor,
       player_role: player.identity || 'Unknown',
-      model: player.model || 'Unknown',
+      model: modelName,
       location: player.location || 'Unknown',
       action,
       thinking,
@@ -131,10 +146,12 @@ function ChatBubble({
 
   // Format model name for display (shorten if too long)
   const formatModelName = (model: string) => {
-    // Remove common prefixes like "meta-llama/" or "openai/"
-    const shortName = model.replace(/^[^/]+\//, '');
-    // Truncate if still too long
-    return shortName.length > 30 ? shortName.slice(0, 27) + '...' : shortName;
+    // Split by slash and take the second part if available
+    const parts = model.split('/');
+    if (parts.length > 1) {
+      return parts[1];
+    }
+    return model;
   };
 
   // Parse the action to make it more readable
@@ -358,7 +375,7 @@ export default function GameDetailPage() {
   const error = gameError || logsError;
 
   // Parse raw logs into display entries
-  const parsedEntries = useMemo(() => {
+  const parsedEntries = useMemo(() => {, logs.summary
     if (!logs?.agent_logs) return [];
     return parseAgentLogs(logs.agent_logs);
   }, [logs]);
