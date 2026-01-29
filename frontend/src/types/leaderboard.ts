@@ -7,8 +7,14 @@ export interface ModelRanking {
   crewmate_rating: number;
   games_played: number;
   current_rank: number;
-  previous_rank: number;
-  rank_change: number;
+  // Win/loss stats
+  impostor_games: number;
+  impostor_wins: number;
+  crewmate_games: number;
+  crewmate_wins: number;
+  win_rate: number;  // Overall win rate percentage (0-100)
+  impostor_win_rate: number;  // Impostor win rate percentage (0-100)
+  crewmate_win_rate: number;  // Crewmate win rate percentage (0-100)
   release_date: string;
   avatar_color: string;
 }

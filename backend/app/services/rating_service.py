@@ -85,6 +85,8 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         model_rating.impostor_mu = new_rating.mu
         model_rating.impostor_sigma = new_rating.sigma
         model_rating.impostor_games += 1
+        if impostors_won:
+            model_rating.impostor_wins += 1
 
     # Update crewmate ratings
     for i, (participant, model_rating, _) in enumerate(crewmate_ratings):
@@ -92,6 +94,8 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         model_rating.crewmate_mu = new_rating.mu
         model_rating.crewmate_sigma = new_rating.sigma
         model_rating.crewmate_games += 1
+        if not impostors_won:
+            model_rating.crewmate_wins += 1
 
     db.flush()
 
@@ -139,10 +143,6 @@ def get_model_rankings(db: Session) -> list[dict]:
         model = r["model"]
         rating = r["rating"]
 
-        # Calculate rank change
-        previous_rank = rating.previous_rank or i
-        rank_change = previous_rank - i
-
         result.append(
             {
                 "model_id": model.model_id,
@@ -153,27 +153,17 @@ def get_model_rankings(db: Session) -> list[dict]:
                 "crewmate_rating": scale_rating_for_display(r["crewmate"]),
                 "games_played": r["games"],
                 "current_rank": i,
-                "previous_rank": previous_rank,
-                "rank_change": rank_change,
+                # Win/loss stats
+                "impostor_games": rating.impostor_games,
+                "impostor_wins": rating.impostor_wins,
+                "crewmate_games": rating.crewmate_games,
+                "crewmate_wins": rating.crewmate_wins,
+                "win_rate": round(rating.overall_win_rate * 100, 1),
+                "impostor_win_rate": round(rating.impostor_win_rate * 100, 1),
+                "crewmate_win_rate": round(rating.crewmate_win_rate * 100, 1),
                 "release_date": model.release_date.isoformat() if model.release_date else None,
                 "avatar_color": model.avatar_color,
             }
         )
 
     return result
-
-
-def update_previous_ranks(db: Session) -> None:
-    """
-    Update previous_rank for all models based on current rankings.
-
-    Call this periodically (e.g., daily) to track rank changes over time.
-    """
-    rankings = get_model_rankings(db)
-
-    for ranking in rankings:
-        model = db.query(Model).filter(Model.model_id == ranking["model_id"]).first()
-        if model and model.ratings:
-            model.ratings.previous_rank = ranking["current_rank"]
-
-    db.flush()

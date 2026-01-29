@@ -22,8 +22,14 @@ class ModelRankingResponse(BaseModel):
     crewmate_rating: float
     games_played: int
     current_rank: int
-    previous_rank: int
-    rank_change: int
+    # Win/loss stats
+    impostor_games: int
+    impostor_wins: int
+    crewmate_games: int
+    crewmate_wins: int
+    win_rate: float  # Overall win rate percentage (0-100)
+    impostor_win_rate: float  # Impostor win rate percentage (0-100)
+    crewmate_win_rate: float  # Crewmate win rate percentage (0-100)
     release_date: str | None
     avatar_color: str
 

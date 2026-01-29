@@ -274,8 +274,13 @@ class TestGetModelRankings:
             "crewmate_rating",
             "games_played",
             "current_rank",
-            "previous_rank",
-            "rank_change",
+            "impostor_games",
+            "impostor_wins",
+            "crewmate_games",
+            "crewmate_wins",
+            "win_rate",
+            "impostor_win_rate",
+            "crewmate_win_rate",
             "release_date",
             "avatar_color",
         ]
@@ -283,17 +288,29 @@ class TestGetModelRankings:
         for field in required_fields:
             assert field in r, f"Missing field: {field}"
 
-    def test_rank_change_calculation(self, db_session, sample_models):
-        """Rank change should be previous_rank - current_rank."""
+    def test_win_rate_calculation(self, db_session, sample_models):
+        """Win rates should be calculated correctly as percentages."""
         model = sample_models[0]
-        rating = ModelRating(model_id=model.id, previous_rank=5)
+        # Set high mu values to ensure this model ranks first
+        rating = ModelRating(
+            model_id=model.id,
+            impostor_mu=50.0,  # Very high rating to be first
+            crewmate_mu=50.0,
+            impostor_games=10,
+            impostor_wins=7,
+            crewmate_games=20,
+            crewmate_wins=12,
+        )
         db_session.add(rating)
         model.ratings = rating
         db_session.flush()
 
         rankings = get_model_rankings(db_session)
+        # Find our specific model in rankings
+        r = next(r for r in rankings if r["model_id"] == model.model_id)
 
-        # Model is rank 1 now, was rank 5 before
-        assert rankings[0]["current_rank"] == 1
-        assert rankings[0]["previous_rank"] == 5
-        assert rankings[0]["rank_change"] == 4  # Moved up 4 spots
+        # Check win rates
+        assert r["impostor_win_rate"] == 70.0  # 7/10 = 70%
+        assert r["crewmate_win_rate"] == 60.0  # 12/20 = 60%
+        # Overall: 19 wins / 30 games = 63.33...%
+        assert r["win_rate"] == 63.3

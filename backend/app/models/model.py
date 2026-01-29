@@ -66,14 +66,13 @@ class ModelRating(Base, TimestampMixin):
     impostor_mu: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_MU)
     impostor_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_SIGMA)
     impostor_games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    impostor_wins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # TrueSkill parameters for crewmate role
     crewmate_mu: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_MU)
     crewmate_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_SIGMA)
     crewmate_games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    # Cached previous rank for rank change calculation
-    previous_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    crewmate_wins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Relationship back to Model
     model: Mapped["Model"] = relationship("Model", back_populates="ratings")
@@ -82,6 +81,33 @@ class ModelRating(Base, TimestampMixin):
     def total_games(self) -> int:
         """Total games played across both roles."""
         return (self.impostor_games or 0) + (self.crewmate_games or 0)
+
+    @property
+    def total_wins(self) -> int:
+        """Total wins across both roles."""
+        return (self.impostor_wins or 0) + (self.crewmate_wins or 0)
+
+    @property
+    def impostor_win_rate(self) -> float:
+        """Win rate as impostor (0.0 to 1.0)."""
+        if not self.impostor_games:
+            return 0.0
+        return (self.impostor_wins or 0) / self.impostor_games
+
+    @property
+    def crewmate_win_rate(self) -> float:
+        """Win rate as crewmate (0.0 to 1.0)."""
+        if not self.crewmate_games:
+            return 0.0
+        return (self.crewmate_wins or 0) / self.crewmate_games
+
+    @property
+    def overall_win_rate(self) -> float:
+        """Overall win rate across both roles (0.0 to 1.0)."""
+        total = self.total_games
+        if total == 0:
+            return 0.0
+        return self.total_wins / total
 
     @property
     def impostor_rating(self) -> float:
@@ -117,10 +143,11 @@ class ModelRating(Base, TimestampMixin):
         self.impostor_mu = self.DEFAULT_MU
         self.impostor_sigma = self.DEFAULT_SIGMA
         self.impostor_games = 0
+        self.impostor_wins = 0
         self.crewmate_mu = self.DEFAULT_MU
         self.crewmate_sigma = self.DEFAULT_SIGMA
         self.crewmate_games = 0
-        self.previous_rank = None
+        self.crewmate_wins = 0
 
     def __repr__(self) -> str:
         return f"<ModelRating model_id={self.model_id} overall={self.overall_rating:.1f}>"

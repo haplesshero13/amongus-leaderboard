@@ -14,7 +14,14 @@ const mockRankings: ModelRanking[] = [
     crewmate_rating: 1800,
     games_played: 42,
     current_rank: 1,
-    rank_change: 2,
+    impostor_games: 12,
+    impostor_wins: 8,
+    crewmate_games: 30,
+    crewmate_wins: 18,
+    win_rate: 61.9,
+    impostor_win_rate: 66.7,
+    crewmate_win_rate: 60.0,
+    release_date: '2025-01-01',
   },
   {
     model_id: 'claude-4',
@@ -26,7 +33,14 @@ const mockRankings: ModelRanking[] = [
     crewmate_rating: 1890,
     games_played: 38,
     current_rank: 2,
-    rank_change: -1,
+    impostor_games: 10,
+    impostor_wins: 4,
+    crewmate_games: 28,
+    crewmate_wins: 20,
+    win_rate: 63.2,
+    impostor_win_rate: 40.0,
+    crewmate_win_rate: 71.4,
+    release_date: '2025-02-01',
   },
 ];
 
@@ -49,10 +63,12 @@ describe('LeaderboardTable', () => {
     expect(screen.getByText('1820')).toBeDefined();
   });
 
-  it('renders games played', () => {
+  it('renders win-loss records', () => {
     render(<LeaderboardTable rankings={mockRankings} />);
-    expect(screen.getByText('42')).toBeDefined();
-    expect(screen.getByText('38')).toBeDefined();
+    // GPT-5: 26 wins (8+18), 16 losses (42-26)
+    expect(screen.getByText('26-16')).toBeDefined();
+    // Claude 4: 24 wins (4+20), 14 losses (38-24)
+    expect(screen.getByText('24-14')).toBeDefined();
   });
 
   it('renders empty table without crashing', () => {

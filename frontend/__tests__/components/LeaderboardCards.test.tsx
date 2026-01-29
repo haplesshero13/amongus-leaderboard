@@ -14,7 +14,14 @@ const mockRankings: ModelRanking[] = [
     crewmate_rating: 1740,
     games_played: 25,
     current_rank: 3,
-    rank_change: 0,
+    impostor_games: 8,
+    impostor_wins: 5,
+    crewmate_games: 17,
+    crewmate_wins: 10,
+    win_rate: 60.0,
+    impostor_win_rate: 62.5,
+    crewmate_win_rate: 58.8,
+    release_date: '2025-03-01',
   },
 ];
 
@@ -32,9 +39,10 @@ describe('LeaderboardCards', () => {
     expect(screen.getByText('1740')).toBeDefined(); // crewmate
   });
 
-  it('renders games played', () => {
+  it('renders win-loss record', () => {
     render(<LeaderboardCards rankings={mockRankings} />);
-    expect(screen.getByText('25')).toBeDefined();
+    // 15 wins (5+10), 10 losses (25-15)
+    expect(screen.getByText('15-10')).toBeDefined();
   });
 
   it('renders empty list without crashing', () => {
