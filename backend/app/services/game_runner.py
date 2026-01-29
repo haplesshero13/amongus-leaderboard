@@ -258,6 +258,10 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
             )
             db.add(participant)
 
+        # Flush to make participants visible for rating calculation
+        db.flush()
+        db.refresh(game)
+
         # Upload logs to S3 with retry
         max_retries = 3
         retry_delay = 1.0  # seconds, doubles each retry
