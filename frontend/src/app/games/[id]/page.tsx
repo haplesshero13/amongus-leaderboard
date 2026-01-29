@@ -24,24 +24,32 @@ function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
       playerColor = playerName.split(':')[1].trim();
     }
 
-    // Extract action from response
+    // Extract action from response - ensure it's always a string
     let action = '';
     if (typeof response === 'string') {
       action = response;
     } else if (response && typeof response === 'object') {
       // Try multiple possible keys for action
-      action = response.Action || response.action || '';
+      const topLevelAction = response.Action || response.action;
+      if (typeof topLevelAction === 'string') {
+        action = topLevelAction;
+      }
 
-      // If action is still empty but there's a Thinking Process with action, use that
+      // If action is still empty, check Thinking Process for action
       if (!action) {
         const thinkingProcess = response['Thinking Process'];
         if (thinkingProcess && typeof thinkingProcess === 'object' && 'action' in thinkingProcess) {
-          action = thinkingProcess.action || '';
+          const tpAction = thinkingProcess.action;
+          action = typeof tpAction === 'string' ? tpAction : '';
         }
       }
     }
+    // Final safety: ensure action is always a string
+    if (typeof action !== 'string') {
+      action = String(action || '');
+    }
 
-    // Extract thinking process
+    // Extract thinking process - ensure it's always a string or null
     let thinking: string | null = null;
     if (response && typeof response === 'object') {
       const thinkingVal = response['Thinking Process'];
@@ -49,15 +57,21 @@ function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
         if (typeof thinkingVal === 'string') {
           thinking = thinkingVal;
         } else if (typeof thinkingVal === 'object') {
-          thinking = thinkingVal.thought || JSON.stringify(thinkingVal);
+          const thought = thinkingVal.thought;
+          thinking = typeof thought === 'string' ? thought : JSON.stringify(thinkingVal);
         }
       }
     }
 
-    // Extract memory
+    // Extract memory - ensure it's always a string or null
     let memory: string | null = null;
     if (response && typeof response === 'object') {
-      memory = response['Condensed Memory'] || null;
+      const memoryVal = response['Condensed Memory'];
+      if (typeof memoryVal === 'string') {
+        memory = memoryVal;
+      } else if (memoryVal) {
+        memory = JSON.stringify(memoryVal);
+      }
     }
 
     // Extract prompt info for debugging/full view
