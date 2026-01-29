@@ -24,13 +24,6 @@ from app.services.rating_service import update_ratings_for_game
 from app.services.storage_service import upload_game_logs
 
 
-# Player colors used in Among Us
-PLAYER_COLORS = [
-    "red", "blue", "green", "pink", "orange", "yellow", "black", "white",
-    "purple", "brown", "cyan", "lime"
-]
-
-
 class EmptyResponseError(Exception):
     """Raised when a model returns an empty response during the game."""
 
@@ -210,35 +203,19 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
             db.commit()
             return
 
-        # Update status to running
+        # Shuffle models to randomize who gets impostor/crewmate roles
+        # amongagents assigns Player 1-2 as impostors, 3-7 as crewmates
+        random.shuffle(models)
+
+        # Update status to running and store model IDs
         game.status = GameStatus.RUNNING
         game.started_at = datetime.now(timezone.utc)
+        game.model_ids = [m.id for m in models]
         db.commit()
-
-        # Shuffle models and assign roles (2 impostors, 5 crewmates)
-        shuffled_models = models.copy()
-        random.shuffle(shuffled_models)
-
-        colors = random.sample(PLAYER_COLORS, 7)
-
-        # Create participants
-        for i, model in enumerate(shuffled_models):
-            role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
-            participant = GameParticipant(
-                game_id=game.id,
-                model_id=model.id,
-                player_number=i + 1,
-                player_color=colors[i],
-                role=role,
-            )
-            db.add(participant)
-
-        db.commit()
-        db.refresh(game)
 
         # Run the actual game
         winner, winner_reason, summary, agent_logs, experiment_dir = await execute_amongagents_game(
-            game, shuffled_models, colors, settings.openrouter_api_key
+            game, models, settings.openrouter_api_key
         )
 
         # Update game with results
@@ -246,6 +223,48 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         game.winner_reason = winner_reason
         game.status = GameStatus.COMPLETED
         game.ended_at = datetime.now(timezone.utc)
+
+        # Create participants from the game summary (source of truth)
+        # Build a map from openrouter_id -> Model for lookup
+        model_map = {m.openrouter_id: m for m in models}
+        
+        for i in range(1, 8):
+            player_key = f"Player {i}"
+            player_data = summary.get(player_key)
+            if not player_data:
+                raise ValueError(f"Missing {player_key} in game summary")
+            
+            openrouter_id = player_data.get("model")
+            if not openrouter_id:
+                raise ValueError(f"Missing 'model' for {player_key} in game summary")
+            
+            model = model_map.get(openrouter_id)
+            if not model:
+                raise ValueError(f"Unknown model '{openrouter_id}' for {player_key}")
+            
+            identity = player_data.get("identity")
+            if identity not in ("Impostor", "Crewmate"):
+                raise ValueError(f"Invalid identity '{identity}' for {player_key}")
+            role = PlayerRole.IMPOSTOR if identity == "Impostor" else PlayerRole.CREWMATE
+            
+            color = player_data.get("color")
+            if not color:
+                raise ValueError(f"Missing 'color' for {player_key} in game summary")
+            
+            # Determine if this player won based on game outcome
+            impostors_won = winner in (1, 4)  # Codes 1 and 4 are impostor wins
+            player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
+            
+            participant = GameParticipant(
+                game_id=game.id,
+                model_id=model.id,
+                player_number=i,
+                player_color=color,
+                role=role,
+                won=player_won,
+                survived=None,  # Could be determined from logs if needed
+            )
+            db.add(participant)
 
         # Upload logs to S3 with retry
         max_retries = 3
@@ -298,7 +317,6 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
 async def execute_amongagents_game(
     game: Game,
     models: list[Model],
-    colors: list[str],
     openrouter_api_key: str,
 ) -> tuple[int, str, dict, list, str]:
     """

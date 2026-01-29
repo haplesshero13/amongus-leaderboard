@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text, Boolean
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -73,6 +73,9 @@ class Game(Base, TimestampMixin):
 
     # Webhook URL to call on completion (optional)
     webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Model IDs participating in this game (stored before game runs, participants created after)
+    model_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     participants: Mapped[list["GameParticipant"]] = relationship(

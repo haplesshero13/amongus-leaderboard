@@ -130,12 +130,14 @@ class TestUpdateRatingsForGame:
         colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink"]
         for i, model in enumerate(sample_models):
             role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
+            won = role == PlayerRole.CREWMATE  # Crewmates won this game
             participant = GameParticipant(
                 game_id=game.id,
                 model_id=model.id,
                 player_number=i + 1,
                 player_color=colors[i],
                 role=role,
+                won=won,
             )
             db_session.add(participant)
             get_or_create_rating(db_session, model)

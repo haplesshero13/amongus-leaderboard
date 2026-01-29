@@ -13,7 +13,7 @@ from app.api.schemas import (
 )
 from app.core.database import get_db
 from app.models import Game, GameStatus, Model
-from app.services.storage_service import generate_presigned_url, get_game_logs, delete_game_logs
+from app.services.storage_service import get_game_logs, delete_game_logs
 
 router = APIRouter(tags=["games"])
 
@@ -87,11 +87,6 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
             )
         )
 
-    # Generate presigned URL for logs if available
-    log_url = None
-    if game.log_bucket and game.log_key:
-        log_url = generate_presigned_url(game.log_bucket, game.log_key)
-
     return GameResponse(
         game_id=game.id,
         status=GameStatusEnum(game.status.value),
@@ -100,7 +95,6 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
         winner=game.winner,
         winner_reason=game.winner_reason,
         participants=participants,
-        log_url=log_url,
         error_message=game.error_message,
     )
 
@@ -136,10 +130,6 @@ async def list_games(
             for p in game.participants
         ]
 
-        log_url = None
-        if game.log_bucket and game.log_key:
-            log_url = generate_presigned_url(game.log_bucket, game.log_key)
-
         results.append(
             GameResponse(
                 game_id=game.id,
@@ -149,7 +139,6 @@ async def list_games(
                 winner=game.winner,
                 winner_reason=game.winner_reason,
                 participants=participants,
-                log_url=log_url,
                 error_message=game.error_message,
             )
         )

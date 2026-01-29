@@ -58,7 +58,10 @@ def sample_models(db_session):
 
 @pytest.fixture
 def sample_game_with_participants(db_session, sample_models):
-    """Create a sample game with 7 participants (2 impostors, 5 crewmates)."""
+    """Create a sample game with 7 participants (2 impostors, 5 crewmates).
+    
+    Impostors win (winner=1), so impostor participants have won=True.
+    """
     game = Game(status=GameStatus.COMPLETED, winner=1, winner_reason="Impostors win!")
 
     db_session.add(game)
@@ -67,14 +70,17 @@ def sample_game_with_participants(db_session, sample_models):
     colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink"]
 
     # First 2 models are impostors, rest are crewmates
+    # Impostors won (winner=1), so impostors have won=True
     for i, model in enumerate(sample_models):
         role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
+        won = role == PlayerRole.IMPOSTOR  # Impostors won this game
         participant = GameParticipant(
             game_id=game.id,
             model_id=model.id,
             player_number=i + 1,
             player_color=colors[i],
             role=role,
+            won=won,
         )
         db_session.add(participant)
 

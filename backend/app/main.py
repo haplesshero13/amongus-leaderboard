@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import ORJSONResponse
 
 from app.core.config import get_settings
 from app.core.database import init_db
@@ -27,7 +29,12 @@ def create_app() -> FastAPI:
         description="API for the Among Us LLM agent leaderboard",
         version="0.1.0",
         lifespan=lifespan,
+        # Use ORJSON for faster, more compact JSON serialization
+        default_response_class=ORJSONResponse,
     )
+
+    # GZip compression for responses > 500 bytes
+    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     # Configure CORS for frontend
     app.add_middleware(

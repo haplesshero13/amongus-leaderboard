@@ -85,7 +85,6 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         model_rating.impostor_mu = new_rating.mu
         model_rating.impostor_sigma = new_rating.sigma
         model_rating.impostor_games += 1
-        participant.won = impostors_won
 
     # Update crewmate ratings
     for i, (participant, model_rating, _) in enumerate(crewmate_ratings):
@@ -93,7 +92,6 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         model_rating.crewmate_mu = new_rating.mu
         model_rating.crewmate_sigma = new_rating.sigma
         model_rating.crewmate_games += 1
-        participant.won = not impostors_won
 
     db.flush()
 

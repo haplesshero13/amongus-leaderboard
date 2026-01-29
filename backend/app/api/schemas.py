@@ -97,7 +97,6 @@ class GameResponse(BaseModel):
     winner: int | None
     winner_reason: str | None
     participants: list[GameParticipantResponse]
-    log_url: str | None = None
     error_message: str | None = None
 
 

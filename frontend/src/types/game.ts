@@ -16,7 +16,6 @@ export interface Game {
   winner: number | null;
   winner_reason: string | null;
   participants: GameParticipant[];
-  log_url: string | null;
   error_message: string | null;
 }
 
