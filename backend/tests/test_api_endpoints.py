@@ -278,6 +278,47 @@ class TestModelsEndpoint:
         response = client.delete("/api/models/nonexistent", headers=auth_headers)
         assert response.status_code == 404
 
+    def test_update_model(self, client, sample_model, auth_headers):
+        """Should update a model's details."""
+        response = client.patch("/api/models/claude-opus-4", json={
+            "openrouter_id": "anthropic/claude-opus-4-updated",
+            "model_name": "Claude Opus 4 Updated",
+        }, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["openrouter_id"] == "anthropic/claude-opus-4-updated"
+        assert data["model_name"] == "Claude Opus 4 Updated"
+        # Unchanged fields should stay the same
+        assert data["provider"] == "Anthropic"
+
+    def test_update_model_partial(self, client, sample_model, auth_headers):
+        """Should update only provided fields."""
+        response = client.patch("/api/models/claude-opus-4", json={
+            "avatar_color": "#00FF00",
+        }, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["avatar_color"] == "#00FF00"
+        # Other fields unchanged
+        assert data["model_name"] == "Claude Opus 4"
+        assert data["openrouter_id"] == "anthropic/claude-opus-4"
+
+    def test_update_nonexistent_model(self, client, auth_headers):
+        """Should return 404 when updating nonexistent model."""
+        response = client.patch("/api/models/nonexistent", json={
+            "model_name": "Updated",
+        }, headers=auth_headers)
+        assert response.status_code == 404
+
+    def test_update_model_requires_auth(self, client, sample_model):
+        """Should require API key for updates."""
+        response = client.patch("/api/models/claude-opus-4", json={
+            "model_name": "Updated",
+        })
+        assert response.status_code == 401  # Unauthorized without API key
+
 
 class TestGamesEndpoint:
     """Tests for /api/games endpoints."""

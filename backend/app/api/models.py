@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_api_key
-from app.api.schemas import ModelCreateRequest, ModelResponse
+from app.api.schemas import ModelCreateRequest, ModelResponse, ModelUpdateRequest
 from app.core.database import get_db
 from app.models import Model, ModelRating
 
@@ -78,6 +78,43 @@ async def get_model(model_id: str, db: Session = Depends(get_db)):
     model = db.query(Model).filter(Model.model_id == model_id).first()
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
+
+    return ModelResponse(
+        model_id=model.model_id,
+        model_name=model.model_name,
+        provider=model.provider,
+        openrouter_id=model.openrouter_id,
+        release_date=model.release_date,
+        avatar_color=model.avatar_color,
+    )
+
+
+@router.patch("/models/{model_id}", response_model=ModelResponse)
+async def update_model(
+    model_id: str,
+    request: ModelUpdateRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """Update an existing model's details."""
+    model = db.query(Model).filter(Model.model_id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    # Update only provided fields
+    if request.model_name is not None:
+        model.model_name = request.model_name
+    if request.provider is not None:
+        model.provider = request.provider
+    if request.openrouter_id is not None:
+        model.openrouter_id = request.openrouter_id
+    if request.release_date is not None:
+        model.release_date = request.release_date
+    if request.avatar_color is not None:
+        model.avatar_color = request.avatar_color
+
+    db.commit()
+    db.refresh(model)
 
     return ModelResponse(
         model_id=model.model_id,

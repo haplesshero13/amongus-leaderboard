@@ -115,6 +115,16 @@ class ModelCreateRequest(BaseModel):
     avatar_color: str = Field("#808080", description="Hex color for avatar")
 
 
+class ModelUpdateRequest(BaseModel):
+    """Request to update an existing model. All fields optional."""
+
+    model_name: str | None = Field(None, description="Display name for the model")
+    provider: str | None = Field(None, description="Provider/company name")
+    openrouter_id: str | None = Field(None, description="OpenRouter model identifier for API calls")
+    release_date: date | None = Field(None, description="Model release date")
+    avatar_color: str | None = Field(None, description="Hex color for avatar")
+
+
 class ModelResponse(BaseModel):
     """Model details response."""
 
