@@ -14,11 +14,13 @@ Prerequisites:
 
 import json
 import os
-import sys
 import glob
-from pathlib import Path
 from datetime import datetime
-import asyncio
+
+from app.core.database import init_db, SessionLocal
+from app.models import Game, GameParticipant, Model, GameStatus, PlayerRole
+from app.services.rating_service import update_ratings_for_game, get_or_create_rating
+from app.services.storage_service import upload_game_logs, ensure_bucket_exists
 
 # Add backend to path to import app modules
 # sys.path.insert(0, str(Path(__file__).parent / "backend"))
@@ -30,16 +32,6 @@ os.environ.setdefault("S3_BUCKET_NAME", "amongus-game-logs")
 os.environ.setdefault("S3_ACCESS_KEY", "minioadmin")
 os.environ.setdefault("S3_SECRET_KEY", "minioadmin")
 os.environ.setdefault("S3_REGION", "us-east-1")
-
-try:
-    from app.core.database import init_db, SessionLocal
-    from app.models import Game, GameParticipant, Model, GameStatus, PlayerRole, GameWinner
-    from app.services.rating_service import update_ratings_for_game, get_or_create_rating
-    from app.services.storage_service import upload_game_logs, ensure_bucket_exists, get_s3_client
-except ImportError as e:
-    print(f"Error importing backend modules: {e}")
-    print("Make sure you are running this from the root directory and 'backend' is accessible.")
-    sys.exit(1)
 
 
 def get_db_session():
@@ -113,7 +105,7 @@ def process_log_file(db, file_path: str):
 
     summary = data.get("summary", {})
     agent_logs = data.get("agent_logs", [])
-    config = summary.get("config", {})
+    summary.get("config", {})
 
     # Determine winner
     winner_code = summary.get("winner")

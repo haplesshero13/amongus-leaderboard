@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.database import SessionLocal, init_db
-from app.models import Game, GameParticipant, GameStatus
+from app.models import Game, GameStatus
 from app.services.storage_service import get_game_logs
 
 
@@ -110,7 +110,7 @@ def main():
         else:
             print("\nNo updates needed.")
 
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  Games processed: {len(games)}")
         print(f"  Games modified: {games_modified}")
         print(f"  Participants updated: {total_updated}")
