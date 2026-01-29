@@ -109,7 +109,7 @@ curl -X POST "$API_URL/api/ratings/recalculate" \
 |----------|--------------|----------|---------------|
 | claude-haiku-4.5 | Claude Haiku 4.5 | Anthropic | anthropic/claude-haiku-4.5 |
 | gemini-3-flash | Gemini 3 Flash | Google | google/gemini-3-flash-preview |
-| gpt-oss-20b | GPT-OSS 20B | OpenAI | openai/gpt-oss-20b:free |
+| gpt-oss-20b | GPT-OSS 20B | OpenAI | openai/gpt-oss-20b |
 | solar-pro-3 | Solar Pro 3 | Upstage | upstage/solar-pro-3:free |
 | mistral-large-2512 | Mistral Large | Mistral AI | mistralai/mistral-large-2512 |
 | llama-3.3-70b | Llama 3.3 70B | Meta | meta-llama/llama-3.3-70b-instruct:free |
