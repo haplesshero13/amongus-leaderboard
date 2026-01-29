@@ -51,7 +51,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         run: pip install uv
@@ -74,12 +74,20 @@ jobs:
     steps:
       - name: Check for running games
         run: |
-          RUNNING_GAMES=$(curl -sf https://api.lmdeceptionarena.averyyen.dev/api/games?status=running)
+          # If API is down, allow deploy (server might be crashed)
+          RUNNING_GAMES=$(curl -sf https://api.lmdeceptionarena.averyyen.dev/api/games?status=running || echo "API_UNREACHABLE")
+
+          if [ "$RUNNING_GAMES" = "API_UNREACHABLE" ]; then
+            echo "API unreachable - allowing deploy (server may be down)"
+            exit 0
+          fi
+
           if [ "$RUNNING_GAMES" != "[]" ]; then
             echo "ERROR: Games are currently running. Cannot deploy backend."
             echo "Running games: $RUNNING_GAMES"
             exit 1
           fi
+
           echo "No games running. Safe to deploy."
 
   # === Deploy (only on push to main, after CI passes) ===
