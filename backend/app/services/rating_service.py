@@ -1,4 +1,12 @@
-"""OpenSkill rating service for updating model ratings after games."""
+"""OpenSkill rating service for updating model ratings after games.
+
+Uses a "Meta-Agent" approach to handle asymmetric team sizes (2 impostors vs 5 crewmates).
+Instead of rating teams directly (which causes 27x asymmetry in rating changes),
+we collapse each team to a single meta-agent, run a 1v1 match, and distribute
+the symmetric deltas to all team members.
+"""
+
+import statistics
 
 from openskill.models import PlackettLuce
 from sqlalchemy.orm import Session
@@ -27,8 +35,13 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
     """
     Update OpenSkill ratings for all participants after a game completes.
 
-    This creates two teams (impostors vs crewmates) and updates each player's
-    role-specific rating based on the game outcome.
+    Uses a "Meta-Agent" approach to handle asymmetric team sizes:
+    1. Collapse each team to a single meta-agent (average mu/sigma)
+    2. Run a 1v1 match between meta-agents
+    3. Distribute the symmetric deltas to all team members
+
+    This ensures equal rating changes regardless of team size, since
+    Among Us is designed to be ~50/50 balanced despite 2v5 numbers.
     """
     if game.winner is None:
         return
@@ -64,49 +77,49 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         )
         crewmate_ratings.append((p, model_rating, os_rating))
 
-    # Create team rating lists
+    # Create meta-agents by averaging team mu/sigma
     impostor_team = [r[2] for r in impostor_ratings]
     crewmate_team = [r[2] for r in crewmate_ratings]
 
-    # Calculate new ratings
-    # OpenSkill ranks: lower is better, so winner gets rank 1
-    if impostors_won:
-        ranks = [1, 2]  # Impostors won (rank 1), crewmates lost (rank 2)
-    else:
-        ranks = [2, 1]  # Impostors lost (rank 2), crewmates won (rank 1)
-
-    # Weight crewmates to normalize for asymmetric team sizes
-    # Without weighting: impostors split credit 2 ways (50% each), crewmates split 5 ways (20% each)
-    # This means impostors naturally get 2.5x more rating change per game.
-    # Since impostors already have strong abilities (kills, sabotage) leading to ~50% win rate,
-    # we boost crewmates so individual contributions aren't penalized for being on a larger team.
-    num_impostors = len(impostor_team)
-    num_crewmates = len(crewmate_team)
-    crewmate_weight = num_crewmates / num_impostors if num_impostors > 0 else 1.0
-
-    impostor_weights = [1.0] * num_impostors
-    crewmate_weights = [crewmate_weight] * num_crewmates
-
-    new_impostor_team, new_crewmate_team = RATING_MODEL.rate(
-        [impostor_team, crewmate_team],
-        ranks=ranks,
-        weights=[impostor_weights, crewmate_weights],
+    meta_impostor = RATING_MODEL.rating(
+        mu=statistics.mean(r.mu for r in impostor_team),
+        sigma=statistics.mean(r.sigma for r in impostor_team),
+    )
+    meta_crewmate = RATING_MODEL.rating(
+        mu=statistics.mean(r.mu for r in crewmate_team),
+        sigma=statistics.mean(r.sigma for r in crewmate_team),
     )
 
-    # Update impostor ratings
-    for i, (participant, model_rating, _) in enumerate(impostor_ratings):
-        new_rating = new_impostor_team[i]
-        model_rating.impostor_mu = new_rating.mu
-        model_rating.impostor_sigma = new_rating.sigma
+    # Run 1v1 match between meta-agents
+    # OpenSkill ranks: lower is better, so winner gets rank 0
+    if impostors_won:
+        ranks = [0, 1]  # Impostors won (rank 0), crewmates lost (rank 1)
+    else:
+        ranks = [1, 0]  # Impostors lost (rank 1), crewmates won (rank 0)
+
+    new_meta_imp, new_meta_crew = RATING_MODEL.rate(
+        [[meta_impostor], [meta_crewmate]],
+        ranks=ranks,
+    )
+
+    # Calculate deltas from meta-agent match
+    impostor_mu_delta = new_meta_imp[0].mu - meta_impostor.mu
+    impostor_sigma_delta = new_meta_imp[0].sigma - meta_impostor.sigma
+    crewmate_mu_delta = new_meta_crew[0].mu - meta_crewmate.mu
+    crewmate_sigma_delta = new_meta_crew[0].sigma - meta_crewmate.sigma
+
+    # Apply deltas to all impostor ratings
+    for participant, model_rating, old_rating in impostor_ratings:
+        model_rating.impostor_mu = old_rating.mu + impostor_mu_delta
+        model_rating.impostor_sigma = max(0.1, old_rating.sigma + impostor_sigma_delta)
         model_rating.impostor_games += 1
         if impostors_won:
             model_rating.impostor_wins += 1
 
-    # Update crewmate ratings
-    for i, (participant, model_rating, _) in enumerate(crewmate_ratings):
-        new_rating = new_crewmate_team[i]
-        model_rating.crewmate_mu = new_rating.mu
-        model_rating.crewmate_sigma = new_rating.sigma
+    # Apply deltas to all crewmate ratings
+    for participant, model_rating, old_rating in crewmate_ratings:
+        model_rating.crewmate_mu = old_rating.mu + crewmate_mu_delta
+        model_rating.crewmate_sigma = max(0.1, old_rating.sigma + crewmate_sigma_delta)
         model_rating.crewmate_games += 1
         if not impostors_won:
             model_rating.crewmate_wins += 1
