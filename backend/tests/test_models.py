@@ -1,6 +1,5 @@
 """Tests for database model properties and calculations."""
 
-import pytest
 
 from app.models import ModelRating, Game, GameWinner
 

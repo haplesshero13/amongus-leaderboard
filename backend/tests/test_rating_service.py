@@ -1,6 +1,5 @@
 """Tests for the OpenSkill rating service."""
 
-import pytest
 
 from app.models import Model, ModelRating, Game, GameParticipant, PlayerRole, GameStatus
 from app.services.rating_service import (
@@ -8,7 +7,6 @@ from app.services.rating_service import (
     scale_rating_for_display,
     get_or_create_rating,
     get_model_rankings,
-    RATING_MODEL,
 )
 
 

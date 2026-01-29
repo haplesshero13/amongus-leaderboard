@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -12,7 +11,7 @@ from app.api.schemas import (
     GameStatusEnum,
 )
 from app.core.database import get_db
-from app.models import Game, GameParticipant, GameStatus, Model
+from app.models import Game, GameStatus, Model
 from app.services.storage_service import generate_presigned_url
 
 router = APIRouter(tags=["games"])

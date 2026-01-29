@@ -1,10 +1,9 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.database import Base
 
 
 def generate_uuid() -> str:
