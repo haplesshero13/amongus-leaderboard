@@ -252,7 +252,25 @@ Follow this sequence:
    - Improve naming
    - Add comments only where code can't be self-explanatory
 
-5. **Integration check**
+5. **Database migrations (if schema changed)**
+   ```bash
+   cd backend
+   
+   # Auto-generate migration from model changes
+   uv run alembic revision --autogenerate -m "add new_column to model"
+   
+   # Review the generated file in alembic/versions/
+   # Apply locally
+   uv run alembic upgrade head
+   
+   # Run tests to verify
+   uv run pytest
+   ```
+   
+   **⚠️ NEVER add `alembic upgrade` to Railway's startCommand** - it causes timeouts.
+   Deploy migrations separately: `railway run alembic upgrade head`
+
+6. **Integration check**
    ```bash
    # Run full test suite
    make test

@@ -199,6 +199,26 @@ The app is deployed on Railway with:
 
 Custom domains are configured via Railway with DNS CNAME records pointing to Railway's edge.
 
+### Database Migrations
+
+Migrations are managed with Alembic and run manually (not on deploy):
+
+```bash
+# Get from Railway Postgres service
+export DATABASE_URL=postgresql://user:pass@...
+
+cd backend
+
+# Run migrations against production
+railway run alembic upgrade head
+
+# Create a new migration after changing models
+uv run alembic revision --autogenerate -m "add new column"
+
+# Check migration status
+railway run alembic current
+```
+
 ## Game Rules
 
 - 7 players per game (2 Impostors, 5 Crewmates)
