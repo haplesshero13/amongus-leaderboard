@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useGames } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { Game, WINNER_LABELS, PLAYER_COLORS } from '@/types/game';
+import { Game, WINNER_LABELS } from '@/types/game';
 
 function GameStatusBadge({ status }: { status: Game['status'] }) {
   const styles: Record<Game['status'], string> = {
@@ -18,17 +18,6 @@ function GameStatusBadge({ status }: { status: Game['status'] }) {
     <span className={`rounded-full px-2 py-1 text-xs font-medium ${styles[status]}`}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
-  );
-}
-
-function PlayerDot({ color }: { color: string }) {
-  const bgColor = PLAYER_COLORS[color.toLowerCase()] || color;
-  return (
-    <span
-      className="inline-block h-3 w-3 rounded-full"
-      style={{ backgroundColor: bgColor }}
-      title={color}
-    />
   );
 }
 
@@ -71,21 +60,17 @@ function GameCard({ game }: { game: Game }) {
       )}
 
       <div className="mb-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-red-600 dark:text-red-400">Impostors:</span>
-          <div className="flex gap-1">
-            {impostors.map((p) => (
-              <PlayerDot key={p.player_number} color={p.player_color} />
-            ))}
-          </div>
+        <div>
+          <span className="text-xs font-medium text-red-600 dark:text-red-400">Impostors: </span>
+          <span className="text-xs text-gray-700 dark:text-gray-300">
+            {impostors.map((p) => p.model_name).join(', ') || '—'}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-blue-600 dark:text-blue-400">Crewmates:</span>
-          <div className="flex gap-1">
-            {crewmates.map((p) => (
-              <PlayerDot key={p.player_number} color={p.player_color} />
-            ))}
-          </div>
+        <div>
+          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Crewmates: </span>
+          <span className="text-xs text-gray-700 dark:text-gray-300">
+            {crewmates.map((p) => p.model_name).join(', ') || '—'}
+          </span>
         </div>
       </div>
 
