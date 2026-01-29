@@ -375,9 +375,9 @@ export default function GameDetailPage() {
   const error = gameError || logsError;
 
   // Parse raw logs into display entries
-  const parsedEntries = useMemo(() => {, logs.summary
+  const parsedEntries = useMemo(() => {
     if (!logs?.agent_logs) return [];
-    return parseAgentLogs(logs.agent_logs);
+    return parseAgentLogs(logs.agent_logs, logs.summary);
   }, [logs]);
 
   // Get unique steps for filtering
