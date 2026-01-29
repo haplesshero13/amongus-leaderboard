@@ -49,19 +49,23 @@ class ModelRating(Base, TimestampMixin):
 
     __tablename__ = "model_ratings"
 
+    # OpenSkill default values
+    DEFAULT_MU = 25.0
+    DEFAULT_SIGMA = 8.333
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     model_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("models.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
     )
 
     # TrueSkill parameters for impostor role
-    impostor_mu: Mapped[float] = mapped_column(Float, nullable=False, default=25.0)
-    impostor_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=8.333)
+    impostor_mu: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_MU)
+    impostor_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_SIGMA)
     impostor_games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # TrueSkill parameters for crewmate role
-    crewmate_mu: Mapped[float] = mapped_column(Float, nullable=False, default=25.0)
-    crewmate_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=8.333)
+    crewmate_mu: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_MU)
+    crewmate_sigma: Mapped[float] = mapped_column(Float, nullable=False, default=DEFAULT_SIGMA)
     crewmate_games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Cached previous rank for rank change calculation
@@ -78,12 +82,12 @@ class ModelRating(Base, TimestampMixin):
     @property
     def impostor_rating(self) -> float:
         """OpenSkill mu for impostor role."""
-        return self.impostor_mu if self.impostor_mu is not None else 25.0
+        return self.impostor_mu if self.impostor_mu is not None else self.DEFAULT_MU
 
     @property
     def crewmate_rating(self) -> float:
         """OpenSkill mu for crewmate role."""
-        return self.crewmate_mu if self.crewmate_mu is not None else 25.0
+        return self.crewmate_mu if self.crewmate_mu is not None else self.DEFAULT_MU
 
     @property
     def overall_rating(self) -> float:
@@ -103,6 +107,16 @@ class ModelRating(Base, TimestampMixin):
         impostor_weight = (self.impostor_games or 0) / total
         crewmate_weight = (self.crewmate_games or 0) / total
         return (imp_mu * impostor_weight) + (crew_mu * crewmate_weight)
+
+    def reset_to_defaults(self) -> None:
+        """Reset all rating values to OpenSkill defaults."""
+        self.impostor_mu = self.DEFAULT_MU
+        self.impostor_sigma = self.DEFAULT_SIGMA
+        self.impostor_games = 0
+        self.crewmate_mu = self.DEFAULT_MU
+        self.crewmate_sigma = self.DEFAULT_SIGMA
+        self.crewmate_games = 0
+        self.previous_rank = None
 
     def __repr__(self) -> str:
         return f"<ModelRating model_id={self.model_id} overall={self.overall_rating:.1f}>"

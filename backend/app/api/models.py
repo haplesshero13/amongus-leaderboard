@@ -139,3 +139,45 @@ async def delete_model(
 
     db.delete(model)
     db.commit()
+
+
+@router.post("/ratings/recalculate", status_code=200)
+async def recalculate_all_ratings(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Recalculate ALL model ratings from game history.
+
+    Resets ratings to defaults, then replays all completed games chronologically
+    to rebuild accurate ratings. Use after deleting games.
+
+    Requires API key authentication.
+    """
+    from app.models import Game, GameStatus
+    from app.services.rating_service import update_ratings_for_game
+
+    ratings = db.query(ModelRating).all()
+    models_reset = len(ratings)
+
+    # Reset all ratings to OpenSkill defaults
+    for rating in ratings:
+        rating.reset_to_defaults()
+
+    db.flush()
+
+    # Get all completed games in chronological order
+    completed_games = (
+        db.query(Game)
+        .filter(Game.status == GameStatus.COMPLETED)
+        .order_by(Game.ended_at.asc())
+        .all()
+    )
+
+    # Replay each game to rebuild ratings
+    for game in completed_games:
+        update_ratings_for_game(db, game)
+
+    db.commit()
+
+    return {"models_reset": models_reset, "games_processed": len(completed_games)}
