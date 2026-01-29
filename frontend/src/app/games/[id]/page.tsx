@@ -7,7 +7,7 @@ import Markdown from 'react-markdown';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS } from '@/types/game';
+import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary } from '@/types/game';
 
 /**
  * Parse raw agent logs into display-friendly entries
@@ -303,6 +303,35 @@ function GameEndBanner({ winner, winnerReason }: { winner: number; winnerReason:
   );
 }
 
+// Helper to extract color from summary
+function getPlayerColorFromSummary(summary: GameSummary, playerNumber: number): string {
+  const playerKey = `Player ${playerNumber}`;
+  const playerData = summary[playerKey];
+
+  // Runtime check to distinguish PlayerSummary from GameConfig/number/string
+  if (
+    playerData &&
+    typeof playerData === 'object' &&
+    'color' in playerData
+  ) {
+    return (playerData as PlayerSummary).color;
+  }
+
+  // Try parsing name if color field missing
+  if (
+    playerData &&
+    typeof playerData === 'object' &&
+    'name' in playerData
+  ) {
+    const name = (playerData as PlayerSummary).name;
+    if (typeof name === 'string' && name.includes(':')) {
+      const parts = name.split(':');
+      if (parts.length > 1) return parts[1].trim();
+    }
+  }
+  return 'gray';
+}
+
 export default function GameDetailPage() {
   const params = useParams();
   const gameId = params.id as string;
@@ -404,14 +433,24 @@ export default function GameDetailPage() {
                   <div className="space-y-1">
                     {game.participants
                       .filter((p) => p.role === 'Impostor')
-                      .map((p) => (
-                        <div key={p.player_number} className="flex items-center gap-2">
-                          <PlayerBadge name={p.model_name} color={p.player_color} role={p.role} />
-                          {p.won !== null && (
-                            <span className="text-xs">{p.won ? '(Won)' : '(Lost)'}</span>
-                          )}
-                        </div>
-                      ))}
+                      .map((p) => {
+                        const displayColor = logs?.summary 
+                          ? getPlayerColorFromSummary(logs.summary, p.player_number) 
+                          : p.player_color;
+                        
+                        return (
+                          <div key={p.player_number} className="flex items-center gap-2">
+                            <PlayerBadge
+                              name={p.model_name}
+                              color={displayColor}
+                              role={p.role}
+                            />
+                            {p.won !== null && (
+                              <span className="text-xs">{p.won ? '(Won)' : '(Lost)'}</span>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
                 <div>
@@ -421,16 +460,26 @@ export default function GameDetailPage() {
                   <div className="space-y-1">
                     {game.participants
                       .filter((p) => p.role === 'Crewmate')
-                      .map((p) => (
-                        <div key={p.player_number} className="flex items-center gap-2">
-                          <PlayerBadge name={p.model_name} color={p.player_color} role={p.role} />
-                          {p.survived !== null && (
-                            <span className="text-xs">
-                              {p.survived ? '(Survived)' : '(Eliminated)'}
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                      .map((p) => {
+                        const displayColor = logs?.summary 
+                          ? getPlayerColorFromSummary(logs.summary, p.player_number) 
+                          : p.player_color;
+                          
+                        return (
+                          <div key={p.player_number} className="flex items-center gap-2">
+                            <PlayerBadge
+                              name={p.model_name}
+                              color={displayColor}
+                              role={p.role}
+                            />
+                            {p.survived !== null && (
+                              <span className="text-xs">
+                                {p.survived ? '(Survived)' : '(Eliminated)'}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               </div>

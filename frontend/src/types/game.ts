@@ -67,10 +67,39 @@ export interface GameLogEntry {
   full_response?: string;
 }
 
+export interface GameConfig {
+  num_players: number;
+  num_impostors: number;
+  num_common_tasks: number;
+  num_short_tasks: number;
+  num_long_tasks: number;
+  discussion_rounds: number;
+  max_num_buttons: number;
+  kill_cooldown: number;
+  max_timesteps: number;
+}
+
+export interface PlayerSummary {
+  name: string;
+  color: string;
+  identity: string;
+  model: string;
+  personality: string | null;
+  tasks: string[];
+}
+
+export interface GameSummary {
+  config: GameConfig;
+  winner: number;
+  winner_reason: string;
+  // Dynamic keys like "Player 1", "Player 2"
+  [key: string]: GameConfig | number | string | PlayerSummary;
+}
+
 export interface GameLogsResponse {
   game_id: string;
   agent_logs: RawAgentLog[];
-  summary: Record<string, unknown> | null;
+  summary: GameSummary | null;
 }
 
 export const WINNER_LABELS: Record<number, string> = {
