@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import Markdown from 'react-markdown';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -213,17 +214,15 @@ function ChatBubble({
 
         {/* Message bubble */}
         <div
-          className={`rounded-2xl px-4 py-2 inline-block max-w-full ${
-            isSpeech
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
-          }`}
-          style={isSpeech ? { backgroundColor: bgColor } : undefined}
+          className="rounded-lg px-4 py-3 inline-block max-w-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-l-4"
+          style={{ borderLeftColor: bgColor }}
         >
           {isSpeech ? (
-            <p className="text-sm">&ldquo;{formattedAction}&rdquo;</p>
+            <p className="text-base">&ldquo;{formattedAction}&rdquo;</p>
           ) : (
-            <p className="text-sm font-mono">{formattedAction}</p>
+            <div className="text-base prose prose-sm dark:prose-invert max-w-none">
+              <Markdown>{formattedAction}</Markdown>
+            </div>
           )}
         </div>
 
@@ -232,41 +231,41 @@ function ChatBubble({
           <div className="mt-2 space-y-2">
             {entry.thinking && (
               <details className="group/details" open>
-                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
-                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-4 h-4 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   Thinking Process
                 </summary>
-                <div className="mt-1 ml-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {entry.thinking}
+                <div className="mt-2 ml-5 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-400 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+                  <Markdown>{entry.thinking}</Markdown>
                 </div>
               </details>
             )}
 
             {entry.memory && (
               <details className="group/details" open>
-                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
-                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-4 h-4 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   Condensed Memory
                 </summary>
-                <div className="mt-1 ml-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {entry.memory}
+                <div className="mt-2 ml-5 p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-400 text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+                  <Markdown>{entry.memory}</Markdown>
                 </div>
               </details>
             )}
 
             {entry.full_response && (
               <details className="group/details">
-                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
-                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-4 h-4 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   Full Model Response
                 </summary>
-                <div className="mt-1 ml-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                <div className="mt-2 ml-5 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-400 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
                   {entry.full_response}
                 </div>
               </details>

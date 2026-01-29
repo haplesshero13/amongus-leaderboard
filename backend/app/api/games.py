@@ -28,7 +28,8 @@ async def trigger_game(
     """
     Trigger a new game with the specified models.
 
-    Requires exactly 7 model IDs. The game runs asynchronously in the background.
+    Requires exactly 7 model IDs (duplicates allowed for same-model matchups).
+    The game runs asynchronously in the background.
     Returns immediately with a game ID that can be used to check status.
     """
     # Validate all models exist

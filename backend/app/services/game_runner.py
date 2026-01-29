@@ -15,6 +15,8 @@ from pathlib import Path
 
 import httpx
 
+from amongagents import AmongUs
+from amongagents.envs.configs.game_config import SEVEN_MEMBER_GAME
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import Game, GameParticipant, GameStatus, Model, PlayerRole
@@ -27,6 +29,44 @@ PLAYER_COLORS = [
     "red", "blue", "green", "pink", "orange", "yellow", "black", "white",
     "purple", "brown", "cyan", "lime"
 ]
+
+
+class EmptyResponseError(Exception):
+    """Raised when a model returns an empty response during the game."""
+
+    def __init__(self, player_name: str, model: str, step: int):
+        self.player_name = player_name
+        self.model = model
+        self.step = step
+        super().__init__(
+            f"Empty response from {player_name} ({model}) at step {step}"
+        )
+
+
+class ModelMismatchError(Exception):
+    """Raised when models that played don't match the requested models."""
+
+    def __init__(self, requested: list[str], actual: list[str]):
+        self.requested = requested
+        self.actual = actual
+        missing = set(requested) - set(actual)
+        unexpected = set(actual) - set(requested)
+        # Check for duplicates in actual
+        from collections import Counter
+        actual_counts = Counter(actual)
+        duplicates = [m for m, count in actual_counts.items() if count > 1]
+
+        msg_parts = ["Model assignment mismatch:"]
+        if missing:
+            msg_parts.append(f"Missing models: {sorted(missing)}")
+        if unexpected:
+            msg_parts.append(f"Unexpected models: {sorted(unexpected)}")
+        if duplicates:
+            msg_parts.append(f"Duplicate models: {duplicates}")
+        msg_parts.append(f"Requested: {sorted(requested)}")
+        msg_parts.append(f"Actually played: {sorted(actual)}")
+
+        super().__init__(" | ".join(msg_parts))
 
 
 def read_agent_logs(experiment_dir: str) -> list:
@@ -44,20 +84,81 @@ def read_agent_logs(experiment_dir: str) -> list:
         if not agent_logs_path.exists():
             return []
 
-    try:
-        logs = []
-        with open(agent_logs_path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    try:
-                        logs.append(json.loads(line))
-                    except json.JSONDecodeError as e:
-                        print(f"Failed to parse log line: {e}")
-        return logs
-    except Exception as e:
-        print(f"Failed to read agent logs: {e}")
-        return []
+    logs = []
+    with open(agent_logs_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                logs.append(json.loads(line))  # Let JSON errors propagate
+    return logs
+
+
+def validate_model_assignment(
+    requested_models: list[str],
+    summary: dict,
+) -> None:
+    """
+    Validate that the models that actually played match the requested models.
+
+    Raises ModelMismatchError if there's a discrepancy (missing models,
+    unexpected models, or duplicates).
+
+    Args:
+        requested_models: List of openrouter_ids that were requested
+        summary: Game summary from amongagents containing player info
+    """
+    # Extract models that actually played from the summary
+    actual_models = []
+    for i in range(1, 8):  # Players 1-7
+        player_key = f"Player {i}"
+        if player_key in summary:
+            model = summary[player_key].get("model")
+            if model:
+                actual_models.append(model)
+
+    if len(actual_models) != 7:
+        raise ModelMismatchError(
+            requested=requested_models,
+            actual=actual_models,
+        )
+
+    # Check that the sets match (same models, same counts)
+    if sorted(requested_models) != sorted(actual_models):
+        raise ModelMismatchError(
+            requested=requested_models,
+            actual=actual_models,
+        )
+
+
+def validate_agent_logs(agent_logs: list) -> None:
+    """
+    Validate that all agent log entries have non-empty responses.
+
+    Raises EmptyResponseError if any model returned an empty response.
+    """
+    for log in agent_logs:
+        interaction = log.get("interaction", {})
+        response = interaction.get("response")
+        full_response = interaction.get("full_response")
+
+        # Check if response is empty (empty string, None, or empty dict)
+        response_empty = (
+            response is None
+            or response == ""
+            or response == {}
+        )
+        full_response_empty = (
+            full_response is None
+            or full_response == ""
+        )
+
+        if response_empty and full_response_empty:
+            player = log.get("player", {})
+            raise EmptyResponseError(
+                player_name=player.get("name", "Unknown"),
+                model=player.get("model", "Unknown"),
+                step=log.get("step", -1),
+            )
 
 
 def run_game_task(game_id: str, model_ids: list[str]) -> None:
@@ -136,7 +237,7 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         db.refresh(game)
 
         # Run the actual game
-        winner, winner_reason, summary, agent_logs = await execute_amongagents_game(
+        winner, winner_reason, summary, agent_logs, experiment_dir = await execute_amongagents_game(
             game, shuffled_models, colors, settings.openrouter_api_key
         )
 
@@ -146,14 +247,30 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         game.status = GameStatus.COMPLETED
         game.ended_at = datetime.now(timezone.utc)
 
-        # Upload logs to S3
-        try:
-            bucket, key = upload_game_logs(game.id, summary, agent_logs)
-            game.log_bucket = bucket
-            game.log_key = key
-        except Exception as e:
-            # Log storage failure shouldn't fail the game
-            print(f"Failed to upload logs: {e}")
+        # Upload logs to S3 with retry
+        max_retries = 3
+        retry_delay = 1.0  # seconds, doubles each retry
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                bucket, key = upload_game_logs(game.id, summary, agent_logs)
+                game.log_bucket = bucket
+                game.log_key = key
+                break  # Success
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    print(f"Log upload attempt {attempt + 1}/{max_retries} failed: {e}")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+        else:
+            # All retries exhausted - fail the game with details
+            raise RuntimeError(
+                f"Failed to upload logs after {max_retries} attempts. "
+                f"Last error: {last_error}. "
+                f"Temp dir with logs: {experiment_dir}"
+            )
 
         # Update ratings
         update_ratings_for_game(db, game)
@@ -183,33 +300,26 @@ async def execute_amongagents_game(
     models: list[Model],
     colors: list[str],
     openrouter_api_key: str,
-) -> tuple[int, str, dict, list]:
+) -> tuple[int, str, dict, list, str]:
     """
     Execute the actual Among Us game using amongagents.
 
     Returns:
-        tuple of (winner_code, winner_reason, summary_dict, agent_logs_list)
+        tuple of (winner_code, winner_reason, summary_dict, agent_logs_list, experiment_dir)
     """
     # Set up experiment path for amongagents (required for agent logging)
     experiment_dir = tempfile.mkdtemp(prefix=f"game_{game.id}_")
     os.environ["EXPERIMENT_PATH"] = experiment_dir
     os.environ["OPENROUTER_API_KEY"] = openrouter_api_key
 
-    # Import amongagents here to avoid import errors if not installed
-    try:
-        from amongagents import AmongUs
-        from amongagents.envs.configs.game_config import SEVEN_MEMBER_GAME
-    except ImportError:
-        # Mock implementation for testing without amongagents installed
-        return await mock_game_execution(game, models, colors)
-
     # Set up the agent configuration for all LLM players
+    # "unique" mode pops models from lists sequentially: each model is used exactly once
     agent_config = {
         "Impostor": "LLM",
         "Crewmate": "LLM",
         "CREWMATE_LLM_CHOICES": [m.openrouter_id for m in models[2:]],  # Crewmates
         "IMPOSTOR_LLM_CHOICES": [m.openrouter_id for m in models[:2]],  # Impostors
-        "assignment_mode": "sequential",
+        "assignment_mode": "unique",
     }
 
     # Create and run the game
@@ -229,34 +339,17 @@ async def execute_amongagents_game(
     # Extract summary and logs
     summary = game_instance.summary_json.get("Game 0", {})
 
+    # Validate that the models that played match what we requested
+    # This catches bugs in amongagents model assignment
+    requested_openrouter_ids = [m.openrouter_id for m in models]
+    validate_model_assignment(requested_openrouter_ids, summary)
+
     # Read agent logs from the experiment directory
     agent_logs = read_agent_logs(experiment_dir)
 
-    winner_reasons = {
-        1: "Impostors win! (Crewmates outnumbered)",
-        2: "Crewmates win! (All impostors eliminated)",
-        3: "Crewmates win! (All tasks completed)",
-        4: "Impostors win! (Time limit reached)",
-    }
-
-    return winner, winner_reasons.get(winner, f"Unknown outcome ({winner})"), summary, agent_logs
-
-
-async def mock_game_execution(
-    game: Game,
-    models: list[Model],
-    colors: list[str],
-) -> tuple[int, str, dict, list]:
-    """
-    Mock game execution for testing without amongagents installed.
-
-    Simulates a random game outcome.
-    """
-    # Simulate some game time
-    await asyncio.sleep(0.5)
-
-    # Random winner (1-4)
-    winner = random.choice([1, 2, 3, 4])
+    # Validate that no model returned an empty response
+    # This will raise EmptyResponseError if any response is empty
+    validate_agent_logs(agent_logs)
 
     winner_reasons = {
         1: "Impostors win! (Crewmates outnumbered)",
@@ -265,31 +358,7 @@ async def mock_game_execution(
         4: "Impostors win! (Time limit reached)",
     }
 
-    # Build mock summary
-    summary = {
-        "config": {"num_players": 7, "num_impostors": 2},
-        "winner": winner,
-        "winner_reason": winner_reasons[winner],
-    }
-
-    for i, model in enumerate(models):
-        role = "Impostor" if i < 2 else "Crewmate"
-        summary[f"Player {i+1}"] = {
-            "name": f"Player {i+1}: {colors[i]}",
-            "color": colors[i],
-            "identity": role,
-            "model": model.openrouter_id,
-        }
-
-    agent_logs = [
-        {
-            "game_index": "Game 0",
-            "mock": True,
-            "message": "This is a mock game for testing",
-        }
-    ]
-
-    return winner, winner_reasons[winner], summary, agent_logs
+    return winner, winner_reasons.get(winner, f"Unknown outcome ({winner})"), summary, agent_logs, experiment_dir
 
 
 async def call_webhook(webhook_url: str, game_id: str, winner: int, winner_reason: str) -> None:
