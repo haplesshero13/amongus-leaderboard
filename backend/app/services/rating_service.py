@@ -75,8 +75,21 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
     else:
         ranks = [2, 1]  # Impostors lost (rank 2), crewmates won (rank 1)
 
+    # Weight impostors to normalize for asymmetric game design
+    # In Among Us, impostors have fewer players (2) but stronger abilities (kills, sabotage)
+    # Empirically ~50% win rate suggests teams are balanced, so weight impostors
+    # to have equivalent "team strength" as crewmates (5 crewmates / 2 impostors = 2.5)
+    num_impostors = len(impostor_team)
+    num_crewmates = len(crewmate_team)
+    impostor_weight = num_crewmates / num_impostors if num_impostors > 0 else 1.0
+
+    impostor_weights = [impostor_weight] * num_impostors
+    crewmate_weights = [1.0] * num_crewmates
+
     new_impostor_team, new_crewmate_team = RATING_MODEL.rate(
-        [impostor_team, crewmate_team], ranks=ranks
+        [impostor_team, crewmate_team],
+        ranks=ranks,
+        weights=[impostor_weights, crewmate_weights],
     )
 
     # Update impostor ratings
