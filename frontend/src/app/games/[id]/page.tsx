@@ -572,28 +572,31 @@ export default function GameDetailPage() {
                     No log entries for this step
                   </p>
                 ) : (
-                  <Virtuoso
-                    data={filteredEntries}
-                    useWindowScroll
-                    increaseViewportBy={{ top: 200, bottom: 200 }}
-                    itemContent={(index, entry) => (
-                      <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
-                        <ChatBubble
-                          key={`${entry.step}-${entry.player_name}-${index}`}
-                          entry={entry}
-                          hideThinking={hideThinking}
-                        />
-                      </div>
-                    )}
-                  />
-                )}
-
-                {/* Game End Banner - show when viewing all steps and game is completed */}
-                {filterStep === null && game.status === 'completed' && game.winner && (
-                  <GameEndBanner
-                    winner={game.winner}
-                    winnerReason={winnerReason || game.winner_reason}
-                  />
+                  <div className="h-[600px] overflow-hidden">
+                    <Virtuoso
+                      data={filteredEntries}
+                      increaseViewportBy={{ top: 200, bottom: 200 }}
+                      itemContent={(index, entry) => (
+                        <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                          <ChatBubble
+                            key={`${entry.step}-${entry.player_name}-${index}`}
+                            entry={entry}
+                            hideThinking={hideThinking}
+                          />
+                        </div>
+                      )}
+                      components={{
+                        Footer: () => (
+                          filterStep === null && game.status === 'completed' && game.winner ? (
+                            <GameEndBanner
+                              winner={game.winner}
+                              winnerReason={winnerReason || game.winner_reason}
+                            />
+                          ) : null
+                        ),
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             )}

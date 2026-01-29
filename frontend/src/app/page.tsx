@@ -3,45 +3,49 @@
 import Link from 'next/link';
 import { Leaderboard } from '../components/features/Leaderboard';
 import { useRankings } from '../lib/hooks/useRankings';
+import { useGames } from '../lib/hooks/useGames';
 
 function StatsBar() {
   const { data, isLoading } = useRankings(1, 100);
+  const { data: games, isLoading: gamesLoading } = useGames('completed', 1000);
 
-  const stats = {
-    modelsRanked: data?.total ?? 0,
-    gamesPlayed: data?.data.reduce((sum, m) => sum + m.games_played, 0) ?? 0,
-    topImpostor: data?.data.reduce((max, m) => Math.max(max, m.impostor_rating), 0) ?? 0,
-    topCrewmate: data?.data.reduce((max, m) => Math.max(max, m.crewmate_rating), 0) ?? 0,
-  };
+  const models = data?.data ?? [];
+  const topImpostor = models.reduce((best, m) => 
+    m.impostor_rating > (best?.impostor_rating ?? 0) ? m : best, models[0]);
+  const topCrewmate = models.reduce((best, m) => 
+    m.crewmate_rating > (best?.crewmate_rating ?? 0) ? m : best, models[0]);
 
   const formatNumber = (n: number) => n.toLocaleString();
-  const formatRating = (n: number) => Math.round(n).toLocaleString();
 
   return (
     <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
       <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
         <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {isLoading ? '...' : formatNumber(stats.modelsRanked)}
+          {isLoading ? '...' : formatNumber(data?.total ?? 0)}
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
       </div>
       <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
         <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {isLoading ? '...' : formatNumber(stats.gamesPlayed)}
+          {gamesLoading ? '...' : formatNumber(games.length)}
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
       </div>
       <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-          {isLoading ? '...' : formatRating(stats.topImpostor)}
+        <div className="text-xl font-bold text-red-600 dark:text-red-400 truncate">
+          {isLoading ? '...' : topImpostor?.model_name ?? '—'}
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">Top Impostor</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Top Impostor {topImpostor && !isLoading && <span className="font-medium">({topImpostor.impostor_rating})</span>}
+        </div>
       </div>
       <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
-          {isLoading ? '...' : formatRating(stats.topCrewmate)}
+        <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400 truncate">
+          {isLoading ? '...' : topCrewmate?.model_name ?? '—'}
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">Top Crewmate</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Top Crewmate {topCrewmate && !isLoading && <span className="font-medium">({topCrewmate.crewmate_rating})</span>}
+        </div>
       </div>
     </div>
   );
