@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Markdown from 'react-markdown';
+import { Virtuoso } from 'react-virtuoso';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -565,22 +566,27 @@ export default function GameDetailPage() {
                   </p>
                 </div>
 
-                {/* Messages container */}
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredEntries.length === 0 ? (
-                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                      No log entries for this step
-                    </p>
-                  ) : (
-                    filteredEntries.map((entry, index) => (
-                      <ChatBubble
-                        key={`${entry.step}-${entry.player_name}-${index}`}
-                        entry={entry}
-                        hideThinking={hideThinking}
-                      />
-                    ))
-                  )}
-                </div>
+                {/* Messages container - virtualized for performance */}
+                {filteredEntries.length === 0 ? (
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                    No log entries for this step
+                  </p>
+                ) : (
+                  <Virtuoso
+                    data={filteredEntries}
+                    useWindowScroll
+                    increaseViewportBy={{ top: 200, bottom: 200 }}
+                    itemContent={(index, entry) => (
+                      <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                        <ChatBubble
+                          key={`${entry.step}-${entry.player_name}-${index}`}
+                          entry={entry}
+                          hideThinking={hideThinking}
+                        />
+                      </div>
+                    )}
+                  />
+                )}
 
                 {/* Game End Banner - show when viewing all steps and game is completed */}
                 {filterStep === null && game.status === 'completed' && game.winner && (

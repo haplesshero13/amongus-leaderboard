@@ -1,5 +1,4 @@
 import { LeaderboardResponse } from '../../types/leaderboard';
-import { getMockLeaderboard } from './mock-data';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -7,11 +6,8 @@ export async function fetchLeaderboard(
   page: number = 1,
   perPage: number = 20
 ): Promise<LeaderboardResponse> {
-  // Use mock data when no API URL is configured
   if (!API_BASE_URL) {
-    // Simulate network delay for realistic UX
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return getMockLeaderboard(page, perPage);
+    throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
 
   const response = await fetch(
