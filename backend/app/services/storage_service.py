@@ -137,7 +137,9 @@ def get_game_logs(bucket: str, key: str, client=None) -> dict[str, Any] | None:
         raise
 
 
-def generate_presigned_url(bucket: str, key: str, expiration: int = 3600, client=None) -> str | None:
+def generate_presigned_url(
+    bucket: str, key: str, expiration: int = 3600, client=None
+) -> str | None:
     """
     Generate a presigned URL for downloading game logs.
 

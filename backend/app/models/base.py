@@ -5,7 +5,6 @@ from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-
 def generate_uuid() -> str:
     """Generate a UUID string for use as primary key."""
     return str(uuid.uuid4())

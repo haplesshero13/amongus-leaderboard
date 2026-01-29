@@ -85,7 +85,10 @@ class Game(Base, TimestampMixin):
     @property
     def impostors_won(self) -> bool:
         """Check if impostors won this game."""
-        return self.winner in (GameWinner.IMPOSTORS_OUTNUMBER.value, GameWinner.IMPOSTORS_TIME_LIMIT.value)
+        return self.winner in (
+            GameWinner.IMPOSTORS_OUTNUMBER.value,
+            GameWinner.IMPOSTORS_TIME_LIMIT.value,
+        )
 
     @property
     def crewmates_won(self) -> bool:

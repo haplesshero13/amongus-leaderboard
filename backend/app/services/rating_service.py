@@ -119,14 +119,16 @@ def get_model_rankings(db: Session) -> list[dict]:
     for model in models:
         rating = model.ratings or ModelRating(model_id=model.id)
 
-        rankings.append({
-            "model": model,
-            "rating": rating,
-            "overall": rating.overall_rating,
-            "impostor": rating.impostor_rating,
-            "crewmate": rating.crewmate_rating,
-            "games": rating.total_games,
-        })
+        rankings.append(
+            {
+                "model": model,
+                "rating": rating,
+                "overall": rating.overall_rating,
+                "impostor": rating.impostor_rating,
+                "crewmate": rating.crewmate_rating,
+                "games": rating.total_games,
+            }
+        )
 
     # Sort by overall rating descending
     rankings.sort(key=lambda x: x["overall"], reverse=True)
@@ -141,20 +143,22 @@ def get_model_rankings(db: Session) -> list[dict]:
         previous_rank = rating.previous_rank or i
         rank_change = previous_rank - i
 
-        result.append({
-            "model_id": model.model_id,
-            "model_name": model.model_name,
-            "provider": model.provider,
-            "overall_rating": scale_rating_for_display(r["overall"]),
-            "impostor_rating": scale_rating_for_display(r["impostor"]),
-            "crewmate_rating": scale_rating_for_display(r["crewmate"]),
-            "games_played": r["games"],
-            "current_rank": i,
-            "previous_rank": previous_rank,
-            "rank_change": rank_change,
-            "release_date": model.release_date.isoformat() if model.release_date else None,
-            "avatar_color": model.avatar_color,
-        })
+        result.append(
+            {
+                "model_id": model.model_id,
+                "model_name": model.model_name,
+                "provider": model.provider,
+                "overall_rating": scale_rating_for_display(r["overall"]),
+                "impostor_rating": scale_rating_for_display(r["impostor"]),
+                "crewmate_rating": scale_rating_for_display(r["crewmate"]),
+                "games_played": r["games"],
+                "current_rank": i,
+                "previous_rank": previous_rank,
+                "rank_change": rank_change,
+                "release_date": model.release_date.isoformat() if model.release_date else None,
+                "avatar_color": model.avatar_color,
+            }
+        )
 
     return result
 

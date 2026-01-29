@@ -59,7 +59,7 @@ def sample_models(db_session):
 @pytest.fixture
 def sample_game_with_participants(db_session, sample_models):
     """Create a sample game with 7 participants (2 impostors, 5 crewmates).
-    
+
     Impostors win (winner=1), so impostor participants have won=True.
     """
     game = Game(status=GameStatus.COMPLETED, winner=1, winner_reason="Impostors win!")

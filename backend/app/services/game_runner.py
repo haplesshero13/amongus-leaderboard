@@ -31,9 +31,7 @@ class EmptyResponseError(Exception):
         self.player_name = player_name
         self.model = model
         self.step = step
-        super().__init__(
-            f"Empty response from {player_name} ({model}) at step {step}"
-        )
+        super().__init__(f"Empty response from {player_name} ({model}) at step {step}")
 
 
 class ModelMismatchError(Exception):
@@ -46,6 +44,7 @@ class ModelMismatchError(Exception):
         unexpected = set(actual) - set(requested)
         # Check for duplicates in actual
         from collections import Counter
+
         actual_counts = Counter(actual)
         duplicates = [m for m, count in actual_counts.items() if count > 1]
 
@@ -135,15 +134,8 @@ def validate_agent_logs(agent_logs: list) -> None:
         full_response = interaction.get("full_response")
 
         # Check if response is empty (empty string, None, or empty dict)
-        response_empty = (
-            response is None
-            or response == ""
-            or response == {}
-        )
-        full_response_empty = (
-            full_response is None
-            or full_response == ""
-        )
+        response_empty = response is None or response == "" or response == {}
+        full_response_empty = full_response is None or full_response == ""
 
         if response_empty and full_response_empty:
             player = log.get("player", {})
@@ -227,34 +219,34 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         # Create participants from the game summary (source of truth)
         # Build a map from openrouter_id -> Model for lookup
         model_map = {m.openrouter_id: m for m in models}
-        
+
         for i in range(1, 8):
             player_key = f"Player {i}"
             player_data = summary.get(player_key)
             if not player_data:
                 raise ValueError(f"Missing {player_key} in game summary")
-            
+
             openrouter_id = player_data.get("model")
             if not openrouter_id:
                 raise ValueError(f"Missing 'model' for {player_key} in game summary")
-            
+
             model = model_map.get(openrouter_id)
             if not model:
                 raise ValueError(f"Unknown model '{openrouter_id}' for {player_key}")
-            
+
             identity = player_data.get("identity")
             if identity not in ("Impostor", "Crewmate"):
                 raise ValueError(f"Invalid identity '{identity}' for {player_key}")
             role = PlayerRole.IMPOSTOR if identity == "Impostor" else PlayerRole.CREWMATE
-            
+
             color = player_data.get("color")
             if not color:
                 raise ValueError(f"Missing 'color' for {player_key} in game summary")
-            
+
             # Determine if this player won based on game outcome
             impostors_won = winner in (1, 4)  # Codes 1 and 4 are impostor wins
             player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
-            
+
             participant = GameParticipant(
                 game_id=game.id,
                 model_id=model.id,
@@ -376,7 +368,13 @@ async def execute_amongagents_game(
         4: "Impostors win! (Time limit reached)",
     }
 
-    return winner, winner_reasons.get(winner, f"Unknown outcome ({winner})"), summary, agent_logs, experiment_dir
+    return (
+        winner,
+        winner_reasons.get(winner, f"Unknown outcome ({winner})"),
+        summary,
+        agent_logs,
+        experiment_dir,
+    )
 
 
 async def call_webhook(webhook_url: str, game_id: str, winner: int, winner_reason: str) -> None:

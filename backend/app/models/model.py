@@ -55,7 +55,11 @@ class ModelRating(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     model_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("models.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+        String(36),
+        ForeignKey("models.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
 
     # TrueSkill parameters for impostor role

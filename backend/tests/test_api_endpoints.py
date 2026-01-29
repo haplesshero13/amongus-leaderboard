@@ -202,10 +202,18 @@ class TestLeaderboardEndpoint:
         model_data = data["data"][0]
 
         required_fields = [
-            "model_id", "model_name", "provider", "overall_rating",
-            "impostor_rating", "crewmate_rating", "games_played",
-            "current_rank", "previous_rank", "rank_change",
-            "release_date", "avatar_color"
+            "model_id",
+            "model_name",
+            "provider",
+            "overall_rating",
+            "impostor_rating",
+            "crewmate_rating",
+            "games_played",
+            "current_rank",
+            "previous_rank",
+            "rank_change",
+            "release_date",
+            "avatar_color",
         ]
 
         for field in required_fields:
@@ -217,13 +225,17 @@ class TestModelsEndpoint:
 
     def test_create_model(self, client, auth_headers):
         """Should create a new model."""
-        response = client.post("/api/models", json={
-            "model_id": "new-model",
-            "model_name": "New Model",
-            "provider": "Test Corp",
-            "openrouter_id": "test/new-model",
-            "avatar_color": "#123456",
-        }, headers=auth_headers)
+        response = client.post(
+            "/api/models",
+            json={
+                "model_id": "new-model",
+                "model_name": "New Model",
+                "provider": "Test Corp",
+                "openrouter_id": "test/new-model",
+                "avatar_color": "#123456",
+            },
+            headers=auth_headers,
+        )
 
         assert response.status_code == 201
         data = response.json()
@@ -233,12 +245,16 @@ class TestModelsEndpoint:
 
     def test_create_duplicate_model(self, client, sample_model, auth_headers):
         """Should reject duplicate model IDs."""
-        response = client.post("/api/models", json={
-            "model_id": "claude-opus-4",  # Already exists
-            "model_name": "Duplicate",
-            "provider": "Test",
-            "openrouter_id": "test/duplicate",
-        }, headers=auth_headers)
+        response = client.post(
+            "/api/models",
+            json={
+                "model_id": "claude-opus-4",  # Already exists
+                "model_name": "Duplicate",
+                "provider": "Test",
+                "openrouter_id": "test/duplicate",
+            },
+            headers=auth_headers,
+        )
 
         assert response.status_code == 409
 
@@ -280,10 +296,14 @@ class TestModelsEndpoint:
 
     def test_update_model(self, client, sample_model, auth_headers):
         """Should update a model's details."""
-        response = client.patch("/api/models/claude-opus-4", json={
-            "openrouter_id": "anthropic/claude-opus-4-updated",
-            "model_name": "Claude Opus 4 Updated",
-        }, headers=auth_headers)
+        response = client.patch(
+            "/api/models/claude-opus-4",
+            json={
+                "openrouter_id": "anthropic/claude-opus-4-updated",
+                "model_name": "Claude Opus 4 Updated",
+            },
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -294,9 +314,13 @@ class TestModelsEndpoint:
 
     def test_update_model_partial(self, client, sample_model, auth_headers):
         """Should update only provided fields."""
-        response = client.patch("/api/models/claude-opus-4", json={
-            "avatar_color": "#00FF00",
-        }, headers=auth_headers)
+        response = client.patch(
+            "/api/models/claude-opus-4",
+            json={
+                "avatar_color": "#00FF00",
+            },
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -307,16 +331,23 @@ class TestModelsEndpoint:
 
     def test_update_nonexistent_model(self, client, auth_headers):
         """Should return 404 when updating nonexistent model."""
-        response = client.patch("/api/models/nonexistent", json={
-            "model_name": "Updated",
-        }, headers=auth_headers)
+        response = client.patch(
+            "/api/models/nonexistent",
+            json={
+                "model_name": "Updated",
+            },
+            headers=auth_headers,
+        )
         assert response.status_code == 404
 
     def test_update_model_requires_auth(self, client, sample_model):
         """Should require API key for updates."""
-        response = client.patch("/api/models/claude-opus-4", json={
-            "model_name": "Updated",
-        })
+        response = client.patch(
+            "/api/models/claude-opus-4",
+            json={
+                "model_name": "Updated",
+            },
+        )
         assert response.status_code == 401  # Unauthorized without API key
 
 
@@ -325,9 +356,13 @@ class TestGamesEndpoint:
 
     def test_trigger_game_validates_model_count(self, client, sample_model, auth_headers):
         """Should require exactly 7 models."""
-        response = client.post("/api/games/trigger", json={
-            "model_ids": ["claude-opus-4"]  # Only 1 model
-        }, headers=auth_headers)
+        response = client.post(
+            "/api/games/trigger",
+            json={
+                "model_ids": ["claude-opus-4"]  # Only 1 model
+            },
+            headers=auth_headers,
+        )
 
         assert response.status_code == 422  # Validation error
 
@@ -336,9 +371,9 @@ class TestGamesEndpoint:
         model_ids = [m.model_id for m in seven_models[:6]]
         model_ids.append("nonexistent-model")
 
-        response = client.post("/api/games/trigger", json={
-            "model_ids": model_ids
-        }, headers=auth_headers)
+        response = client.post(
+            "/api/games/trigger", json={"model_ids": model_ids}, headers=auth_headers
+        )
 
         assert response.status_code == 404
         assert "nonexistent-model" in response.json()["detail"]
@@ -347,9 +382,9 @@ class TestGamesEndpoint:
         """Should create a game and return game ID."""
         model_ids = [m.model_id for m in seven_models]
 
-        response = client.post("/api/games/trigger", json={
-            "model_ids": model_ids
-        }, headers=auth_headers)
+        response = client.post(
+            "/api/games/trigger", json={"model_ids": model_ids}, headers=auth_headers
+        )
 
         assert response.status_code == 200
         data = response.json()

@@ -1,6 +1,5 @@
 """Tests for the OpenSkill rating service."""
 
-
 from app.models import Model, ModelRating, Game, GameParticipant, PlayerRole, GameStatus
 from app.services.rating_service import (
     update_ratings_for_game,

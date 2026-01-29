@@ -41,8 +41,10 @@ except ImportError as e:
     print("Make sure you are running this from the root directory and 'backend' is accessible.")
     sys.exit(1)
 
+
 def get_db_session():
     return SessionLocal()
+
 
 def sanitize_model_id(model_string: str) -> str:
     """Convert a model string (provider/name) into a clean ID."""
@@ -51,17 +53,19 @@ def sanitize_model_id(model_string: str) -> str:
         return model_string.split("/")[-1]
     return model_string.replace(" ", "-").lower()
 
+
 def get_provider(model_string: str) -> str:
     if "/" in model_string:
         return model_string.split("/")[0].title()
     return "Unknown"
+
 
 def get_or_create_model(db, model_string: str) -> Model:
     # Check by openrouter_id first
     model = db.query(Model).filter(Model.openrouter_id == model_string).first()
     if model:
         return model
-    
+
     # Check by model_id (sanitized)
     sanitized_id = sanitize_model_id(model_string)
     model = db.query(Model).filter(Model.model_id == sanitized_id).first()
@@ -75,13 +79,14 @@ def get_or_create_model(db, model_string: str) -> Model:
         model_name=model_string.split("/")[-1].replace("-", " ").title(),
         provider=get_provider(model_string),
         openrouter_id=model_string,
-        avatar_color="#808080" # Default, maybe randomize?
+        avatar_color="#808080",  # Default, maybe randomize?
     )
     db.add(model)
     db.flush()
     # Initialize rating
     get_or_create_rating(db, model)
     return model
+
 
 def process_log_file(db, file_path: str):
     print(f"Processing {file_path}...")
@@ -100,30 +105,32 @@ def process_log_file(db, file_path: str):
     # Check if game exists
     game = db.query(Game).filter(Game.id == game_id).first()
     if game:
-        print(f"Game {game_id} already exists. Updating logs/ratings not implemented to avoid duplication side-effects.")
+        print(
+            f"Game {game_id} already exists. Updating logs/ratings not implemented to avoid duplication side-effects."
+        )
         # Optional: delete and recreate? For now, skip.
         return
 
     summary = data.get("summary", {})
     agent_logs = data.get("agent_logs", [])
     config = summary.get("config", {})
-    
+
     # Determine winner
     winner_code = summary.get("winner")
-    
+
     # Parse timestamp
     uploaded_at_str = data.get("uploaded_at")
     started_at = datetime.fromisoformat(uploaded_at_str) if uploaded_at_str else datetime.now()
-    
+
     # Create Game
     game = Game(
         id=game_id,
         status=GameStatus.COMPLETED,
         started_at=started_at,
-        ended_at=started_at, # Approx
+        ended_at=started_at,  # Approx
         winner=winner_code,
         winner_reason=summary.get("winner_reason"),
-        webhook_url=None
+        webhook_url=None,
     )
     db.add(game)
     db.flush()
@@ -152,18 +159,18 @@ def process_log_file(db, file_path: str):
             db.rollback()
             return
         role = PlayerRole.IMPOSTOR if role_str == "Impostor" else PlayerRole.CREWMATE
-        
+
         color = p_data.get("color")
         if not color:
             print(f"Missing color for {p_key} in game {game_id}, skipping game")
             db.rollback()
             return
-        
+
         # Determine if this player won based on game outcome
         # Winner codes: 1,4 = impostor win; 2,3 = crewmate win
         impostors_won = winner_code in (1, 4)
         player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
-        
+
         participant = GameParticipant(
             game_id=game.id,
             model_id=model.id,
@@ -173,7 +180,7 @@ def process_log_file(db, file_path: str):
             won=player_won,
         )
         db.add(participant)
-    
+
     db.flush()
 
     # Upload logs to MinIO
@@ -190,19 +197,20 @@ def process_log_file(db, file_path: str):
     # Calculate Ratings
     print(f"Updating ratings for {game_id}...")
     update_ratings_for_game(db, game)
-    
+
     db.commit()
     print(f"Successfully imported game {game_id}")
 
+
 def main():
     print("--- Setting up Local Environment ---")
-    
+
     # 1. Init DB
     print("Initializing Database...")
     init_db()
-    
+
     db = get_db_session()
-    
+
     try:
         # 2. Ensure MinIO bucket exists
         print("Checking S3/MinIO...")
@@ -213,21 +221,22 @@ def main():
             print(f"Warning: Could not connect to S3/MinIO: {e}")
             print("Is Docker running? 'docker-compose -f docker-compose.dev.yml up -d minio'")
             # we proceed, but log upload will fail
-        
+
         # 3. Process logs
         log_files = glob.glob("../test-logs/*.json")
         if not log_files:
             print("No log files found in ../test-logs/")
-        
+
         for log_file in log_files:
             process_log_file(db, log_file)
-            
+
     finally:
         db.close()
-        
+
     print("\n--- Setup Complete ---")
     print("Run the backend: cd backend && uvicorn app.main:app --reload")
     print("Run the frontend: cd frontend && bun dev")
+
 
 if __name__ == "__main__":
     main()
