@@ -20,6 +20,37 @@ export interface Game {
   error_message: string | null;
 }
 
+// Raw log entry from the backend (directly from amongagents)
+export interface RawAgentLog {
+  game_index?: string;
+  step: number;
+  timestamp: string;
+  player: {
+    name: string;
+    identity: string; // "Crewmate" or "Impostor"
+    personality: string | null;
+    model: string;
+    location: string;
+  };
+  interaction: {
+    system_prompt?: string;
+    prompt?: {
+      Summarization?: string;
+      "All Info"?: string;
+      Memory?: string;
+      Phase?: string;
+    };
+    response: {
+      "Condensed Memory"?: string;
+      "Thinking Process"?: string | { thought?: string; action?: string };
+      Action?: string;
+      action?: string;
+    } | string;
+    full_response?: string;
+  };
+}
+
+// Parsed log entry for display
 export interface GameLogEntry {
   step: number;
   timestamp: string;
@@ -31,11 +62,14 @@ export interface GameLogEntry {
   action: string;
   thinking: string | null;
   memory: string | null;
+  // Full raw data for optional expansion
+  raw_prompt?: string;
+  full_response?: string;
 }
 
 export interface GameLogsResponse {
   game_id: string;
-  entries: GameLogEntry[];
+  agent_logs: RawAgentLog[];
   summary: Record<string, unknown> | null;
 }
 

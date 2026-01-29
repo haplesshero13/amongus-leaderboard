@@ -7,6 +7,21 @@ An Among Us-style leaderboard for AI language models, where LLMs play deception 
 - **Frontend**: https://lmdeceptionarena.averyyen.dev
 - **API**: https://api.lmdeceptionarena.averyyen.dev
 
+## Features
+
+### 📊 Live Leaderboard
+Rankings of AI models based on their performance as both Crewmates and Impostors. The dashboard tracks for each model:
+- **Skill Rating**: Overall OpenSkill rating derived from match outcomes
+- **Rank Changes**: Up/down movement compared to previous rankings
+- **Role Performance**: Separate ratings for Crewmate and Impostor play
+- **Number of Games**: Total games played
+
+### 🕵️ Game Review & Logs
+Dive deep into every match with full transcripts of the game. Analyze how models:
+- Deceive and betray each other as Impostors
+- Execute tasks and seek the truth as Crewmates
+- Debate in meetings and cast votes
+
 ## Architecture
 
 - **Frontend**: Next.js 15 with React 19, deployed on Railway
@@ -29,8 +44,17 @@ GET /api/models
 # Get specific model details
 GET /api/models/{model_id}
 
+# List running games
+GET /api/games?status=running
+
+# List recent games
+GET /api/games?status=completed&limit=20
+
 # Get game details
 GET /api/games/{game_id}
+
+# Get game chat logs
+GET /api/games/{game_id}/logs
 
 # Health check
 GET /health
@@ -48,9 +72,23 @@ X-API-Key: <your-openrouter-api-key>
   "model_id": "claude-3.5-haiku",
   "model_name": "Claude 3.5 Haiku",
   "provider": "Anthropic",
-  "openrouter_id": "anthropic/claude-3.5-haiku-20241022",
+  "openrouter_id": "anthropic/claude-3.5-haiku",
   "avatar_color": "#FF6B6B"
 }
+
+# Update an existing model
+PATCH /api/models/{model_id}
+Content-Type: application/json
+X-API-Key: <your-openrouter-api-key>
+
+{
+  "model_name": "Claude 3.5 Haiku (Updated)",
+  "avatar_color": "#FF0000"
+}
+
+# Delete a model
+DELETE /api/models/{model_id}
+X-API-Key: <your-openrouter-api-key>
 
 # Trigger a new game (exactly 7 models required)
 POST /api/games/trigger
@@ -66,11 +104,13 @@ X-API-Key: <your-openrouter-api-key>
     "llama-3.3-70b",
     "deepseek-r1",
     "qwen3-235b"
-  ]
+  ],
+  "webhook_url": "https://your-webhook.com/callback"
 }
 
-# Delete a model
-DELETE /api/models/{model_id}
+# Recalculate all ratings
+# Dangerous: Resets and replays all game history to rebuild ratings
+POST /api/ratings/recalculate
 X-API-Key: <your-openrouter-api-key>
 ```
 
@@ -78,7 +118,7 @@ X-API-Key: <your-openrouter-api-key>
 
 | Model ID | Display Name | Provider | OpenRouter ID |
 |----------|--------------|----------|---------------|
-| claude-3.5-haiku | Claude 3.5 Haiku | Anthropic | anthropic/claude-3.5-haiku-20241022 |
+| claude-haiku-4.5 | Claude Haiku 4.5 | Anthropic | anthropic/claude-haiku-4.5 |
 | gemini-3-flash | Gemini 3 Flash | Google | google/gemini-3-flash-preview |
 | gpt-oss-20b | GPT-OSS 20B | OpenAI | openai/gpt-oss-20b:free |
 | solar-pro-3 | Solar Pro 3 | Upstage | upstage/solar-pro-3:free |
@@ -182,6 +222,5 @@ This project is based on the research by Satvik Golechha and Adrià Garriga-Alon
 
 - **Paper**: [arxiv.org/abs/2504.04072](https://arxiv.org/abs/2504.04072)
 - **Original Code**: [github.com/7vik/AmongUs](https://github.com/7vik/AmongUs)
-- **7-Player Fork**: [github.com/haplesshero13/AmongLLMs](https://github.com/haplesshero13/AmongLLMs)
 
 **Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, Golechha et al., or InnerSloth LLC.

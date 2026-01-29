@@ -1,12 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { GameLogEntry, WINNER_LABELS, PLAYER_COLORS } from '@/types/game';
+import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS } from '@/types/game';
+
+/**
+ * Parse raw agent logs into display-friendly entries
+ */
+function parseAgentLogs(rawLogs: RawAgentLog[]): GameLogEntry[] {
+  return rawLogs.map((log) => {
+    const player = log.player || {};
+    const interaction = log.interaction || {};
+    const response = interaction.response;
+
+    // Extract player name and color from name (e.g., "Player 1: brown")
+    const playerName = player.name || 'Unknown';
+    let playerColor = 'gray';
+    if (playerName.includes(':')) {
+      playerColor = playerName.split(':')[1].trim();
+    }
+
+    // Extract action from response
+    let action = '';
+    if (typeof response === 'string') {
+      action = response;
+    } else if (response && typeof response === 'object') {
+      // Try multiple possible keys for action
+      action = response.Action || response.action || '';
+
+      // If action is still empty but there's a Thinking Process with action, use that
+      if (!action) {
+        const thinkingProcess = response['Thinking Process'];
+        if (thinkingProcess && typeof thinkingProcess === 'object' && 'action' in thinkingProcess) {
+          action = thinkingProcess.action || '';
+        }
+      }
+    }
+
+    // Extract thinking process
+    let thinking: string | null = null;
+    if (response && typeof response === 'object') {
+      const thinkingVal = response['Thinking Process'];
+      if (thinkingVal) {
+        if (typeof thinkingVal === 'string') {
+          thinking = thinkingVal;
+        } else if (typeof thinkingVal === 'object') {
+          thinking = thinkingVal.thought || JSON.stringify(thinkingVal);
+        }
+      }
+    }
+
+    // Extract memory
+    let memory: string | null = null;
+    if (response && typeof response === 'object') {
+      memory = response['Condensed Memory'] || null;
+    }
+
+    // Extract prompt info for debugging/full view
+    const prompt = interaction.prompt;
+    const rawPrompt = prompt?.['All Info'] || null;
+
+    return {
+      step: log.step ?? 0,
+      timestamp: log.timestamp || '',
+      player_name: playerName,
+      player_color: playerColor,
+      player_role: player.identity || 'Unknown',
+      model: player.model || 'Unknown',
+      location: player.location || 'Unknown',
+      action,
+      thinking,
+      memory,
+      raw_prompt: rawPrompt || undefined,
+      full_response: interaction.full_response || undefined,
+    };
+  });
+}
 
 function PlayerBadge({ name, color, role }: { name: string; color: string; role: string }) {
   const bgColor = PLAYER_COLORS[color.toLowerCase()] || '#808080';
@@ -28,17 +101,28 @@ function PlayerBadge({ name, color, role }: { name: string; color: string; role:
 
 function ChatBubble({
   entry,
-  showThinking,
+  hideThinking,
 }: {
   entry: GameLogEntry;
-  showThinking: boolean;
+  hideThinking: boolean;
 }) {
   const bgColor = PLAYER_COLORS[entry.player_color.toLowerCase()] || '#808080';
   const isImpostor = entry.player_role === 'Impostor';
 
+  // Extract player number from name (e.g., "Player 1: brown" -> "1")
+  const playerNumber = entry.player_name.match(/Player (\d+)/)?.[1] || '?';
+
+  // Format model name for display (shorten if too long)
+  const formatModelName = (model: string) => {
+    // Remove common prefixes like "meta-llama/" or "openai/"
+    const shortName = model.replace(/^[^/]+\//, '');
+    // Truncate if still too long
+    return shortName.length > 30 ? shortName.slice(0, 27) + '...' : shortName;
+  };
+
   // Parse the action to make it more readable
   const formatAction = (action: string) => {
-    if (!action) return 'No action';
+    if (!action) return 'No action recorded';
 
     // Handle SPEAK actions
     if (action.includes('SPEAK:')) {
@@ -55,62 +139,153 @@ function ChatBubble({
   const formattedAction = formatAction(entry.action);
 
   return (
-    <div className="mb-4">
-      {/* Player info bar */}
-      <div className="mb-1 flex items-center gap-2">
-        <span
-          className="inline-block h-3 w-3 rounded-full"
+    <div className="group flex gap-3 py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+      {/* Avatar */}
+      <div className="flex-shrink-0">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md"
           style={{ backgroundColor: bgColor }}
-        />
-        <span
-          className={`text-sm font-medium ${isImpostor ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}
         >
-          {entry.player_name}
-        </span>
-        <span className="text-xs text-gray-400">
-          Step {entry.step} @ {entry.location}
-        </span>
+          {playerNumber}
+        </div>
       </div>
 
-      {/* Chat bubble */}
-      <div
-        className={`ml-5 rounded-lg p-3 ${
-          isSpeech
-            ? 'border-l-4 bg-blue-50 dark:bg-blue-900/30'
-            : 'bg-gray-100 dark:bg-gray-800'
-        }`}
-        style={{ borderLeftColor: isSpeech ? bgColor : undefined }}
-      >
-        <p className="text-sm text-gray-900 dark:text-gray-100">
-          {isSpeech ? (
-            <span className="italic">&ldquo;{formattedAction}&rdquo;</span>
-          ) : (
-            <span className="font-mono text-xs">{formattedAction}</span>
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Header row with player info */}
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          {/* Player identifier */}
+          <span className="font-semibold text-gray-900 dark:text-gray-100">
+            Player {playerNumber}
+          </span>
+
+          {/* Color badge */}
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: bgColor }}
+          >
+            {entry.player_color}
+          </span>
+
+          {/* Role badge */}
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              isImpostor
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+            }`}
+          >
+            {entry.player_role}
+          </span>
+
+          {/* Model name */}
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+            {formatModelName(entry.model)}
+          </span>
+        </div>
+
+        {/* Context info */}
+        <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mb-2">
+          <span>Step {entry.step}</span>
+          <span>•</span>
+          <span>{entry.location}</span>
+          {entry.timestamp && (
+            <>
+              <span>•</span>
+              <span>{new Date(entry.timestamp).toLocaleTimeString()}</span>
+            </>
           )}
-        </p>
+        </div>
 
-        {showThinking && entry.thinking && (
-          <details className="mt-2">
-            <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-              Show thinking...
-            </summary>
-            <div className="mt-1 rounded bg-gray-200 p-2 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-              {entry.thinking}
-            </div>
-          </details>
-        )}
+        {/* Message bubble */}
+        <div
+          className={`rounded-2xl px-4 py-2 inline-block max-w-full ${
+            isSpeech
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+          }`}
+          style={isSpeech ? { backgroundColor: bgColor } : undefined}
+        >
+          {isSpeech ? (
+            <p className="text-sm">&ldquo;{formattedAction}&rdquo;</p>
+          ) : (
+            <p className="text-sm font-mono">{formattedAction}</p>
+          )}
+        </div>
 
-        {showThinking && entry.memory && (
-          <details className="mt-2">
-            <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-              Show memory...
-            </summary>
-            <div className="mt-1 rounded bg-gray-200 p-2 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-              {entry.memory}
-            </div>
-          </details>
+        {/* Expandable sections for thinking/memory */}
+        {!hideThinking && (entry.thinking || entry.memory || entry.full_response) && (
+          <div className="mt-2 space-y-2">
+            {entry.thinking && (
+              <details className="group/details" open>
+                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Thinking Process
+                </summary>
+                <div className="mt-1 ml-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {entry.thinking}
+                </div>
+              </details>
+            )}
+
+            {entry.memory && (
+              <details className="group/details" open>
+                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Condensed Memory
+                </summary>
+                <div className="mt-1 ml-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {entry.memory}
+                </div>
+              </details>
+            )}
+
+            {entry.full_response && (
+              <details className="group/details">
+                <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center gap-1">
+                  <svg className="w-3 h-3 transition-transform group-open/details:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Full Model Response
+                </summary>
+                <div className="mt-1 ml-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-400 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                  {entry.full_response}
+                </div>
+              </details>
+            )}
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function GameEndBanner({ winner, winnerReason }: { winner: number; winnerReason: string | null }) {
+  const isImpostorWin = winner === 1 || winner === 4;
+
+  return (
+    <div className={`mt-6 rounded-lg border-2 p-6 text-center ${
+      isImpostorWin
+        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+        : 'border-green-500 bg-green-50 dark:bg-green-900/20'
+    }`}>
+      <div className="text-2xl font-bold mb-2">
+        GAME END
+      </div>
+      <div className={`text-lg font-semibold ${
+        isImpostorWin ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+      }`}>
+        {WINNER_LABELS[winner] || 'Unknown outcome'}
+      </div>
+      {winnerReason && (
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {winnerReason}
+        </div>
+      )}
     </div>
   );
 }
@@ -118,7 +293,8 @@ function ChatBubble({
 export default function GameDetailPage() {
   const params = useParams();
   const gameId = params.id as string;
-  const [showThinking, setShowThinking] = useState(false);
+  // Default to showing thinking (hideThinking = false)
+  const [hideThinking, setHideThinking] = useState(false);
   const [filterStep, setFilterStep] = useState<number | null>(null);
 
   const { data: game, isLoading: gameLoading, error: gameError } = useGame(gameId);
@@ -127,13 +303,26 @@ export default function GameDetailPage() {
   const isLoading = gameLoading || logsLoading;
   const error = gameError || logsError;
 
+  // Parse raw logs into display entries
+  const parsedEntries = useMemo(() => {
+    if (!logs?.agent_logs) return [];
+    return parseAgentLogs(logs.agent_logs);
+  }, [logs]);
+
   // Get unique steps for filtering
-  const steps = logs ? [...new Set(logs.entries.map((e) => e.step))].sort((a, b) => a - b) : [];
+  const steps = useMemo(() => {
+    return [...new Set(parsedEntries.map((e) => e.step))].sort((a, b) => a - b);
+  }, [parsedEntries]);
 
   // Filter entries by step if selected
-  const filteredEntries = logs?.entries.filter((e) =>
-    filterStep === null ? true : e.step === filterStep
-  );
+  const filteredEntries = useMemo(() => {
+    return parsedEntries.filter((e) =>
+      filterStep === null ? true : e.step === filterStep
+    );
+  }, [parsedEntries, filterStep]);
+
+  // Extract winner reason from summary if available
+  const winnerReason = logs?.summary?.winner_reason as string | undefined;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -239,11 +428,11 @@ export default function GameDetailPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={showThinking}
-                  onChange={(e) => setShowThinking(e.target.checked)}
+                  checked={hideThinking}
+                  onChange={(e) => setHideThinking(e.target.checked)}
                   className="rounded"
                 />
-                Show AI thinking
+                Hide AI thinking/memory
               </label>
 
               {steps.length > 1 && (
@@ -265,28 +454,52 @@ export default function GameDetailPage() {
                   </select>
                 </div>
               )}
+
+              <span className="text-xs text-gray-400">
+                {parsedEntries.length} log entries
+              </span>
             </div>
 
             {/* Chat Log */}
-            {logs && filteredEntries && (
-              <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                {filteredEntries.length === 0 ? (
-                  <p className="text-center text-gray-500 dark:text-gray-400">
-                    No log entries available
+            {parsedEntries.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
+                {/* Chat header */}
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">Game Replay</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {filteredEntries.length} messages
+                    {filterStep !== null && ` (Step ${filterStep})`}
                   </p>
-                ) : (
-                  filteredEntries.map((entry, index) => (
-                    <ChatBubble
-                      key={`${entry.step}-${entry.player_name}-${index}`}
-                      entry={entry}
-                      showThinking={showThinking}
-                    />
-                  ))
+                </div>
+
+                {/* Messages container */}
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {filteredEntries.length === 0 ? (
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      No log entries for this step
+                    </p>
+                  ) : (
+                    filteredEntries.map((entry, index) => (
+                      <ChatBubble
+                        key={`${entry.step}-${entry.player_name}-${index}`}
+                        entry={entry}
+                        hideThinking={hideThinking}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Game End Banner - show when viewing all steps and game is completed */}
+                {filterStep === null && game.status === 'completed' && game.winner && (
+                  <GameEndBanner
+                    winner={game.winner}
+                    winnerReason={winnerReason || game.winner_reason}
+                  />
                 )}
               </div>
             )}
 
-            {!logs && !logsLoading && (
+            {parsedEntries.length === 0 && !logsLoading && (
               <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
                 <p className="text-gray-500 dark:text-gray-400">
                   Game logs are not yet available. They will appear once the game completes.

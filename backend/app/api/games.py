@@ -10,7 +10,6 @@ from app.api.schemas import (
     GameParticipantResponse,
     GameStatusEnum,
     GameLogsResponse,
-    GameLogEntry,
 )
 from app.core.database import get_db
 from app.models import Game, GameStatus, Model
@@ -157,16 +156,12 @@ async def list_games(
     return results
 
 
-# Map player colors by player number (consistent with Among Us)
-PLAYER_COLORS = ["red", "blue", "green", "pink", "orange", "yellow", "brown"]
-
-
 @router.get("/games/{game_id}/logs", response_model=GameLogsResponse)
 async def get_game_logs_endpoint(game_id: str, db: Session = Depends(get_db)):
     """
-    Get the full game logs for chat display.
+    Get the full game logs.
 
-    Fetches logs from S3 and parses them into a chat-friendly format.
+    Returns raw logs from S3 for client-side parsing.
     """
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
@@ -180,70 +175,9 @@ async def get_game_logs_endpoint(game_id: str, db: Session = Depends(get_db)):
     if not log_data:
         raise HTTPException(status_code=404, detail="Failed to retrieve game logs")
 
-    # Build participant color map from database
-    color_map = {}
-    for p in game.participants:
-        color_map[f"Player {p.player_number}"] = p.player_color
-
-    # Parse agent logs into chat entries
-    entries = []
-    agent_logs = log_data.get("agent_logs", [])
-
-    for log in agent_logs:
-        player_info = log.get("player", {})
-        interaction = log.get("interaction", {})
-        response = interaction.get("response", {})
-
-        # Extract player name without color (e.g., "Player 1: brown" -> "Player 1")
-        player_name = player_info.get("name", "Unknown")
-        player_num = player_name.split(":")[0].strip() if ":" in player_name else player_name
-
-        # Get color from player name or map
-        player_color = color_map.get(player_num, "gray")
-        if ":" in player_name:
-            player_color = player_name.split(":")[1].strip()
-
-        # Extract action from response
-        action = ""
-        if isinstance(response, dict):
-            action = response.get("Action", response.get("action", ""))
-        if not action and isinstance(response, str):
-            action = response
-
-        # Handle thinking process - can be string or dict
-        thinking = None
-        if isinstance(response, dict):
-            thinking_val = response.get("Thinking Process", response.get("thinking", ""))
-            if isinstance(thinking_val, dict):
-                thinking = thinking_val.get("thought", str(thinking_val))
-            else:
-                thinking = thinking_val if thinking_val else None
-
-        # Handle memory
-        memory = None
-        if isinstance(response, dict):
-            memory = response.get("Condensed Memory", response.get("memory", ""))
-            if not memory:
-                memory = None
-
-        entries.append(
-            GameLogEntry(
-                step=log.get("step", 0),
-                timestamp=log.get("timestamp", ""),
-                player_name=player_name,
-                player_color=player_color,
-                player_role=player_info.get("identity", "Unknown"),
-                model=player_info.get("model", "Unknown"),
-                location=player_info.get("location", "Unknown"),
-                action=action,
-                thinking=thinking,
-                memory=memory,
-            )
-        )
-
     return GameLogsResponse(
         game_id=game_id,
-        entries=entries,
+        agent_logs=log_data.get("agent_logs", []),
         summary=log_data.get("summary"),
     )
 

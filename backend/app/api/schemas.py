@@ -141,24 +141,9 @@ class ModelResponse(BaseModel):
 # === Game Log Schemas ===
 
 
-class GameLogEntry(BaseModel):
-    """Single log entry from a game (simplified for chat display)."""
-
-    step: int
-    timestamp: str
-    player_name: str
-    player_color: str
-    player_role: str  # "Crewmate" or "Impostor"
-    model: str
-    location: str
-    action: str  # The action taken (e.g., "MOVE from X to Y", "SPEAK: ...")
-    thinking: str | None = None  # Optional thinking process
-    memory: str | None = None  # Optional condensed memory
-
-
 class GameLogsResponse(BaseModel):
-    """Response containing game logs for chat display."""
+    """Response containing raw game logs for client-side parsing."""
 
     game_id: str
-    entries: list[GameLogEntry]
+    agent_logs: list[dict]  # Raw agent logs from storage
     summary: dict | None = None

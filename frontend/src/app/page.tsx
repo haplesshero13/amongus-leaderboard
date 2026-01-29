@@ -128,7 +128,7 @@ export default function Home() {
                 </a>
               </p>
               <p>
-                <strong>7-Player Fork:</strong>{' '}
+                <strong>Our Fork:</strong>{' '}
                 <a
                   href="https://github.com/haplesshero13/AmongLLMs"
                   target="_blank"
