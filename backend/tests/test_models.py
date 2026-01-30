@@ -41,42 +41,46 @@ class TestModelRatingProperties:
         )
         assert rating.overall_rating == 25.0  # (30 + 20) / 2
 
-    def test_overall_rating_weighted_by_games_played(self):
-        """Overall rating should be weighted by games played in each role."""
+    def test_overall_rating_weighted_by_games(self):
+        """Overall rating is weighted by games played."""
         rating = ModelRating(
             model_id="test",
             impostor_mu=30.0,
             crewmate_mu=20.0,
-            impostor_games=3,  # 30% weight
-            crewmate_games=7,  # 70% weight
+            impostor_games=3,
+            crewmate_games=7,
         )
-        # Expected: 30 * 0.3 + 20 * 0.7 = 9 + 14 = 23
+        # Weighted: (30 * 3 + 20 * 7) / 10 = 23
         assert rating.overall_rating == 23.0
 
-    def test_overall_rating_only_impostor_games(self):
-        """When only impostor games played, overall should equal impostor rating."""
+    def test_overall_rating_unplayed_role_counts_as_one_game(self):
+        """Unplayed role counts as 1 game at default rating."""
         rating = ModelRating(
             model_id="test",
-            impostor_mu=35.0,
-            crewmate_mu=25.0,
-            impostor_games=10,
-            crewmate_games=0,
-        )
-        assert rating.overall_rating == 35.0
-
-    def test_overall_rating_only_crewmate_games(self):
-        """When only crewmate games played, overall should equal crewmate rating."""
-        rating = ModelRating(
-            model_id="test",
-            impostor_mu=25.0,
-            crewmate_mu=40.0,
+            impostor_mu=25.0,  # Default, never played
+            crewmate_mu=35.0,
             impostor_games=0,
             crewmate_games=10,
         )
-        assert rating.overall_rating == 40.0
+        # imp_weight=1, crew_weight=10, total=11
+        # (25 * 1 + 35 * 10) / 11 = 375 / 11 ≈ 34.09
+        assert abs(rating.overall_rating - 34.09) < 0.01
+
+    def test_overall_rating_unplayed_crewmate_counts_as_one_game(self):
+        """Unplayed crewmate role counts as 1 game at default rating."""
+        rating = ModelRating(
+            model_id="test",
+            impostor_mu=35.0,
+            crewmate_mu=25.0,  # Default, never played
+            impostor_games=10,
+            crewmate_games=0,
+        )
+        # imp_weight=10, crew_weight=1, total=11
+        # (35 * 10 + 25 * 1) / 11 = 375 / 11 ≈ 34.09
+        assert abs(rating.overall_rating - 34.09) < 0.01
 
     def test_overall_rating_equal_games_is_simple_average(self):
-        """When equal games in both roles, overall should be simple average."""
+        """Equal games means simple average."""
         rating = ModelRating(
             model_id="test",
             impostor_mu=30.0,

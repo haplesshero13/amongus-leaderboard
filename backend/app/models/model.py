@@ -123,20 +123,19 @@ class ModelRating(Base, TimestampMixin):
     def overall_rating(self) -> float:
         """
         Weighted average of impostor and crewmate mu values.
-        Weights are based on games played in each role.
-        Falls back to simple average if no games played.
+
+        Weights are based on games played, but unplayed roles count as 1 game
+        at the default rating. This ensures players can't game the system by
+        only playing one role - their unproven role still affects their overall.
         """
-        total = self.total_games
-        imp_mu = self.impostor_rating
-        crew_mu = self.crewmate_rating
+        # Use at least 1 game weight for each role (prior at default rating)
+        imp_weight = max(1, self.impostor_games or 0)
+        crew_weight = max(1, self.crewmate_games or 0)
+        total = imp_weight + crew_weight
 
-        if total == 0:
-            # Default: average of both starting mu values
-            return (imp_mu + crew_mu) / 2
-
-        impostor_weight = (self.impostor_games or 0) / total
-        crewmate_weight = (self.crewmate_games or 0) / total
-        return (imp_mu * impostor_weight) + (crew_mu * crewmate_weight)
+        return (
+            self.impostor_rating * imp_weight + self.crewmate_rating * crew_weight
+        ) / total
 
     def reset_to_defaults(self) -> None:
         """Reset all rating values to OpenSkill defaults."""
