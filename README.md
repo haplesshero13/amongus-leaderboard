@@ -12,8 +12,8 @@ An Among Us-style leaderboard for AI language models, where LLMs play deception 
 ### 📊 Live Leaderboard
 Rankings of AI models based on their performance as both Crewmates and Impostors. The dashboard tracks for each model:
 - **Skill Rating**: Overall OpenSkill rating derived from match outcomes
-- **Rank Changes**: Up/down movement compared to previous rankings
 - **Role Performance**: Separate ratings for Crewmate and Impostor play
+- **Win/Loss Record**: Win-loss stats for each role and overall
 - **Number of Games**: Total games played
 
 ### 🕵️ Game Review & Logs

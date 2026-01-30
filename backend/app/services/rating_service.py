@@ -1,12 +1,22 @@
 """OpenSkill rating service for updating model ratings after games.
 
 Uses a "Meta-Agent" approach to handle asymmetric team sizes (2 impostors vs 5 crewmates).
-Instead of rating teams directly (which causes 27x asymmetry in rating changes),
-we collapse each team to a single meta-agent, run a 1v1 match, and distribute
-the symmetric deltas to all team members.
+Instead of rating teams directly (which causes 27x asymmetry in rating changes due to
+OpenSkill's probability model treating larger teams as favored), we collapse each team
+to a single meta-agent with averaged mu/sigma, run a 1v1 match, and distribute the
+symmetric deltas to all team members.
+
+The delta is distributed using variance-weighted redistribution: players with higher
+uncertainty (sigma) receive larger updates. This is the correct Bayesian approach -
+uncertain players have more "room to grow" while stable players are already well-known.
+With equal sigmas, everyone gets the same delta (backward compatible).
+
+Note: OpenSkill's `weights` parameter was tested but found to only affect intra-team
+credit distribution, not inter-team balance. The meta-agent approach is the correct
+solution for symmetric team-level deltas.
 """
 
-import statistics
+import math
 
 from openskill.models import PlackettLuce
 from sqlalchemy.orm import Session
@@ -36,12 +46,13 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
     Update OpenSkill ratings for all participants after a game completes.
 
     Uses a "Meta-Agent" approach to handle asymmetric team sizes:
-    1. Collapse each team to a single meta-agent (average mu/sigma)
+    1. Collapse each team to a single meta-agent (average mu, sqrt of avg variance for sigma)
     2. Run a 1v1 match between meta-agents
-    3. Distribute the symmetric deltas to all team members
+    3. Distribute deltas using variance-weighted redistribution
 
-    This ensures equal rating changes regardless of team size, since
-    Among Us is designed to be ~50/50 balanced despite 2v5 numbers.
+    Variance weighting means players with higher uncertainty (sigma) receive
+    larger updates. This is Bayesian-correct: uncertain players converge faster,
+    stable players change less. With equal sigmas, everyone gets the same delta.
     """
     if game.winner is None:
         return
@@ -77,18 +88,18 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         )
         crewmate_ratings.append((p, model_rating, os_rating))
 
-    # Create meta-agents by averaging team mu/sigma
+    # Create meta-agents by averaging team mu and using sqrt(avg variance) for sigma
     impostor_team = [r[2] for r in impostor_ratings]
     crewmate_team = [r[2] for r in crewmate_ratings]
 
-    meta_impostor = RATING_MODEL.rating(
-        mu=statistics.mean(r.mu for r in impostor_team),
-        sigma=statistics.mean(r.sigma for r in impostor_team),
-    )
-    meta_crewmate = RATING_MODEL.rating(
-        mu=statistics.mean(r.mu for r in crewmate_team),
-        sigma=statistics.mean(r.sigma for r in crewmate_team),
-    )
+    def create_meta_agent(team: list) -> object:
+        """Create a meta-agent with averaged mu and sqrt of averaged variance."""
+        avg_mu = sum(r.mu for r in team) / len(team)
+        avg_variance = sum(r.sigma**2 for r in team) / len(team)
+        return RATING_MODEL.rating(mu=avg_mu, sigma=math.sqrt(avg_variance))
+
+    meta_impostor = create_meta_agent(impostor_team)
+    meta_crewmate = create_meta_agent(crewmate_team)
 
     # Run 1v1 match between meta-agents
     # OpenSkill ranks: lower is better, so winner gets rank 0
@@ -102,24 +113,32 @@ def update_ratings_for_game(db: Session, game: Game) -> None:
         ranks=ranks,
     )
 
-    # Calculate deltas from meta-agent match
+    # Calculate team-level deltas and sigma ratios
     impostor_mu_delta = new_meta_imp[0].mu - meta_impostor.mu
-    impostor_sigma_delta = new_meta_imp[0].sigma - meta_impostor.sigma
     crewmate_mu_delta = new_meta_crew[0].mu - meta_crewmate.mu
-    crewmate_sigma_delta = new_meta_crew[0].sigma - meta_crewmate.sigma
+    impostor_sigma_ratio = new_meta_imp[0].sigma / meta_impostor.sigma
+    crewmate_sigma_ratio = new_meta_crew[0].sigma / meta_crewmate.sigma
 
-    # Apply deltas to all impostor ratings
+    # Distribute deltas using variance-weighted redistribution
+    # Players with higher sigma (more uncertainty) get larger updates
+    impostor_total_variance = sum(r.sigma**2 for r in impostor_team)
+    impostor_pool = impostor_mu_delta * len(impostor_team)
+
     for participant, model_rating, old_rating in impostor_ratings:
-        model_rating.impostor_mu = old_rating.mu + impostor_mu_delta
-        model_rating.impostor_sigma = max(0.1, old_rating.sigma + impostor_sigma_delta)
+        share = old_rating.sigma**2 / impostor_total_variance
+        model_rating.impostor_mu = old_rating.mu + (impostor_pool * share)
+        model_rating.impostor_sigma = max(0.1, old_rating.sigma * impostor_sigma_ratio)
         model_rating.impostor_games += 1
         if impostors_won:
             model_rating.impostor_wins += 1
 
-    # Apply deltas to all crewmate ratings
+    crewmate_total_variance = sum(r.sigma**2 for r in crewmate_team)
+    crewmate_pool = crewmate_mu_delta * len(crewmate_team)
+
     for participant, model_rating, old_rating in crewmate_ratings:
-        model_rating.crewmate_mu = old_rating.mu + crewmate_mu_delta
-        model_rating.crewmate_sigma = max(0.1, old_rating.sigma + crewmate_sigma_delta)
+        share = old_rating.sigma**2 / crewmate_total_variance
+        model_rating.crewmate_mu = old_rating.mu + (crewmate_pool * share)
+        model_rating.crewmate_sigma = max(0.1, old_rating.sigma * crewmate_sigma_ratio)
         model_rating.crewmate_games += 1
         if not impostors_won:
             model_rating.crewmate_wins += 1

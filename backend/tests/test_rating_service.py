@@ -314,3 +314,217 @@ class TestGetModelRankings:
         assert r["crewmate_win_rate"] == 60.0  # 12/20 = 60%
         # Overall: 19 wins / 30 games = 63.33...%
         assert r["win_rate"] == 63.3
+
+
+class TestMetaAgentRating:
+    """Tests for the meta-agent rating algorithm that handles asymmetric teams."""
+
+    def test_symmetric_rating_changes_for_equal_teams(self, db_session, sample_models):
+        """
+        When both teams have equal average ratings, winning should give
+        roughly symmetric rating changes regardless of team size (2v5).
+
+        This tests the core fix: meta-agent averaging normalizes team strength.
+        """
+        # Create a game where impostors won
+        game = Game(
+            status=GameStatus.COMPLETED,
+            winner=1,  # Impostors won
+            winner_reason="Impostors win!",
+        )
+        db_session.add(game)
+        db_session.flush()
+
+        colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink"]
+        for i, model in enumerate(sample_models):
+            role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
+            won = role == PlayerRole.IMPOSTOR
+            participant = GameParticipant(
+                game_id=game.id,
+                model_id=model.id,
+                player_number=i + 1,
+                player_color=colors[i],
+                role=role,
+                won=won,
+            )
+            db_session.add(participant)
+            # All start at default 25.0
+            get_or_create_rating(db_session, model)
+
+        db_session.flush()
+        db_session.refresh(game)
+
+        update_ratings_for_game(db_session, game)
+
+        # Get average rating changes
+        impostors = [p for p in game.participants if p.role == PlayerRole.IMPOSTOR]
+        crewmates = [p for p in game.participants if p.role == PlayerRole.CREWMATE]
+
+        imp_delta = sum(p.model.ratings.impostor_mu - 25.0 for p in impostors) / len(impostors)
+        crew_delta = sum(p.model.ratings.crewmate_mu - 25.0 for p in crewmates) / len(crewmates)
+
+        # Key assertion: deltas should be roughly equal in magnitude (opposite sign)
+        # Before the fix, impostor gain was ~27x crewmate loss due to 2v5 asymmetry
+        # After fix, they should be nearly equal
+        assert abs(imp_delta) > 0, "Impostors should gain rating"
+        assert crew_delta < 0, "Crewmates should lose rating"
+
+        # The magnitudes should be close (within 50% of each other)
+        # This is much tighter than the 27x asymmetry before
+        ratio = abs(imp_delta) / abs(crew_delta)
+        assert 0.5 < ratio < 2.0, f"Rating change ratio {ratio} should be close to 1.0"
+
+    def test_variance_weighted_redistribution(self, db_session):
+        """
+        Players with higher uncertainty (sigma) should receive larger rating updates.
+
+        This is the Bayesian-correct behavior: uncertain players have more room to grow.
+        """
+        # Create models with different sigmas
+        veteran = Model(
+            model_id="veteran",
+            model_name="Veteran",
+            provider="Test",
+            openrouter_id="test/veteran",
+        )
+        newbie = Model(
+            model_id="newbie",
+            model_name="Newbie",
+            provider="Test",
+            openrouter_id="test/newbie",
+        )
+        db_session.add_all([veteran, newbie])
+        db_session.flush()
+
+        # Veteran has low sigma (certain), Newbie has high sigma (uncertain)
+        veteran_rating = ModelRating(
+            model_id=veteran.id,
+            impostor_mu=25.0,
+            impostor_sigma=2.0,  # Very certain
+        )
+        newbie_rating = ModelRating(
+            model_id=newbie.id,
+            impostor_mu=25.0,
+            impostor_sigma=8.0,  # Very uncertain
+        )
+        db_session.add_all([veteran_rating, newbie_rating])
+        veteran.ratings = veteran_rating
+        newbie.ratings = newbie_rating
+        db_session.flush()
+
+        # Create 5 standard crewmates
+        crewmates = []
+        for i in range(5):
+            model = Model(
+                model_id=f"crew-{i}",
+                model_name=f"Crewmate {i}",
+                provider="Test",
+                openrouter_id=f"test/crew-{i}",
+            )
+            db_session.add(model)
+            db_session.flush()
+            rating = ModelRating(model_id=model.id)
+            db_session.add(rating)
+            model.ratings = rating
+            crewmates.append(model)
+        db_session.flush()
+
+        # Create game where impostors (veteran + newbie) win
+        game = Game(
+            status=GameStatus.COMPLETED,
+            winner=1,
+            winner_reason="Impostors win!",
+        )
+        db_session.add(game)
+        db_session.flush()
+
+        # Add participants
+        colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink"]
+        for i, model in enumerate([veteran, newbie] + crewmates):
+            role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
+            participant = GameParticipant(
+                game_id=game.id,
+                model_id=model.id,
+                player_number=i + 1,
+                player_color=colors[i],
+                role=role,
+                won=(role == PlayerRole.IMPOSTOR),
+            )
+            db_session.add(participant)
+        db_session.flush()
+        db_session.refresh(game)
+
+        # Record initial values
+        veteran_initial = veteran_rating.impostor_mu
+        newbie_initial = newbie_rating.impostor_mu
+
+        update_ratings_for_game(db_session, game)
+
+        db_session.refresh(veteran_rating)
+        db_session.refresh(newbie_rating)
+
+        veteran_delta = veteran_rating.impostor_mu - veteran_initial
+        newbie_delta = newbie_rating.impostor_mu - newbie_initial
+
+        # Key assertion: newbie (high sigma) should gain MORE than veteran (low sigma)
+        assert newbie_delta > veteran_delta, (
+            f"High-sigma player should gain more: newbie={newbie_delta:.4f}, "
+            f"veteran={veteran_delta:.4f}"
+        )
+
+        # Both should gain (they won)
+        assert veteran_delta > 0, "Veteran should gain rating"
+        assert newbie_delta > 0, "Newbie should gain rating"
+
+        # The ratio should roughly match the variance ratio (8^2 / 2^2 = 16)
+        # But it won't be exact due to the algorithm, so we just check newbie > veteran
+        ratio = newbie_delta / veteran_delta
+        assert ratio > 2.0, f"Newbie should gain significantly more, ratio={ratio:.2f}"
+
+    def test_sigma_decreases_after_game(self, db_session, sample_game_with_participants):
+        """Sigma (uncertainty) should decrease after each game."""
+        game = sample_game_with_participants
+
+        # Initialize ratings and record initial sigmas
+        initial_sigmas = {}
+        for p in game.participants:
+            rating = get_or_create_rating(db_session, p.model)
+            if p.role == PlayerRole.IMPOSTOR:
+                initial_sigmas[p.model.id] = rating.impostor_sigma
+            else:
+                initial_sigmas[p.model.id] = rating.crewmate_sigma
+        db_session.flush()
+
+        update_ratings_for_game(db_session, game)
+
+        # Check sigma decreased for all players
+        for p in game.participants:
+            db_session.refresh(p.model.ratings)
+            if p.role == PlayerRole.IMPOSTOR:
+                new_sigma = p.model.ratings.impostor_sigma
+            else:
+                new_sigma = p.model.ratings.crewmate_sigma
+
+            assert new_sigma < initial_sigmas[p.model.id], (
+                f"Sigma should decrease after game: {new_sigma} >= {initial_sigmas[p.model.id]}"
+            )
+
+    def test_wins_tracked_correctly(self, db_session, sample_game_with_participants):
+        """Win counts should be tracked correctly for winners only."""
+        game = sample_game_with_participants
+        assert game.winner == 1  # Impostors won
+
+        for p in game.participants:
+            get_or_create_rating(db_session, p.model)
+        db_session.flush()
+
+        update_ratings_for_game(db_session, game)
+
+        for p in game.participants:
+            db_session.refresh(p.model.ratings)
+            if p.role == PlayerRole.IMPOSTOR:
+                assert p.model.ratings.impostor_wins == 1, "Impostor should have 1 win"
+                assert p.model.ratings.crewmate_wins == 0, "No crewmate wins"
+            else:
+                assert p.model.ratings.crewmate_wins == 0, "Crewmate should have 0 wins (lost)"
+                assert p.model.ratings.impostor_wins == 0, "No impostor wins"
