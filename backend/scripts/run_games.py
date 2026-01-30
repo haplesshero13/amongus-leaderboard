@@ -29,9 +29,9 @@ import httpx
 
 # All registered models except kimi-k2.5 (unstable)
 MODELS = [
-    # "claude-haiku-4.5",
-    # "gemini-3-flash",
-    # "gpt-5-mini",
+    "claude-haiku-4.5",
+    "gemini-3-flash",
+    "gpt-5-mini",
     # "gpt-oss-20b",
     # "solar-pro-3",
     # "mistral-large-2512",
@@ -40,7 +40,7 @@ MODELS = [
     # "deepseek-r1",
     # "qwen3-235b",
     # "glm-4.7",
-    # "claude-sonnet-4.5",
+    "claude-sonnet-4.5",
     # "gpt-oss-120b",
     # "deepseek-v3.2",
     # "llama-4-maverick",
@@ -51,8 +51,8 @@ MODELS = [
     "kimi-k2-thinking",
     "glm-4.7-flash",
     "olmo-3.1-32b",
-    "mimo-v2-flash",
-    "nemotron-3-nano-30b",
+    # "mimo-v2-flash",
+    # "nemotron-3-nano-30b",
     "gpt-5.2-chat",
     "gemini-2.5-flash",
 ]

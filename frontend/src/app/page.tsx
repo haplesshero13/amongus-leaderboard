@@ -11,11 +11,11 @@ function StatsBar() {
 
   const models = data?.data ?? [];
   const topImpostor = models.reduce(
-    (best, m) => (m.impostor_rating - m.impostor_sigma > (best?.impostor_rating ?? 0) ? m : best),
+    (best, m) => (m.impostor_rating - m.impostor_sigma > (best.impostor_rating - best.impostor_sigma) ? m : best),
     models[0]
   );
   const topCrewmate = models.reduce(
-    (best, m) => (m.crewmate_rating - m.crewmate_sigma > (best?.crewmate_rating ?? 0) ? m : best),
+    (best, m) => (m.crewmate_rating - m.crewmate_sigma > (best.crewmate_rating - best.crewmate_sigma) ? m : best),
     models[0]
   );
 
