@@ -1,5 +1,11 @@
 """Pytest fixtures for testing."""
 
+import os
+
+# Set DATABASE_URL before any imports that use Settings
+# This ensures pydantic-settings has a valid URL during module initialization
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
