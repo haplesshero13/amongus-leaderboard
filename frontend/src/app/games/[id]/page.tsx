@@ -9,7 +9,134 @@ import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { useGameStream } from '@/lib/hooks/useGameStream';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary } from '@/types/game';
+import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary, EliminationEvent, DisplayItem } from '@/types/game';
+
+/**
+ * Extract elimination events from parsed logs
+ * Looks for:
+ * 1. KILL actions in full_response -> killed event
+ * 2. Players appearing as (dead) in subsequent step -> ejected or killed
+ * 3. VOTE tallies to determine ejection
+ */
+function extractEliminationEvents(
+  rawLogs: RawAgentLog[],
+  summary?: GameSummary | null
+): EliminationEvent[] {
+  const events: EliminationEvent[] = [];
+  const eliminatedPlayers = new Set<number>();
+  
+  // Group logs by step
+  const logsByStep = new Map<number, RawAgentLog[]>();
+  for (const log of rawLogs) {
+    const step = log.step ?? 0;
+    if (!logsByStep.has(step)) {
+      logsByStep.set(step, []);
+    }
+    logsByStep.get(step)!.push(log);
+  }
+
+  // Helper to get player info from summary
+  const getPlayerInfo = (playerNum: number) => {
+    let color = 'gray';
+    let role = 'Unknown';
+    if (summary) {
+      const playerData = summary[`Player ${playerNum}`];
+      if (isPlayerSummary(playerData)) {
+        color = playerData.color;
+        role = playerData.identity;
+      }
+    }
+    return { color, role };
+  };
+
+  // Process each step
+  const sortedSteps = [...logsByStep.keys()].sort((a, b) => a - b);
+  
+  // First pass: find KILL actions directly
+  for (const step of sortedSteps) {
+    const stepLogs = logsByStep.get(step)!;
+    
+    for (const log of stepLogs) {
+      const fullResponse = log.interaction?.full_response || '';
+      
+      // Look for [Action] KILL Player N: color
+      const killMatch = fullResponse.match(/\[Action\]\s*KILL\s+Player\s*(\d+)/i);
+      if (killMatch && log.player?.identity === 'Impostor') {
+        const victimNum = parseInt(killMatch[1]);
+        if (victimNum > 0 && !eliminatedPlayers.has(victimNum)) {
+          eliminatedPlayers.add(victimNum);
+          const { color, role } = getPlayerInfo(victimNum);
+          const killerNum = log.player?.name?.match(/Player (\d+)/)?.[1];
+          
+          events.push({
+            step,
+            type: 'killed',
+            victimPlayerNumber: victimNum,
+            victimColor: color,
+            victimRole: role,
+            killerPlayerNumber: killerNum ? parseInt(killerNum) : undefined,
+            location: log.player?.location || 'Unknown',
+          });
+        }
+      }
+    }
+  }
+  
+  // Second pass: find ejections from votes
+  for (const step of sortedSteps) {
+    const stepLogs = logsByStep.get(step)!;
+    
+    // Collect votes from this step
+    const votes: Record<string, string> = {};
+    const voteCounts: Record<string, number> = {};
+    
+    for (const log of stepLogs) {
+      const fullResponse = log.interaction?.full_response || '';
+      const playerName = log.player?.name || 'Unknown';
+      
+      // Look for [Action] VOTE Player N
+      const voteMatch = fullResponse.match(/\[Action\]\s*VOTE\s+Player\s*(\d+)/i);
+      if (voteMatch) {
+        const targetNum = parseInt(voteMatch[1]);
+        const targetKey = `Player ${targetNum}`;
+        votes[playerName] = targetKey;
+        voteCounts[targetKey] = (voteCounts[targetKey] || 0) + 1;
+      }
+    }
+    
+    // Determine if someone was ejected (vote majority)
+    if (Object.keys(voteCounts).length > 0) {
+      const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
+      const topVote = sortedVotes[0];
+      const secondVote = sortedVotes[1];
+      
+      // Check if there's a clear winner (not a tie)
+      if (!secondVote || topVote[1] > secondVote[1]) {
+        const ejectedKey = topVote[0];
+        const ejectedNum = parseInt(ejectedKey.match(/Player (\d+)/)?.[1] || '0');
+        
+        if (ejectedNum > 0 && !eliminatedPlayers.has(ejectedNum)) {
+          eliminatedPlayers.add(ejectedNum);
+          const { color, role } = getPlayerInfo(ejectedNum);
+          
+          events.push({
+            step,
+            type: 'ejected',
+            victimPlayerNumber: ejectedNum,
+            victimColor: color,
+            victimRole: role,
+            votes,
+          });
+        }
+      }
+    }
+  }
+  
+  // Sort events by step
+  events.sort((a, b) => a.step - b.step);
+  
+  return events;
+}
 
 /**
  * Parse raw agent logs into display-friendly entries
@@ -324,6 +451,158 @@ function GameEndBanner({ winner, winnerReason }: { winner: number; winnerReason:
   );
 }
 
+/**
+ * Dramatic interstitial card showing an elimination event
+ */
+function EliminationCard({ event }: { event: EliminationEvent }) {
+  const bgColor = PLAYER_COLORS[event.victimColor.toLowerCase()] || '#808080';
+  const isImpostor = event.victimRole === 'Impostor';
+  const isEjection = event.type === 'ejected';
+  
+  return (
+    <div className="my-4 mx-2">
+      <div 
+        className={`relative overflow-hidden rounded-xl border-2 ${
+          isEjection 
+            ? 'border-purple-500 bg-gradient-to-r from-purple-900/90 to-indigo-900/90' 
+            : 'border-red-600 bg-gradient-to-r from-red-900/90 to-rose-900/90'
+        } shadow-lg`}
+      >
+        {/* Animated background effect */}
+        <div className="absolute inset-0 opacity-20">
+          <div className={`absolute inset-0 ${isEjection ? 'bg-purple-500' : 'bg-red-500'} animate-pulse`} />
+        </div>
+        
+        {/* Content */}
+        <div className="relative p-6 text-center">
+          {/* Icon */}
+          <div className="mb-3">
+            {isEjection ? (
+              <span className="text-4xl">🚀</span>
+            ) : (
+              <span className="text-4xl">💀</span>
+            )}
+          </div>
+          
+          {/* Event type header */}
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${
+            isEjection ? 'text-purple-300' : 'text-red-300'
+          }`}>
+            Step {event.step}
+          </div>
+          
+          {/* Main text */}
+          <div className="text-2xl font-black text-white mb-2 tracking-wide">
+            {isEjection ? (
+              <>
+                <span 
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
+                  style={{ backgroundColor: bgColor }}
+                >
+                  <span className="uppercase">{event.victimColor}</span>
+                </span>
+                <span className="mx-2">WAS EJECTED</span>
+              </>
+            ) : (
+              <>
+                <span 
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
+                  style={{ backgroundColor: bgColor }}
+                >
+                  <span className="uppercase">{event.victimColor}</span>
+                </span>
+                <span className="mx-2">WAS KILLED</span>
+              </>
+            )}
+          </div>
+          
+          {/* Player details */}
+          <div className="text-lg text-white/90 mb-3">
+            Player {event.victimPlayerNumber} • {' '}
+            <span className={isImpostor ? 'text-red-400 font-bold' : 'text-blue-400'}>
+              {event.victimRole}
+            </span>
+          </div>
+          
+          {/* Impostor reveal for ejections */}
+          {isEjection && (
+            <div className={`text-sm font-medium ${
+              isImpostor 
+                ? 'text-red-400' 
+                : 'text-green-400'
+            }`}>
+              {isImpostor 
+                ? '🔪 They were an Impostor!' 
+                : '✨ They were not an Impostor.'}
+            </div>
+          )}
+          
+          {/* Location for kills */}
+          {!isEjection && event.location && (
+            <div className="text-sm text-white/70">
+              📍 Location: {event.location}
+            </div>
+          )}
+          
+          {/* Vote breakdown for ejections */}
+          {isEjection && event.votes && Object.keys(event.votes).length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <div className="text-xs text-white/60 uppercase tracking-wider mb-2">
+                Vote Results
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {Object.entries(event.votes).map(([voter, target]) => {
+                  const voterNum = voter.match(/Player (\d+)/)?.[1] || '?';
+                  const targetNum = target.match(/Player (\d+)/)?.[1] || '?';
+                  const votedForVictim = target === `Player ${event.victimPlayerNumber}`;
+                  
+                  return (
+                    <span 
+                      key={voter}
+                      className={`text-xs px-2 py-1 rounded ${
+                        votedForVictim 
+                          ? 'bg-white/20 text-white' 
+                          : 'bg-white/10 text-white/60'
+                      }`}
+                    >
+                      P{voterNum} → P{targetNum}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Step marker showing when a new game step begins
+ */
+function StepMarker({ step, phase }: { step: number; phase: string }) {
+  return (
+    <div className="flex items-center gap-3 py-3 px-4 my-2">
+      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
+      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Step {step}
+        </span>
+        {phase && (
+          <>
+            <span className="text-gray-400">•</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+              {phase}
+            </span>
+          </>
+        )}
+      </div>
+      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
+    </div>
+  );
+}
+
 function isPlayerSummary(data: unknown): data is PlayerSummary {
   return (
     typeof data === 'object' &&
@@ -401,12 +680,93 @@ export default function GameDetailPage() {
     return parseAgentLogs(effectiveLogs, effectiveSummary);
   }, [effectiveLogs, effectiveSummary]);
 
+  // Extract elimination events
+  const eliminationEvents = useMemo(() => {
+    if (!effectiveLogs) return [];
+    return extractEliminationEvents(effectiveLogs, effectiveSummary);
+  }, [effectiveLogs, effectiveSummary]);
+
   // Get unique steps for filtering
   const steps = useMemo(() => {
     return [...new Set(parsedEntries.map((e) => e.step))].sort((a, b) => a - b);
   }, [parsedEntries]);
 
-  // Filter entries by step if selected
+  // Combine log entries with elimination events into display items
+  const displayItems = useMemo((): DisplayItem[] => {
+    const items: DisplayItem[] = [];
+    let lastStep = -1;
+    
+    // Filter entries by step if selected
+    const entriesToShow = parsedEntries.filter((e) =>
+      filterStep === null ? true : e.step === filterStep
+    );
+    
+    // Filter elimination events by step if selected
+    const eventsToShow = eliminationEvents.filter((e) =>
+      filterStep === null ? true : e.step === filterStep
+    );
+    
+    // Track which steps have had eliminations inserted
+    const eliminationsInserted = new Set<number>();
+    
+    for (const entry of entriesToShow) {
+      // Add step marker if step changed
+      if (entry.step !== lastStep) {
+        // Before showing new step, show any eliminations from the previous step
+        if (lastStep >= 0 && !eliminationsInserted.has(lastStep)) {
+          const prevStepEliminations = eventsToShow.filter(e => e.step === lastStep);
+          for (const event of prevStepEliminations) {
+            items.push({ type: 'elimination', event });
+          }
+          eliminationsInserted.add(lastStep);
+        }
+        
+        // Determine phase from the entry's action or raw_prompt
+        let phase = '';
+        if (entry.action?.includes('SPEAK')) {
+          phase = 'Meeting';
+        } else if (entry.action?.includes('VOTE')) {
+          phase = 'Voting';
+        } else if (entry.action?.includes('MOVE') || entry.action?.includes('TASK') || entry.action?.includes('KILL')) {
+          phase = 'Task';
+        }
+        
+        items.push({ type: 'step-marker', step: entry.step, phase });
+        lastStep = entry.step;
+      }
+      
+      items.push({ type: 'log', entry });
+    }
+    
+    // Add any remaining eliminations after the last step
+    if (lastStep >= 0 && !eliminationsInserted.has(lastStep)) {
+      const lastStepEliminations = eventsToShow.filter(e => e.step === lastStep);
+      for (const event of lastStepEliminations) {
+        items.push({ type: 'elimination', event });
+      }
+    }
+    
+    // Also add elimination events that might be at a step not in the logs
+    for (const event of eventsToShow) {
+      if (!eliminationsInserted.has(event.step)) {
+        // Find the right position to insert
+        let insertIdx = items.length;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type === 'step-marker' && item.step > event.step) {
+            insertIdx = i;
+            break;
+          }
+        }
+        items.splice(insertIdx, 0, { type: 'elimination', event });
+        eliminationsInserted.add(event.step);
+      }
+    }
+    
+    return items;
+  }, [parsedEntries, eliminationEvents, filterStep]);
+
+  // Filter entries by step if selected (legacy - now handled in displayItems)
   const filteredEntries = useMemo(() => {
     return parsedEntries.filter((e) =>
       filterStep === null ? true : e.step === filterStep
@@ -501,18 +861,31 @@ export default function GameDetailPage() {
                         const displayColor = effectiveSummary
                           ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
+                        
+                        // Check if this player was eliminated
+                        const eliminationEvent = eliminationEvents.find(
+                          e => e.victimPlayerNumber === p.player_number
+                        );
+                        const isEliminated = !!eliminationEvent;
+                        const eliminationEmoji = eliminationEvent?.type === 'ejected' ? '🚀' : eliminationEvent?.type === 'killed' ? '💀' : '';
 
                         return (
-                          <div key={p.player_number} className="flex items-center gap-2">
-                            <PlayerBadge
-                              name={p.model_name}
-                              color={displayColor}
-                              role={p.role}
-                              playerNumber={p.player_number}
-                            />
-                            {p.won !== null && (
+                          <div key={p.player_number} className={`flex items-center gap-2 ${isEliminated ? 'opacity-60' : ''}`}>
+                            <div className={isEliminated ? 'line-through decoration-2' : ''}>
+                              <PlayerBadge
+                                name={p.model_name}
+                                color={displayColor}
+                                role={p.role}
+                                playerNumber={p.player_number}
+                              />
+                            </div>
+                            {isEliminated ? (
+                              <span className="text-sm" title={`${eliminationEvent?.type} at step ${eliminationEvent?.step}`}>
+                                {eliminationEmoji}
+                              </span>
+                            ) : p.won !== null ? (
                               <span className="text-xs">{p.won ? '(Won)' : '(Lost)'}</span>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
@@ -529,20 +902,33 @@ export default function GameDetailPage() {
                         const displayColor = effectiveSummary
                           ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
+                        
+                        // Check if this player was eliminated
+                        const eliminationEvent = eliminationEvents.find(
+                          e => e.victimPlayerNumber === p.player_number
+                        );
+                        const isEliminated = !!eliminationEvent;
+                        const eliminationEmoji = eliminationEvent?.type === 'ejected' ? '🚀' : eliminationEvent?.type === 'killed' ? '💀' : '';
                           
                         return (
-                          <div key={p.player_number} className="flex items-center gap-2">
-                            <PlayerBadge
-                              name={p.model_name}
-                              color={displayColor}
-                              role={p.role}
-                              playerNumber={p.player_number}
-                            />
-                            {p.survived !== null && (
+                          <div key={p.player_number} className={`flex items-center gap-2 ${isEliminated ? 'opacity-60' : ''}`}>
+                            <div className={isEliminated ? 'line-through decoration-2' : ''}>
+                              <PlayerBadge
+                                name={p.model_name}
+                                color={displayColor}
+                                role={p.role}
+                                playerNumber={p.player_number}
+                              />
+                            </div>
+                            {isEliminated ? (
+                              <span className="text-sm" title={`${eliminationEvent?.type} at step ${eliminationEvent?.step}`}>
+                                {eliminationEmoji}
+                              </span>
+                            ) : p.survived !== null ? (
                               <span className="text-xs">
                                 {p.survived ? '(Survived)' : '(Eliminated)'}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
@@ -595,30 +981,39 @@ export default function GameDetailPage() {
                 <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="font-semibold text-gray-900 dark:text-gray-100">Game Replay</h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {filteredEntries.length} messages
+                    {filteredEntries.length} messages, {eliminationEvents.length} eliminations
                     {filterStep !== null && ` (Step ${filterStep})`}
                   </p>
                 </div>
 
                 {/* Messages container - virtualized for performance */}
-                {filteredEntries.length === 0 ? (
+                {displayItems.length === 0 ? (
                   <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                     No log entries for this step
                   </p>
                 ) : (
                   <div className="h-[600px] overflow-hidden">
                     <Virtuoso
-                      data={filteredEntries}
+                      data={displayItems}
                       increaseViewportBy={{ top: 200, bottom: 200 }}
-                      itemContent={(index, entry) => (
-                        <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
-                          <ChatBubble
-                            key={`${entry.step}-${entry.player_name}-${index}`}
-                            entry={entry}
-                            hideThinking={hideThinking}
-                          />
-                        </div>
-                      )}
+                      itemContent={(index, item) => {
+                        if (item.type === 'elimination') {
+                          return <EliminationCard key={`elim-${item.event.step}-${item.event.victimPlayerNumber}`} event={item.event} />;
+                        }
+                        if (item.type === 'step-marker') {
+                          return <StepMarker key={`step-${item.step}`} step={item.step} phase={item.phase} />;
+                        }
+                        // item.type === 'log'
+                        return (
+                          <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                            <ChatBubble
+                              key={`${item.entry.step}-${item.entry.player_name}-${index}`}
+                              entry={item.entry}
+                              hideThinking={hideThinking}
+                            />
+                          </div>
+                        );
+                      }}
                       components={{
                         Footer: () => (
                           filterStep === null && game.status === 'completed' && game.winner ? (

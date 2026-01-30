@@ -66,6 +66,29 @@ export interface GameLogEntry {
   full_response?: string;
 }
 
+// Elimination event types
+export type EliminationType = 'ejected' | 'killed';
+
+export interface EliminationEvent {
+  step: number;
+  type: EliminationType;
+  victimPlayerNumber: number;
+  victimColor: string;
+  victimRole: string;
+  // For ejection: who voted for whom
+  votes?: Record<string, string>; // "Player 1" -> "Player 3"
+  // For kill: who did it and where
+  killerPlayerNumber?: number;
+  killerColor?: string;
+  location?: string;
+}
+
+// Combined display item (either a log entry or an elimination event)
+export type DisplayItem = 
+  | { type: 'log'; entry: GameLogEntry }
+  | { type: 'elimination'; event: EliminationEvent }
+  | { type: 'step-marker'; step: number; phase: string };
+
 export interface GameConfig {
   num_players: number;
   num_impostors: number;
