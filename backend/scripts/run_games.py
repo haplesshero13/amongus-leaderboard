@@ -3,7 +3,6 @@
 Run multiple games with balanced model participation.
 
 Each model participates roughly the same number of times across all games.
-Skips kimi-k2.5 (unstable API) and uses kimi-k2-thinking instead.
 
 Usage:
     # Set your API key first
@@ -30,24 +29,24 @@ import httpx
 
 # All registered models except kimi-k2.5 (unstable)
 MODELS = [
-    "claude-haiku-4.5",
-    "gemini-3-flash",
-    "gpt-oss-20b",
-    "solar-pro-3",
-    "mistral-large-2512",
-    "llama-3.3-70b",
-    "gpt-5-mini",
-    "kimi-k2.5",
-    "deepseek-r1",
-    "qwen3-235b",
-    "glm-4.7",
-    "claude-sonnet-4.5",
-    "gpt-oss-120b",
-    "deepseek-v3.2",
-    "llama-4-maverick",
-    "llama-4-scout",
-    "llama-3.1-405b",
-    "qwen3-next-80b-thinking",
+    # "claude-haiku-4.5",
+    # "gemini-3-flash",
+    # "gpt-5-mini",
+    # "gpt-oss-20b",
+    # "solar-pro-3",
+    # "mistral-large-2512",
+    # "kimi-k2.5",
+    # "llama-3.3-70b",
+    # "deepseek-r1",
+    # "qwen3-235b",
+    # "glm-4.7",
+    # "claude-sonnet-4.5",
+    # "gpt-oss-120b",
+    # "deepseek-v3.2",
+    # "llama-4-maverick",
+    # "llama-4-scout",
+    # "llama-3.1-405b",
+    # "qwen3-next-80b-thinking",
     "minimax-m2",
     "kimi-k2-thinking",
     "glm-4.7-flash",

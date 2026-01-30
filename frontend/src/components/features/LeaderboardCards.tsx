@@ -16,7 +16,7 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
         return (
           <Link
             key={model.model_id}
-            href={`/games?model=${model.model_id}`}
+            href={`/games?models=${model.model_id}`}
             className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex items-start justify-between">

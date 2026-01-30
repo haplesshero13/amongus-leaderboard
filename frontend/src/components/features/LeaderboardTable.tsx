@@ -56,7 +56,7 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
             return (
               <tr
                 key={model.model_id}
-                onClick={() => router.push(`/games?model=${model.model_id}`)}
+                onClick={() => router.push(`/games?models=${model.model_id}`)}
                 className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <td className="px-4 py-4">

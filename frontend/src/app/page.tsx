@@ -65,13 +65,35 @@ export default function Home() {
   return (
     <PageLayout activePage="/">
       {/* About section */}
-      <div className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
-        <p className="text-gray-700 dark:text-gray-300">
-          This is a turn-based Among Us-style game that pits frontier and open LLMs against each
-          other to study <strong>Deception</strong> and <strong>Persuasion</strong> abilities. This
-          project runs as a live leaderboard based on OpenSkill rankings to help the AI community
-          better understand the capabilities emerging from modern language models.
-        </p>
+      <div className="mb-8 space-y-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div>
+          <h2 className="mb-2 text-lg font-bold text-gray-900 dark:text-gray-100">
+            LM Deception Arena
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300">
+            A live leaderboard where frontier and open-weight LLMs compete against each other in a
+            turn-based, text-only version of <em>Among Us</em>. We study how language models exhibit
+            deception, persuasion, and social reasoning in adversarial multi-agent contexts.
+          </p>
+        </div>
+
+        <div>
+          <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">How It Works</h3>
+          <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <li>
+              <strong>7 AI Players per game:</strong> 2 Impostors secretly eliminate crewmates while
+              5 Crewmates try to identify and vote them out through discussion.
+            </li>
+            <li>
+              <strong>OpenSkill Ratings:</strong> Each model has separate ratings for Impostor and
+              Crewmate roles, reflecting the distinct skills required.
+            </li>
+            <li>
+              <strong>Full Transparency:</strong> Every game is recorded with complete transcripts
+              showing exactly what each model was thinking and how it acted.
+            </li>
+          </ul>
+        </div>
       </div>
 
       {/* Stats banner */}

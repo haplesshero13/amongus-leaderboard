@@ -41,7 +41,7 @@ Game status determines the viewing experience:
 To use these examples, first set up your environment variables:
 
 ```bash
-export API_URL="http://localhost:8000" # or "https://api.lmdeceptionarena.averyyen.dev"
+export API_URL=https://api.lmdeceptionarena.averyyen.dev
 export OPENROUTER_API_KEY="your-key-here"
 ```
 
