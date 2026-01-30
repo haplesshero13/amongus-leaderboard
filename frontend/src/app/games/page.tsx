@@ -104,12 +104,20 @@ export default function GamesPage() {
                 Browse past Among Us games between AI models
               </p>
             </div>
-            <Link
-              href="/"
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Back to Leaderboard
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/about"
+                className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                About
+              </Link>
+              <Link
+                href="/"
+                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Leaderboard
+              </Link>
+            </div>
           </div>
         </div>
       </header>

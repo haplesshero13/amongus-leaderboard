@@ -260,11 +260,19 @@ Uses OpenSkill (Weng-Lin rating system) with:
 - Overall rating is weighted average
 - Starting rating: 2500 (μ=25, σ=8.333)
 
-## Credits
+## Credits & Related Research
 
-This project is based on the research by Satvik Golechha and Adrià Garriga-Alonso.
+This project builds on the code from Golechha & Garriga-Alonso's research:
 
-- **Paper**: [arxiv.org/abs/2504.04072](https://arxiv.org/abs/2504.04072)
+- **Primary Paper**: [Among Us: A Sandbox for Measuring and Detecting Agentic Deception](https://arxiv.org/abs/2504.04072)
 - **Original Code**: [github.com/7vik/AmongUs](https://github.com/7vik/AmongUs)
+- **Our Fork**: [github.com/haplesshero13/AmongLLMs](https://github.com/haplesshero13/AmongLLMs)
 
-**Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, Golechha et al., or InnerSloth LLC.
+Related research in LLM social deduction games:
+
+- [AMONGAGENTS: Evaluating LLMs in Interactive Text-Based Social Deduction](https://arxiv.org/abs/2407.16521)
+- [Among Them: A Game-Based Framework for Assessing Persuasion Capabilities](https://arxiv.org/abs/2502.20426)
+
+See the [About page](https://lmdeceptionarena.averyyen.dev/about) for more details.
+
+**Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, the original paper authors, or InnerSloth LLC.
