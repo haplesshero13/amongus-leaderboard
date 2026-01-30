@@ -4,20 +4,25 @@ import { PageLayout } from '../components/layout/PageLayout';
 import { Leaderboard } from '../components/features/Leaderboard';
 import { useRankings } from '../lib/hooks/useRankings';
 import { useGames } from '../lib/hooks/useGames';
+import { getConservativeRating } from '../types/leaderboard';
 
 function StatsBar() {
   const { data, isLoading } = useRankings(1, 100);
   const { data: games, isLoading: gamesLoading } = useGames('completed', 1000);
 
   const models = data?.data ?? [];
-  const topImpostor = models.reduce(
-    (best, m) => (m.impostor_rating - m.impostor_sigma > (best.impostor_rating - best.impostor_sigma) ? m : best),
-    models[0]
-  );
-  const topCrewmate = models.reduce(
-    (best, m) => (m.crewmate_rating - m.crewmate_sigma > (best.crewmate_rating - best.crewmate_sigma) ? m : best),
-    models[0]
-  );
+  const topImpostor = models.length > 0
+    ? models.reduce((best, m) =>
+        getConservativeRating(m.impostor_rating, m.impostor_sigma) > 
+        getConservativeRating(best.impostor_rating, best.impostor_sigma) ? m : best
+      )
+    : undefined;
+  const topCrewmate = models.length > 0
+    ? models.reduce((best, m) =>
+        getConservativeRating(m.crewmate_rating, m.crewmate_sigma) > 
+        getConservativeRating(best.crewmate_rating, best.crewmate_sigma) ? m : best
+      )
+    : undefined;
 
   const formatNumber = (n: number) => n.toLocaleString();
 
@@ -42,7 +47,9 @@ function StatsBar() {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Top Impostor{' '}
           {topImpostor && !isLoading && (
-            <span className="font-medium">({topImpostor.impostor_rating - topImpostor.impostor_sigma})</span>
+            <span className="font-medium">
+              ({getConservativeRating(topImpostor.impostor_rating, topImpostor.impostor_sigma)})
+            </span>
           )}
         </div>
       </div>
@@ -53,7 +60,9 @@ function StatsBar() {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Top Crewmate{' '}
           {topCrewmate && !isLoading && (
-            <span className="font-medium">({topCrewmate.crewmate_rating - topCrewmate.crewmate_sigma})</span>
+            <span className="font-medium">
+              ({getConservativeRating(topCrewmate.crewmate_rating, topCrewmate.crewmate_sigma)})
+            </span>
           )}
         </div>
       </div>
