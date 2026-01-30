@@ -1,7 +1,7 @@
 'use client';
 
+import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useGames } from '@/lib/hooks/useGames';
@@ -92,36 +92,142 @@ function GameCard({ game }: { game: Game }) {
 
 function GamesContent() {
   const searchParams = useSearchParams();
-  const modelId = searchParams.get('model') ?? undefined;
+  const models = (searchParams.get('models') ?? '').split(',').filter(Boolean);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: games, isLoading, error } = useGames(undefined, 100, modelId);
+  const { data: games, isLoading, error } = useGames(undefined, 100, undefined);
 
-  const filteredGames = games.filter((g) => g.status !== 'failed');
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // Get the model name from the first game's participants if filtering
-  const modelName = modelId
-    ? filteredGames[0]?.participants.find(
-        (p) => p.model_id === modelId || p.model_name.toLowerCase().includes(modelId.toLowerCase())
-      )?.model_name
-    : undefined;
+  // Get unique models from all games
+  const uniqueModels = Array.from(
+    new Map(
+      games
+        .flatMap((g) => g.participants)
+        .map((p) => [p.model_id, { model_id: p.model_id, model_name: p.model_name }])
+    ).values()
+  ).sort((a, b) => a.model_name.localeCompare(b.model_name));
+
+  // Filter games by selected models - show only games where ALL selected models participate
+  const filteredGames = models.length === 0
+    ? games.filter((g) => g.status !== 'failed')
+    : games.filter((g) => {
+        // Every selected model must be present in this game
+        const gameHasAllSelectedModels = models.every((modelId) =>
+          g.participants.some((p) => p.model_id === modelId)
+        );
+        return gameHasAllSelectedModels && g.status !== 'failed';
+      });
+
+  const handleModelToggle = (modelId: string) => {
+    const newModels = models.includes(modelId)
+      ? models.filter((m) => m !== modelId)
+      : [...models, modelId];
+
+    const params = new URLSearchParams(searchParams);
+    if (newModels.length === 0) {
+      params.delete('models');
+    } else {
+      params.set('models', newModels.join(','));
+    }
+
+    const newUrl = `/games?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  };
 
   return (
     <PageLayout activePage="/games">
-      {/* Filter indicator */}
-      {modelId && (
-        <div className="mb-6 flex items-center gap-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">Filtering by model:</span>
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            {modelName || modelId}
-          </span>
-          <Link
-            href="/games"
-            className="ml-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+      {/* Model Filter */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Filter by Models:
+        </label>
+        
+        <div className="relative" ref={dropdownRef}>
+          <div 
+            className="flex min-h-[42px] w-full flex-wrap items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm cursor-text dark:border-gray-600 dark:bg-gray-900 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+            onClick={() => setIsDropdownOpen(true)}
           >
-            Clear filter
-          </Link>
+            {models.length === 0 && (
+              <span className="text-gray-500 dark:text-gray-400">Select models...</span>
+            )}
+            
+            {models.map((modelId) => {
+              const modelName = uniqueModels.find((m) => m.model_id === modelId)?.model_name || modelId;
+              return (
+                <span 
+                  key={modelId}
+                  className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                >
+                  {modelName}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleModelToggle(modelId);
+                    }}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+
+          {isDropdownOpen && (
+            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white/45 py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800/45 backdrop-blur">
+              {uniqueModels.length === 0 ? (
+                <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+                  No models available
+                </div>
+              ) : (
+                uniqueModels.map((model) => (
+                  <label
+                    key={model.model_id}
+                    className="flex cursor-pointer items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={models.includes(model.model_id)}
+                      onChange={() => handleModelToggle(model.model_id)}
+                      className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {model.model_name}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {models.length > 0 && (
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => {
+                window.history.replaceState({}, '', '/games');
+                // Force re-render by clearing local state via URL update
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </div>
 
       {isLoading && <LoadingSpinner />}
 
@@ -130,8 +236,8 @@ function GamesContent() {
       {!isLoading && !error && filteredGames.length === 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
           <p className="text-gray-600 dark:text-gray-400">
-            {modelId
-              ? `No games found for this model. Games will appear here once they have been played.`
+            {models.length > 0
+              ? `No games found where all selected models participated together. Try selecting fewer models or clearing the filter.`
               : 'No games found. Games will appear here once they have been played.'}
           </p>
         </div>
