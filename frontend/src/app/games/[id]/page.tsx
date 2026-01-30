@@ -35,9 +35,23 @@ function extractEliminationEvents(
     logsByStep.get(step)!.push(log);
   }
 
-  // Helper to get player info from summary
+  // Build a map of player number -> color from logs themselves
+  const playerColorMap = new Map<number, string>();
+  for (const log of rawLogs) {
+    const playerName = log.player?.name || '';
+    const match = playerName.match(/Player (\d+):\s*(\w+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      const color = match[2];
+      if (!playerColorMap.has(num)) {
+        playerColorMap.set(num, color);
+      }
+    }
+  }
+
+  // Helper to get player info from summary or logs
   const getPlayerInfo = (playerNum: number) => {
-    let color = 'gray';
+    let color = playerColorMap.get(playerNum) || 'gray';
     let role = 'Unknown';
     if (summary) {
       const playerData = summary[`Player ${playerNum}`];
@@ -614,24 +628,43 @@ function hasName(data: unknown): data is { name: string } {
   );
 }
 
-// Helper to extract color from summary
-function getPlayerColorFromSummary(summary: GameSummary, playerNumber: number): string {
-  const playerKey = `Player ${playerNumber}`;
-  const playerData = summary[playerKey];
+// Helper to extract color from summary or logs
+function getPlayerColorFromSummary(
+  summary: GameSummary | null | undefined, 
+  playerNumber: number,
+  logs?: RawAgentLog[]
+): string {
+  // Try summary first
+  if (summary) {
+    const playerKey = `Player ${playerNumber}`;
+    const playerData = summary[playerKey];
 
-  // Runtime check to distinguish PlayerSummary from GameConfig/number/string
-  if (isPlayerSummary(playerData)) {
-    return playerData.color;
-  }
+    // Runtime check to distinguish PlayerSummary from GameConfig/number/string
+    if (isPlayerSummary(playerData)) {
+      return playerData.color;
+    }
 
-  // Try parsing name if color field missing
-  if (hasName(playerData)) {
-    const name = playerData.name;
-    if (name.includes(':')) {
-      const parts = name.split(':');
-      if (parts.length > 1) return parts[1].trim();
+    // Try parsing name if color field missing
+    if (hasName(playerData)) {
+      const name = playerData.name;
+      if (name.includes(':')) {
+        const parts = name.split(':');
+        if (parts.length > 1) return parts[1].trim();
+      }
     }
   }
+
+  // Fall back to extracting from logs if summary not available (e.g., running games)
+  if (logs) {
+    for (const log of logs) {
+      const playerName = log.player?.name || '';
+      const match = playerName.match(/Player (\d+):\s*(\w+)/);
+      if (match && parseInt(match[1]) === playerNumber) {
+        return match[2];
+      }
+    }
+  }
+
   return 'gray';
 }
 
@@ -897,9 +930,11 @@ export default function GameDetailPage() {
                     {game.participants
                       .filter((p) => p.role === 'Impostor')
                       .map((p) => {
-                        const displayColor = effectiveSummary
-                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
-                          : p.player_color;
+                        const displayColor = getPlayerColorFromSummary(
+                          effectiveSummary,
+                          p.player_number,
+                          effectiveLogs
+                        ) || p.player_color;
 
                         // Check if this player was eliminated
                         const eliminationEvent = eliminationEvents.find(
@@ -938,9 +973,11 @@ export default function GameDetailPage() {
                     {game.participants
                       .filter((p) => p.role === 'Crewmate')
                       .map((p) => {
-                        const displayColor = effectiveSummary
-                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
-                          : p.player_color;
+                        const displayColor = getPlayerColorFromSummary(
+                          effectiveSummary,
+                          p.player_number,
+                          effectiveLogs
+                        ) || p.player_color;
 
                         // Check if this player was eliminated
                         const eliminationEvent = eliminationEvents.find(
@@ -1031,9 +1068,11 @@ export default function GameDetailPage() {
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Alive:</span>
                     <div className="flex items-center gap-1">
                       {currentAliveParticipants.map(p => {
-                        const displayColor = effectiveSummary
-                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
-                          : p.player_color;
+                        const displayColor = getPlayerColorFromSummary(
+                          effectiveSummary,
+                          p.player_number,
+                          effectiveLogs
+                        ) || p.player_color;
                         const bgColor = PLAYER_COLORS[displayColor.toLowerCase()] || '#808080';
 
                         return (
