@@ -11,7 +11,11 @@ interface UseGamesResult {
   refetch: () => Promise<void>;
 }
 
-export function useGames(status?: string, limit: number = 20): UseGamesResult {
+export function useGames(
+  status?: string,
+  limit: number = 20,
+  modelId?: string
+): UseGamesResult {
   const [data, setData] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -21,14 +25,14 @@ export function useGames(status?: string, limit: number = 20): UseGamesResult {
     setError(null);
 
     try {
-      const result = await fetchGames(status, limit);
+      const result = await fetchGames(status, limit, modelId);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  }, [status, limit]);
+  }, [status, limit, modelId]);
 
   useEffect(() => {
     fetchData();

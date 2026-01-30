@@ -853,36 +853,55 @@ export default function GameDetailPage() {
   const isLive = isRunningGame && streamStatus === 'connected';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Game Log
-                </h1>
-                {isLive && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                    LIVE
-                  </span>
-                )}
+            <Link href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg">
+                &#x1F47E;
               </div>
-              <p className="mt-1 font-mono text-sm text-gray-600 dark:text-gray-400">
-                {gameId}
-              </p>
-            </div>
-            <Link
-              href="/games"
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Back to Games
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                    Game Log
+                  </h1>
+                  {isLive && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      LIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                  {gameId}
+                </p>
+              </div>
             </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/about"
+                className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                About
+              </Link>
+              <Link
+                href="/games"
+                className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                View Games
+              </Link>
+              <Link
+                href="/"
+                className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Leaderboard
+              </Link>
+            </div>
           </div>
         </div>
       </header>

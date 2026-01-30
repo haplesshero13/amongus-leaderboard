@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ModelRanking } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
@@ -11,11 +12,12 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
       {rankings.map((model) => {
         const totalWins = model.impostor_wins + model.crewmate_wins;
         const totalLosses = model.games_played - totalWins;
-        
+
         return (
-          <div
+          <Link
             key={model.model_id}
-            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+            href={`/games?model=${model.model_id}`}
+            className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -69,7 +71,7 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>

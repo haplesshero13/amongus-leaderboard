@@ -4,7 +4,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function fetchGames(
   status?: string,
-  limit: number = 20
+  limit: number = 20,
+  modelId?: string
 ): Promise<Game[]> {
   if (!API_BASE_URL) {
     return [];
@@ -13,6 +14,9 @@ export async function fetchGames(
   const params = new URLSearchParams({ limit: limit.toString() });
   if (status) {
     params.set('status', status);
+  }
+  if (modelId) {
+    params.set('model_id', modelId);
   }
 
   const response = await fetch(`${API_BASE_URL}/api/games?${params}`, {

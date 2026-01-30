@@ -14,7 +14,7 @@ from app.api.schemas import (
     GameLogsResponse,
 )
 from app.core.database import get_db
-from app.models import Game, GameStatus, Model
+from app.models import Game, GameStatus, Model, GameParticipant
 from app.services.storage_service import get_game_logs, delete_game_logs
 from app.services import live_logs
 
@@ -105,16 +105,26 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
 @router.get("/games", response_model=list[GameResponse])
 async def list_games(
     status: GameStatusEnum | None = None,
+    model_id: str | None = None,
     limit: int = 20,
     db: Session = Depends(get_db),
 ):
     """
-    List recent games, optionally filtered by status.
+    List recent games, optionally filtered by status and/or model participation.
+
+    Args:
+        status: Filter by game status (pending, running, completed, failed)
+        model_id: Filter to games where this model participated (uses model's model_id, not internal id)
+        limit: Maximum number of games to return
     """
     query = db.query(Game).order_by(Game.created_at.desc())
 
     if status:
         query = query.filter(Game.status == GameStatus(status.value))
+
+    if model_id:
+        # Filter to games where the specified model participated
+        query = query.join(GameParticipant).join(Model).filter(Model.model_id == model_id)
 
     games = query.limit(limit).all()
 

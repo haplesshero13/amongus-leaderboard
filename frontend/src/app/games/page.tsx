@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { useGames } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -87,72 +90,68 @@ function GameCard({ game }: { game: Game }) {
   );
 }
 
-export default function GamesPage() {
-  const { data: games, isLoading, error } = useGames();
+function GamesContent() {
+  const searchParams = useSearchParams();
+  const modelId = searchParams.get('model') ?? undefined;
+
+  const { data: games, isLoading, error } = useGames(undefined, 100, modelId);
+
+  const filteredGames = games.filter((g) => g.status !== 'failed');
+
+  // Get the model name from the first game's participants if filtering
+  const modelName = modelId
+    ? filteredGames[0]?.participants.find(
+        (p) => p.model_id === modelId || p.model_name.toLowerCase().includes(modelId.toLowerCase())
+      )?.model_name
+    : undefined;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Game History
-              </h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Browse past Among Us games between AI models
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/about"
-                className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-              >
-                About
-              </Link>
-              <Link
-                href="/"
-                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Leaderboard
-              </Link>
-            </div>
-          </div>
+    <PageLayout activePage="/games">
+      {/* Filter indicator */}
+      {modelId && (
+        <div className="mb-6 flex items-center gap-2">
+          <span className="text-sm text-gray-600 dark:text-gray-400">Filtering by model:</span>
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            {modelName || modelId}
+          </span>
+          <Link
+            href="/games"
+            className="ml-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Clear filter
+          </Link>
         </div>
-      </header>
+      )}
 
-      {/* Content */}
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        {isLoading && <LoadingSpinner />}
+      {isLoading && <LoadingSpinner />}
 
-        {error && (
-          <ErrorMessage
-            error={error}
-            onRetry={() => window.location.reload()}
-          />
-        )}
+      {error && <ErrorMessage error={error} onRetry={() => window.location.reload()} />}
 
-        {!isLoading &&
-          !error &&
-          games.filter((g) => g.status !== 'failed').length === 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-              <p className="text-gray-600 dark:text-gray-400">
-                No games found. Games will appear here once they have been played.
-              </p>
-            </div>
-          )}
+      {!isLoading && !error && filteredGames.length === 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+          <p className="text-gray-600 dark:text-gray-400">
+            {modelId
+              ? `No games found for this model. Games will appear here once they have been played.`
+              : 'No games found. Games will appear here once they have been played.'}
+          </p>
+        </div>
+      )}
 
-        {!isLoading && !error && games.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {games
-              .filter((game) => game.status !== 'failed')
-              .map((game) => (
-                <GameCard key={game.game_id} game={game} />
-              ))}
-          </div>
-        )}
-      </main>
-    </div>
+      {!isLoading && !error && filteredGames.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredGames.map((game) => (
+            <GameCard key={game.game_id} game={game} />
+          ))}
+        </div>
+      )}
+    </PageLayout>
+  );
+}
+
+export default function GamesPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <GamesContent />
+    </Suspense>
   );
 }

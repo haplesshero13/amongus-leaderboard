@@ -1,3 +1,4 @@
+import { useRouter } from 'next/navigation';
 import { ModelRanking } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
@@ -17,6 +18,8 @@ interface LeaderboardTableProps {
 }
 
 export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
+  const router = useRouter();
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <table className="w-full">
@@ -53,7 +56,8 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
             return (
               <tr
                 key={model.model_id}
-                className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                onClick={() => router.push(`/games?model=${model.model_id}`)}
+                className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <td className="px-4 py-4">
                   <RankBadge rank={model.current_rank} />
