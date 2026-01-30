@@ -1,5 +1,5 @@
 import { useRouter } from 'next/navigation';
-import { ModelRanking } from '../../types/leaderboard';
+import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
 function WinRate({ rate, games }: { rate: number; games: number }) {
@@ -81,14 +81,22 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
                   </div>
                 </td>
                 <td className="px-4 py-4 text-center">
-                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    {model.overall_rating}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                      {getConservativeRating(model.overall_rating, model.overall_sigma)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Avg: {model.overall_rating} ±{model.overall_sigma}
+                    </span>
+                  </div>
                 </td>
                 <td className="hidden px-4 py-4 text-center lg:table-cell">
                   <div className="flex flex-col items-center">
                     <span className="font-semibold text-red-600 dark:text-red-400">
-                      {model.impostor_rating}
+                      {getConservativeRating(model.impostor_rating, model.impostor_sigma)}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      Avg: {model.impostor_rating} ±{model.impostor_sigma}
                     </span>
                     <span className="text-xs text-gray-400">
                       {model.impostor_wins}W-{model.impostor_games - model.impostor_wins}L
@@ -98,7 +106,10 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
                 <td className="hidden px-4 py-4 text-center lg:table-cell">
                   <div className="flex flex-col items-center">
                     <span className="font-semibold text-cyan-600 dark:text-cyan-400">
-                      {model.crewmate_rating}
+                      {getConservativeRating(model.crewmate_rating, model.crewmate_sigma)}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      Avg: {model.crewmate_rating} ±{model.crewmate_sigma}
                     </span>
                     <span className="text-xs text-gray-400">
                       {model.crewmate_wins}W-{model.crewmate_games - model.crewmate_wins}L

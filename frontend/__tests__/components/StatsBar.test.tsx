@@ -34,9 +34,9 @@ describe('StatsBar games count', () => {
     // Mock 3 models with varying games_played (totaling way more than 5)
     const mockRankings = {
       data: [
-        { model_id: 'm1', model_name: 'Model 1', provider: 'Test', avatar_color: '#FF0000', impostor_rating: 2600, crewmate_rating: 2400, overall_rating: 2500, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 3, crewmate_games: 5, crewmate_wins: 2, win_rate: 50, impostor_win_rate: 60, crewmate_win_rate: 40, release_date: '2025-01-01' },
-        { model_id: 'm2', model_name: 'Model 2', provider: 'Test', avatar_color: '#00FF00', impostor_rating: 2500, crewmate_rating: 2550, overall_rating: 2525, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 2, win_rate: 50, impostor_win_rate: 50, crewmate_win_rate: 50, release_date: '2025-01-01' },
-        { model_id: 'm3', model_name: 'Model 3', provider: 'Test', avatar_color: '#0000FF', impostor_rating: 2400, crewmate_rating: 2300, overall_rating: 2350, games_played: 7, current_rank: 3, impostor_games: 3, impostor_wins: 1, crewmate_games: 4, crewmate_wins: 1, win_rate: 28.6, impostor_win_rate: 33.3, crewmate_win_rate: 25, release_date: '2025-01-01' },
+        { model_id: 'm1', model_name: 'Model 1', provider: 'Test', avatar_color: '#FF0000', impostor_rating: 2600, crewmate_rating: 2400, overall_rating: 2500, overall_sigma: 200, impostor_sigma: 250, crewmate_sigma: 180, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 3, crewmate_games: 5, crewmate_wins: 2, win_rate: 50, impostor_win_rate: 60, crewmate_win_rate: 40, release_date: '2025-01-01' },
+        { model_id: 'm2', model_name: 'Model 2', provider: 'Test', avatar_color: '#00FF00', impostor_rating: 2500, crewmate_rating: 2550, overall_rating: 2525, overall_sigma: 210, impostor_sigma: 260, crewmate_sigma: 190, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 2, win_rate: 50, impostor_win_rate: 50, crewmate_win_rate: 50, release_date: '2025-01-01' },
+        { model_id: 'm3', model_name: 'Model 3', provider: 'Test', avatar_color: '#0000FF', impostor_rating: 2400, crewmate_rating: 2300, overall_rating: 2350, overall_sigma: 230, impostor_sigma: 280, crewmate_sigma: 200, games_played: 7, current_rank: 3, impostor_games: 3, impostor_wins: 1, crewmate_games: 4, crewmate_wins: 1, win_rate: 28.6, impostor_win_rate: 33.3, crewmate_win_rate: 25, release_date: '2025-01-01' },
       ],
       total: 3,
       page: 1,
@@ -108,8 +108,8 @@ describe('StatsBar games count', () => {
   it('displays top impostor model name', async () => {
     const mockRankings = {
       data: [
-        { model_id: 'm1', model_name: 'GPT-5', provider: 'OpenAI', avatar_color: '#10A37F', impostor_rating: 2800, crewmate_rating: 2400, overall_rating: 2600, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 4, crewmate_games: 5, crewmate_wins: 2, win_rate: 60, impostor_win_rate: 80, crewmate_win_rate: 40, release_date: '2025-01-01' },
-        { model_id: 'm2', model_name: 'Claude 4', provider: 'Anthropic', avatar_color: '#D97706', impostor_rating: 2600, crewmate_rating: 2700, overall_rating: 2650, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 3, win_rate: 62.5, impostor_win_rate: 50, crewmate_win_rate: 75, release_date: '2025-01-01' },
+        { model_id: 'm1', model_name: 'GPT-5', provider: 'OpenAI', avatar_color: '#10A37F', impostor_rating: 2800, crewmate_rating: 2400, overall_rating: 2600, overall_sigma: 200, impostor_sigma: 220, crewmate_sigma: 240, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 4, crewmate_games: 5, crewmate_wins: 2, win_rate: 60, impostor_win_rate: 80, crewmate_win_rate: 40, release_date: '2025-01-01' },
+        { model_id: 'm2', model_name: 'Claude 4', provider: 'Anthropic', avatar_color: '#D97706', impostor_rating: 2600, crewmate_rating: 2700, overall_rating: 2650, overall_sigma: 210, impostor_sigma: 230, crewmate_sigma: 190, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 3, win_rate: 62.5, impostor_win_rate: 50, crewmate_win_rate: 75, release_date: '2025-01-01' },
       ],
       total: 2,
       page: 1,
@@ -145,8 +145,8 @@ describe('StatsBar games count', () => {
   it('displays top crewmate model name', async () => {
     const mockRankings = {
       data: [
-        { model_id: 'm1', model_name: 'GPT-5', provider: 'OpenAI', avatar_color: '#10A37F', impostor_rating: 2800, crewmate_rating: 2400, overall_rating: 2600, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 4, crewmate_games: 5, crewmate_wins: 2, win_rate: 60, impostor_win_rate: 80, crewmate_win_rate: 40, release_date: '2025-01-01' },
-        { model_id: 'm2', model_name: 'Claude 4', provider: 'Anthropic', avatar_color: '#D97706', impostor_rating: 2600, crewmate_rating: 2700, overall_rating: 2650, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 3, win_rate: 62.5, impostor_win_rate: 50, crewmate_win_rate: 75, release_date: '2025-01-01' },
+        { model_id: 'm1', model_name: 'GPT-5', provider: 'OpenAI', avatar_color: '#10A37F', impostor_rating: 2800, crewmate_rating: 2400, overall_rating: 2600, overall_sigma: 200, impostor_sigma: 220, crewmate_sigma: 240, games_played: 10, current_rank: 1, impostor_games: 5, impostor_wins: 4, crewmate_games: 5, crewmate_wins: 2, win_rate: 60, impostor_win_rate: 80, crewmate_win_rate: 40, release_date: '2025-01-01' },
+        { model_id: 'm2', model_name: 'Claude 4', provider: 'Anthropic', avatar_color: '#D97706', impostor_rating: 2600, crewmate_rating: 2700, overall_rating: 2650, overall_sigma: 210, impostor_sigma: 230, crewmate_sigma: 190, games_played: 8, current_rank: 2, impostor_games: 4, impostor_wins: 2, crewmate_games: 4, crewmate_wins: 3, win_rate: 62.5, impostor_win_rate: 50, crewmate_win_rate: 75, release_date: '2025-01-01' },
       ],
       total: 2,
       page: 1,

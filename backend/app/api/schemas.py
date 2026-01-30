@@ -20,6 +20,10 @@ class ModelRankingResponse(BaseModel):
     overall_rating: float
     impostor_rating: float
     crewmate_rating: float
+    # Uncertainty values (sigma) - frontend calculates conservative as rating - sigma
+    overall_sigma: float
+    impostor_sigma: float
+    crewmate_sigma: float
     games_played: int
     current_rank: int
     # Win/loss stats

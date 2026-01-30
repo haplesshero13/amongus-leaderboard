@@ -5,6 +5,10 @@ export interface ModelRanking {
   overall_rating: number;
   impostor_rating: number;
   crewmate_rating: number;
+  // Uncertainty values (sigma) - calculate conservative as rating - sigma
+  overall_sigma: number;
+  impostor_sigma: number;
+  crewmate_sigma: number;
   games_played: number;
   current_rank: number;
   // Win/loss stats
@@ -29,3 +33,11 @@ export interface LeaderboardResponse {
 
 export type SortField = 'overall_rating' | 'impostor_rating' | 'crewmate_rating' | 'games_played';
 export type SortDirection = 'asc' | 'desc';
+
+/**
+ * Calculate conservative rating (68% confidence floor).
+ * This is the skill level we're 68% confident the model has at minimum.
+ */
+export function getConservativeRating(rating: number, sigma: number): number {
+  return Math.round(rating - sigma);
+}

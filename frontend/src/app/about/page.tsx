@@ -74,6 +74,14 @@ export default function AboutPage() {
               ratings to instead assume each side has a 50% win rate overall, then adjust
               individual ratings after a match based on each model&apos;s uncertainty factor (variance).
             </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              To calculate overall ratings, we weight each role rating by confidence (the inverse of uncertainty/sigma).
+              Models with few games in a role have high uncertainty and thus contribute less to the overall rating.
+              As models play more games, their uncertainty decreases and their role ratings carry more weight.
+              Rankings are based on a <strong>conservative estimate</strong> (rating minus 3×uncertainty), meaning
+              we&apos;re ~99.7% confident the true skill is at least that high. This approach prevents models with
+              limited data from ranking higher than proven performers simply due to lucky early results.
+            </p>
           </div>
 
           <div>
@@ -89,7 +97,7 @@ export default function AboutPage() {
           <div>
             <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Latest Models</h3>
             <p className="text-gray-700 dark:text-gray-300">
-              We continuously add new models as they become available through{' '}
+              We add new models as they become available through{' '}
               <a
                 href="https://openrouter.ai/"
                 target="_blank"
@@ -99,8 +107,8 @@ export default function AboutPage() {
                 OpenRouter
               </a>
               . This includes frontier models from OpenAI, Anthropic, Google, DeepSeek, and others,
-              as well as open-weight models. Our goal is to provide comprehensive coverage of the
-              LLM landscape.
+              including closed and open-weight models. Our goal is to provide comprehensive coverage
+              of the LLM landscape.
             </p>
           </div>
 

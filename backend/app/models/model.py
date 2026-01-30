@@ -124,16 +124,46 @@ class ModelRating(Base, TimestampMixin):
         """
         Weighted average of impostor and crewmate mu values.
 
-        Weights are based on games played, but unplayed roles count as 1 game
-        at the default rating. This ensures players can't game the system by
-        only playing one role - their unproven role still affects their overall.
+        Weights are based on confidence (inverse of sigma). This naturally
+        downweights unproven roles without completely ignoring them, since
+        sigma is high (low confidence) for new models and decreases with games.
         """
-        # Use at least 1 game weight for each role (prior at default rating)
-        imp_weight = max(1, self.impostor_games or 0)
-        crew_weight = max(1, self.crewmate_games or 0)
+        # Weight by confidence: 1/sigma. Higher sigma = less confidence = less weight
+        imp_sigma = self.impostor_sigma if self.impostor_sigma is not None else self.DEFAULT_SIGMA
+        crew_sigma = self.crewmate_sigma if self.crewmate_sigma is not None else self.DEFAULT_SIGMA
+        
+        imp_weight = 1.0 / imp_sigma
+        crew_weight = 1.0 / crew_sigma
         total = imp_weight + crew_weight
 
         return (self.impostor_rating * imp_weight + self.crewmate_rating * crew_weight) / total
+
+    @property
+    def overall_sigma(self) -> float:
+        """
+        Combined uncertainty for overall rating.
+        
+        Calculated as weighted average of role sigmas using same weights as overall_rating.
+        This represents our confidence in the overall rating estimate.
+        """
+        imp_sigma = self.impostor_sigma if self.impostor_sigma is not None else self.DEFAULT_SIGMA
+        crew_sigma = self.crewmate_sigma if self.crewmate_sigma is not None else self.DEFAULT_SIGMA
+        
+        imp_weight = 1.0 / imp_sigma
+        crew_weight = 1.0 / crew_sigma
+        total = imp_weight + crew_weight
+
+        return (imp_sigma * imp_weight + crew_sigma * crew_weight) / total
+
+    @property
+    def conservative_rating(self) -> float:
+        """
+        Conservative estimate of skill: rating - sigma.
+        
+        This is the "floor" - we're ~68% confident the true skill is at least this high.
+        Used for ranking to avoid overrating models with high uncertainty.
+        """
+        return self.overall_rating - self.overall_sigma
 
     def reset_to_defaults(self) -> None:
         """Reset all rating values to OpenSkill defaults."""

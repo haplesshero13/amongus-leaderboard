@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ModelRanking } from '../../types/leaderboard';
+import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
 interface LeaderboardCardsProps {
@@ -50,13 +50,18 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-800">
                 <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {model.overall_rating}
+                  {getConservativeRating(model.overall_rating, model.overall_sigma)}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Rating</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Avg: {model.overall_rating} ±{model.overall_sigma}
+                </div>
               </div>
               <div className="rounded-lg bg-red-50 p-2 dark:bg-red-900/20">
                 <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                  {model.impostor_rating}
+                  {getConservativeRating(model.impostor_rating, model.impostor_sigma)}
+                </div>
+                <div className="text-xs text-red-600/70 dark:text-red-400/70">
+                  Avg: {model.impostor_rating} ±{model.impostor_sigma}
                 </div>
                 <div className="text-xs text-red-600/70 dark:text-red-400/70">
                   {model.impostor_wins}W-{model.impostor_games - model.impostor_wins}L
@@ -64,7 +69,10 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
               </div>
               <div className="rounded-lg bg-cyan-50 p-2 dark:bg-cyan-900/20">
                 <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
-                  {model.crewmate_rating}
+                  {getConservativeRating(model.crewmate_rating, model.crewmate_sigma)}
+                </div>
+                <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">
+                  Avg: {model.crewmate_rating} ±{model.crewmate_sigma}
                 </div>
                 <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">
                   {model.crewmate_wins}W-{model.crewmate_games - model.crewmate_wins}L

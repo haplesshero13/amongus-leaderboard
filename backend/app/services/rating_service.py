@@ -174,14 +174,18 @@ def get_model_rankings(db: Session) -> list[dict]:
                 "model": model,
                 "rating": rating,
                 "overall": rating.overall_rating,
+                "overall_sigma": rating.overall_sigma,
+                "conservative": rating.conservative_rating,
                 "impostor": rating.impostor_rating,
+                "impostor_sigma": rating.impostor_sigma or ModelRating.DEFAULT_SIGMA,
                 "crewmate": rating.crewmate_rating,
+                "crewmate_sigma": rating.crewmate_sigma or ModelRating.DEFAULT_SIGMA,
                 "games": rating.total_games,
             }
         )
 
-    # Sort by overall rating descending
-    rankings.sort(key=lambda x: x["overall"], reverse=True)
+    # Sort by conservative rating (floor) descending - accounts for uncertainty
+    rankings.sort(key=lambda x: x["conservative"], reverse=True)
 
     # Assign ranks
     result = []
@@ -197,6 +201,9 @@ def get_model_rankings(db: Session) -> list[dict]:
                 "overall_rating": scale_rating_for_display(r["overall"]),
                 "impostor_rating": scale_rating_for_display(r["impostor"]),
                 "crewmate_rating": scale_rating_for_display(r["crewmate"]),
+                "overall_sigma": scale_rating_for_display(r["overall_sigma"]),
+                "impostor_sigma": scale_rating_for_display(r["impostor_sigma"]),
+                "crewmate_sigma": scale_rating_for_display(r["crewmate_sigma"]),
                 "games_played": r["games"],
                 "current_rank": i,
                 # Win/loss stats

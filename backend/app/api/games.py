@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import require_api_key
 from app.api.schemas import (
@@ -71,7 +71,9 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
 
     Returns game details including participants and outcome if completed.
     """
-    game = db.query(Game).filter(Game.id == game_id).first()
+    game = db.query(Game).options(
+        joinedload(Game.participants).joinedload(GameParticipant.model)
+    ).filter(Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
@@ -117,7 +119,9 @@ async def list_games(
         model_id: Filter to games where this model participated (uses model's model_id, not internal id)
         limit: Maximum number of games to return
     """
-    query = db.query(Game).order_by(Game.created_at.desc())
+    query = db.query(Game).options(
+        joinedload(Game.participants).joinedload(GameParticipant.model)
+    ).order_by(Game.created_at.desc())
 
     if status:
         query = query.filter(Game.status == GameStatus(status.value))

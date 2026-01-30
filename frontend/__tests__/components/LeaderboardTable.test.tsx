@@ -21,6 +21,9 @@ const mockRankings: ModelRanking[] = [
     overall_rating: 1850,
     impostor_rating: 1900,
     crewmate_rating: 1800,
+    overall_sigma: 200,
+    impostor_sigma: 250,
+    crewmate_sigma: 180,
     games_played: 42,
     current_rank: 1,
     impostor_games: 12,
@@ -40,6 +43,9 @@ const mockRankings: ModelRanking[] = [
     overall_rating: 1820,
     impostor_rating: 1750,
     crewmate_rating: 1890,
+    overall_sigma: 210,
+    impostor_sigma: 280,
+    crewmate_sigma: 160,
     games_played: 38,
     current_rank: 2,
     impostor_games: 10,
@@ -68,8 +74,13 @@ describe('LeaderboardTable', () => {
 
   it('renders overall ratings', () => {
     render(<LeaderboardTable rankings={mockRankings} />);
-    expect(screen.getByText('1850')).toBeDefined();
-    expect(screen.getByText('1820')).toBeDefined();
+    // Now displays conservative ratings (rating - sigma) prominently
+    // Note: 1650 appears in both overall and impostor columns, so use getAllByText
+    expect(screen.getAllByText('1650').length).toBeGreaterThan(0); // GPT-5: 1850 - 200 (overall) and 1900 - 250 (impostor)
+    expect(screen.getByText('1610')).toBeDefined(); // Claude 4: 1820 - 210
+    // Average ratings shown in "Avg:" text
+    expect(screen.getByText(/Avg:\s*1850/)).toBeDefined();
+    expect(screen.getByText(/Avg:\s*1820/)).toBeDefined();
   });
 
   it('renders win-loss records', () => {

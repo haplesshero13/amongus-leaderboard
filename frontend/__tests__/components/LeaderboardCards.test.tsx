@@ -12,6 +12,9 @@ const mockRankings: ModelRanking[] = [
     overall_rating: 1780,
     impostor_rating: 1820,
     crewmate_rating: 1740,
+    overall_sigma: 250,
+    impostor_sigma: 300,
+    crewmate_sigma: 200,
     games_played: 25,
     current_rank: 3,
     impostor_games: 8,
@@ -34,9 +37,14 @@ describe('LeaderboardCards', () => {
 
   it('renders all rating types', () => {
     render(<LeaderboardCards rankings={mockRankings} />);
-    expect(screen.getByText('1780')).toBeDefined(); // overall
-    expect(screen.getByText('1820')).toBeDefined(); // impostor
-    expect(screen.getByText('1740')).toBeDefined(); // crewmate
+    // Now displays conservative ratings (rating - sigma) prominently
+    expect(screen.getByText('1530')).toBeDefined(); // overall: 1780 - 250
+    expect(screen.getByText('1520')).toBeDefined(); // impostor: 1820 - 300
+    expect(screen.getByText('1540')).toBeDefined(); // crewmate: 1740 - 200
+    // Average ratings shown in "Avg:" text
+    expect(screen.getByText(/Avg:\s*1780/)).toBeDefined();
+    expect(screen.getByText(/Avg:\s*1820/)).toBeDefined();
+    expect(screen.getByText(/Avg:\s*1740/)).toBeDefined();
   });
 
   it('renders win-loss record', () => {

@@ -37,7 +37,7 @@ MODELS = [
     "mistral-large-2512",
     "llama-3.3-70b",
     "gpt-5-mini",
-    # "kimi-k2.5",  # SKIP - blank responses from OpenRouter
+    "kimi-k2.5",
     "deepseek-r1",
     "qwen3-235b",
     "glm-4.7",
@@ -50,6 +50,12 @@ MODELS = [
     "qwen3-next-80b-thinking",
     "minimax-m2",
     "kimi-k2-thinking",
+    "glm-4.7-flash",
+    "olmo-3.1-32b",
+    "mimo-v2-flash",
+    "nemotron-3-nano-30b",
+    "gpt-5.2-chat",
+    "gemini-2.5-flash",
 ]
 
 PLAYERS_PER_GAME = 7

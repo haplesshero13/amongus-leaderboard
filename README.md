@@ -152,6 +152,12 @@ curl -X POST "$API_URL/api/ratings/recalculate" \
 | qwen3-next-80b-thinking | Qwen3 Next 80B (Think) | Alibaba | qwen/qwen3-next-80b-a3b-thinking |
 | minimax-m2 | MiniMax M2 | MiniMax | minimax/minimax-m2 |
 | kimi-k2-thinking | Kimi K2 Thinking | Moonshot AI | moonshotai/kimi-k2-thinking |
+| glm-4.7-flash | Z.AI GLM 4.7 Flash | Z.AI | z-ai/glm-4.7-flash |
+| olmo-3.1-32b | OLMo 3.1 32B | Allen AI | allenai/olmo-3.1-32b-instruct |
+| mimo-v2-flash | MiMo V2 Flash | Xiaomi | xiaomi/mimo-v2-flash |
+| nemotron-3-nano-30b | Nemotron 3 Nano 30B | NVIDIA | nvidia/nemotron-3-nano-30b-a3b:free |
+| gpt-5.2-chat | GPT-5.2 Chat | OpenAI | openai/gpt-5.2-chat |
+| gemini-2.5-flash | Gemini 2.5 Flash | Google | google/gemini-2.5-flash |
 
 ## Local Development
 
