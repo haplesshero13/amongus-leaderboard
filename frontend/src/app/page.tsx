@@ -11,11 +11,11 @@ function StatsBar() {
 
   const models = data?.data ?? [];
   const topImpostor = models.reduce(
-    (best, m) => (m.impostor_rating > (best?.impostor_rating ?? 0) ? m : best),
+    (best, m) => (m.impostor_rating - m.impostor_sigma > (best?.impostor_rating ?? 0) ? m : best),
     models[0]
   );
   const topCrewmate = models.reduce(
-    (best, m) => (m.crewmate_rating > (best?.crewmate_rating ?? 0) ? m : best),
+    (best, m) => (m.crewmate_rating - m.crewmate_sigma > (best?.crewmate_rating ?? 0) ? m : best),
     models[0]
   );
 
@@ -42,7 +42,7 @@ function StatsBar() {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Top Impostor{' '}
           {topImpostor && !isLoading && (
-            <span className="font-medium">({topImpostor.impostor_rating})</span>
+            <span className="font-medium">({topImpostor.impostor_rating - topImpostor.impostor_sigma})</span>
           )}
         </div>
       </div>
@@ -53,7 +53,7 @@ function StatsBar() {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Top Crewmate{' '}
           {topCrewmate && !isLoading && (
-            <span className="font-medium">({topCrewmate.crewmate_rating})</span>
+            <span className="font-medium">({topCrewmate.crewmate_rating - topCrewmate.crewmate_sigma})</span>
           )}
         </div>
       </div>

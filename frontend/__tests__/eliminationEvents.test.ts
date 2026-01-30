@@ -4,7 +4,6 @@ import { extractEliminationEvents } from '@/lib/utils/eliminationEvents';
 import {
   killAndEjectLogs,
   killAndEjectSummary,
-  expectedEvents as killAndEjectExpected,
 } from './fixtures/game-logs-kill-and-eject';
 
 import {
@@ -18,8 +17,6 @@ import {
   alternativeFormatLogs,
   noFullResponseLogs,
   edgeCaseSummary,
-  expectedVoteTieEvents,
-  expectedAlternativeFormatEvents,
 } from './fixtures/game-logs-edge-cases';
 
 describe('extractEliminationEvents', () => {
