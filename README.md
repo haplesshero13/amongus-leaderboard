@@ -48,6 +48,9 @@ export OPENROUTER_API_KEY="your-key-here"
 ### Public Endpoints
 
 ```bash
+# Health check
+curl "$API_URL/health"
+
 # Get leaderboard
 curl "$API_URL/api/leaderboard?page=1&per_page=20"
 
@@ -109,6 +112,14 @@ curl -X POST "$API_URL/api/games/trigger" \
     ],
     "webhook_url": "https://your-webhook.com/callback"
   }'
+
+# Delete a specific game
+curl -X DELETE "$API_URL/api/games/{game_id}" \
+  -H "X-API-Key: $OPENROUTER_API_KEY"
+
+# Delete ALL games (use with caution!)
+curl -X DELETE "$API_URL/api/games" \
+  -H "X-API-Key: $OPENROUTER_API_KEY"
 
 # Recalculate Ratings (Resets history!)
 # Returns {"models_reset": N, "games_processed": M}

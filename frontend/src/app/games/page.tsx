@@ -125,19 +125,23 @@ export default function GamesPage() {
           />
         )}
 
-        {!isLoading && !error && games.length === 0 && (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-gray-600 dark:text-gray-400">
-              No games found. Games will appear here once they have been played.
-            </p>
-          </div>
-        )}
+        {!isLoading &&
+          !error &&
+          games.filter((g) => g.status !== 'failed').length === 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+              <p className="text-gray-600 dark:text-gray-400">
+                No games found. Games will appear here once they have been played.
+              </p>
+            </div>
+          )}
 
         {!isLoading && !error && games.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {games.map((game) => (
-              <GameCard key={game.game_id} game={game} />
-            ))}
+            {games
+              .filter((game) => game.status !== 'failed')
+              .map((game) => (
+                <GameCard key={game.game_id} game={game} />
+              ))}
           </div>
         )}
       </main>

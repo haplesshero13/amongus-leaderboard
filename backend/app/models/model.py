@@ -133,9 +133,7 @@ class ModelRating(Base, TimestampMixin):
         crew_weight = max(1, self.crewmate_games or 0)
         total = imp_weight + crew_weight
 
-        return (
-            self.impostor_rating * imp_weight + self.crewmate_rating * crew_weight
-        ) / total
+        return (self.impostor_rating * imp_weight + self.crewmate_rating * crew_weight) / total
 
     def reset_to_defaults(self) -> None:
         """Reset all rating values to OpenSkill defaults."""
