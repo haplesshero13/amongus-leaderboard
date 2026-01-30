@@ -744,6 +744,7 @@ export default function GameDetailPage() {
       for (const event of lastStepEliminations) {
         items.push({ type: 'elimination', event });
       }
+      eliminationsInserted.add(lastStep);
     }
     
     // Also add elimination events that might be at a step not in the logs
