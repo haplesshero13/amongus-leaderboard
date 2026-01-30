@@ -15,6 +15,10 @@ RUN pip install uv
 # Copy dependency files
 COPY pyproject.toml .
 
+# Add a build argument that changes on every deployment to bust the cache
+# This ensures we pull the latest version of git dependencies (amongagents)
+ARG RAILWAY_DEPLOYMENT_ID
+
 # Install dependencies including psycopg2
 RUN uv pip install --system -e . psycopg2-binary
 
