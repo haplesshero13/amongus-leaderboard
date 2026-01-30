@@ -641,6 +641,7 @@ export default function GameDetailPage() {
   // Default to showing thinking (hideThinking = false)
   const [hideThinking, setHideThinking] = useState(false);
   const [filterStep, setFilterStep] = useState<number | null>(null);
+  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
 
   const { data: game, isLoading: gameLoading, error: gameError, refetch: refetchGame } = useGame(gameId);
   const { data: logs, isLoading: logsLoading, error: logsError } = useGameLogs(gameId);
@@ -664,7 +665,15 @@ export default function GameDetailPage() {
   const effectiveLogs = isRunningGame && streamLogs.length > 0 ? streamLogs : logs?.agent_logs;
   const effectiveSummary = isRunningGame && streamSummary ? streamSummary : logs?.summary;
 
-  const isLoading = gameLoading || (logsLoading && !isRunningGame);
+  // Track initial load completion
+  useEffect(() => {
+    if ((game || gameError) && !hasLoadedInitially) {
+      setHasLoadedInitially(true);
+    }
+  }, [game, gameError, hasLoadedInitially]);
+
+  // Only show loading spinner on the FIRST load, not on subsequent refetches for streaming games
+  const isInitialLoading = !hasLoadedInitially && (gameLoading || (logsLoading && !isRunningGame));
   const error = gameError || (!isRunningGame && logsError);
 
   // Parse raw logs into display entries
@@ -847,7 +856,7 @@ export default function GameDetailPage() {
 
       {/* Content */}
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        {isLoading && <LoadingSpinner />}
+        {isInitialLoading && <LoadingSpinner />}
 
         {error && (
           <ErrorMessage
@@ -856,7 +865,7 @@ export default function GameDetailPage() {
           />
         )}
 
-        {!isLoading && !error && game && (
+        {!isInitialLoading && !error && game && (
           <>
             {/* Game Summary */}
             <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
