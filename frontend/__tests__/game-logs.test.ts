@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 
 // Test the parseAgentLogs logic by importing and testing directly
 // Since it's not exported, we'll test via the types and expected behavior

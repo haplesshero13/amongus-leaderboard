@@ -24,7 +24,7 @@ function extractEliminationEvents(
 ): EliminationEvent[] {
   const events: EliminationEvent[] = [];
   const eliminatedPlayers = new Set<number>();
-  
+
   // Group logs by step
   const logsByStep = new Map<number, RawAgentLog[]>();
   for (const log of rawLogs) {
@@ -51,14 +51,14 @@ function extractEliminationEvents(
 
   // Process each step
   const sortedSteps = [...logsByStep.keys()].sort((a, b) => a - b);
-  
+
   // First pass: find KILL actions directly
   for (const step of sortedSteps) {
     const stepLogs = logsByStep.get(step)!;
-    
+
     for (const log of stepLogs) {
       const fullResponse = log.interaction?.full_response || '';
-      
+
       // Look for [Action] KILL Player N: color
       const killMatch = fullResponse.match(/\[Action\]\s*KILL\s+Player\s*(\d+)/i);
       if (killMatch && log.player?.identity === 'Impostor') {
@@ -67,7 +67,7 @@ function extractEliminationEvents(
           eliminatedPlayers.add(victimNum);
           const { color, role } = getPlayerInfo(victimNum);
           const killerNum = log.player?.name?.match(/Player (\d+)/)?.[1];
-          
+
           events.push({
             step,
             type: 'killed',
@@ -81,19 +81,19 @@ function extractEliminationEvents(
       }
     }
   }
-  
+
   // Second pass: find ejections from votes
   for (const step of sortedSteps) {
     const stepLogs = logsByStep.get(step)!;
-    
+
     // Collect votes from this step
     const votes: Record<string, string> = {};
     const voteCounts: Record<string, number> = {};
-    
+
     for (const log of stepLogs) {
       const fullResponse = log.interaction?.full_response || '';
       const playerName = log.player?.name || 'Unknown';
-      
+
       // Look for [Action] VOTE Player N
       const voteMatch = fullResponse.match(/\[Action\]\s*VOTE\s+Player\s*(\d+)/i);
       if (voteMatch) {
@@ -103,22 +103,22 @@ function extractEliminationEvents(
         voteCounts[targetKey] = (voteCounts[targetKey] || 0) + 1;
       }
     }
-    
+
     // Determine if someone was ejected (vote majority)
     if (Object.keys(voteCounts).length > 0) {
       const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
       const topVote = sortedVotes[0];
       const secondVote = sortedVotes[1];
-      
+
       // Check if there's a clear winner (not a tie)
       if (!secondVote || topVote[1] > secondVote[1]) {
         const ejectedKey = topVote[0];
         const ejectedNum = parseInt(ejectedKey.match(/Player (\d+)/)?.[1] || '0');
-        
+
         if (ejectedNum > 0 && !eliminatedPlayers.has(ejectedNum)) {
           eliminatedPlayers.add(ejectedNum);
           const { color, role } = getPlayerInfo(ejectedNum);
-          
+
           events.push({
             step,
             type: 'ejected',
@@ -131,10 +131,10 @@ function extractEliminationEvents(
       }
     }
   }
-  
+
   // Sort events by step
   events.sort((a, b) => a.step - b.step);
-  
+
   return events;
 }
 
@@ -153,7 +153,7 @@ function parseAgentLogs(rawLogs: RawAgentLog[], summary?: GameSummary | null): G
     if (playerName.includes(':')) {
       playerColor = playerName.split(':')[1].trim();
     }
-    
+
     // Extract player number from name for summary lookup
     // "Player 1: brown" -> "1"
     const playerNumMatch = playerName.match(/Player (\d+)/);
@@ -161,7 +161,7 @@ function parseAgentLogs(rawLogs: RawAgentLog[], summary?: GameSummary | null): G
 
     // Determine model name: try summary first (source of truth), then log
     let modelName = player.model || 'Unknown';
-    
+
     if (summary && playerNumber !== null) {
       const summaryPlayer = summary[`Player ${playerNumber}`];
       if (isPlayerSummary(summaryPlayer)) {
@@ -332,11 +332,10 @@ function ChatBubble({
 
           {/* Role badge */}
           <span
-            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-              isImpostor
+            className={`px-2 py-0.5 rounded-full text-xs font-medium ${isImpostor
                 ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
                 : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-            }`}
+              }`}
           >
             {entry.player_role}
           </span>
@@ -429,17 +428,15 @@ function GameEndBanner({ winner, winnerReason }: { winner: number; winnerReason:
   const isImpostorWin = winner === 1 || winner === 4;
 
   return (
-    <div className={`mt-6 rounded-lg border-2 p-6 text-center ${
-      isImpostorWin
+    <div className={`mt-6 rounded-lg border-2 p-6 text-center ${isImpostorWin
         ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
         : 'border-green-500 bg-green-50 dark:bg-green-900/20'
-    }`}>
+      }`}>
       <div className="text-2xl font-bold mb-2">
         GAME END
       </div>
-      <div className={`text-lg font-semibold ${
-        isImpostorWin ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-      }`}>
+      <div className={`text-lg font-semibold ${isImpostorWin ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+        }`}>
         {WINNER_LABELS[winner] || 'Unknown outcome'}
       </div>
       {winnerReason && (
@@ -458,21 +455,20 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
   const bgColor = PLAYER_COLORS[event.victimColor.toLowerCase()] || '#808080';
   const isImpostor = event.victimRole === 'Impostor';
   const isEjection = event.type === 'ejected';
-  
+
   return (
     <div className="my-4 mx-2">
-      <div 
-        className={`relative overflow-hidden rounded-xl border-2 ${
-          isEjection 
-            ? 'border-purple-500 bg-gradient-to-r from-purple-900/90 to-indigo-900/90' 
+      <div
+        className={`relative overflow-hidden rounded-xl border-2 ${isEjection
+            ? 'border-purple-500 bg-gradient-to-r from-purple-900/90 to-indigo-900/90'
             : 'border-red-600 bg-gradient-to-r from-red-900/90 to-rose-900/90'
-        } shadow-lg`}
+          } shadow-lg`}
       >
         {/* Animated background effect */}
         <div className="absolute inset-0 opacity-20">
           <div className={`absolute inset-0 ${isEjection ? 'bg-purple-500' : 'bg-red-500'} animate-pulse`} />
         </div>
-        
+
         {/* Content */}
         <div className="relative p-6 text-center">
           {/* Icon */}
@@ -483,19 +479,18 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
               <span className="text-4xl">💀</span>
             )}
           </div>
-          
+
           {/* Event type header */}
-          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${
-            isEjection ? 'text-purple-300' : 'text-red-300'
-          }`}>
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${isEjection ? 'text-purple-300' : 'text-red-300'
+            }`}>
             Step {event.step}
           </div>
-          
+
           {/* Main text */}
           <div className="text-2xl font-black text-white mb-2 tracking-wide">
             {isEjection ? (
               <>
-                <span 
+                <span
                   className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
                   style={{ backgroundColor: bgColor }}
                 >
@@ -505,7 +500,7 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
               </>
             ) : (
               <>
-                <span 
+                <span
                   className="inline-flex items-center gap-2 px-3 py-1 rounded-lg"
                   style={{ backgroundColor: bgColor }}
                 >
@@ -515,7 +510,7 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
               </>
             )}
           </div>
-          
+
           {/* Player details */}
           <div className="text-lg text-white/90 mb-3">
             Player {event.victimPlayerNumber} • {' '}
@@ -523,27 +518,26 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
               {event.victimRole}
             </span>
           </div>
-          
+
           {/* Impostor reveal for ejections */}
           {isEjection && (
-            <div className={`text-sm font-medium ${
-              isImpostor 
-                ? 'text-red-400' 
+            <div className={`text-sm font-medium ${isImpostor
+                ? 'text-red-400'
                 : 'text-green-400'
-            }`}>
-              {isImpostor 
-                ? '🔪 They were an Impostor!' 
+              }`}>
+              {isImpostor
+                ? '🔪 They were an Impostor!'
                 : '✨ They were not an Impostor.'}
             </div>
           )}
-          
+
           {/* Location for kills */}
           {!isEjection && event.location && (
             <div className="text-sm text-white/70">
               📍 Location: {event.location}
             </div>
           )}
-          
+
           {/* Vote breakdown for ejections */}
           {isEjection && event.votes && Object.keys(event.votes).length > 0 && (
             <div className="mt-4 pt-4 border-t border-white/20">
@@ -555,15 +549,14 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
                   const voterNum = voter.match(/Player (\d+)/)?.[1] || '?';
                   const targetNum = target.match(/Player (\d+)/)?.[1] || '?';
                   const votedForVictim = target === `Player ${event.victimPlayerNumber}`;
-                  
+
                   return (
-                    <span 
+                    <span
                       key={voter}
-                      className={`text-xs px-2 py-1 rounded ${
-                        votedForVictim 
-                          ? 'bg-white/20 text-white' 
+                      className={`text-xs px-2 py-1 rounded ${votedForVictim
+                          ? 'bg-white/20 text-white'
                           : 'bg-white/10 text-white/60'
-                      }`}
+                        }`}
                     >
                       P{voterNum} → P{targetNum}
                     </span>
@@ -695,20 +688,20 @@ export default function GameDetailPage() {
   const displayItems = useMemo((): DisplayItem[] => {
     const items: DisplayItem[] = [];
     let lastStep = -1;
-    
+
     // Filter entries by step if selected
     const entriesToShow = parsedEntries.filter((e) =>
       filterStep === null ? true : e.step === filterStep
     );
-    
+
     // Filter elimination events by step if selected
     const eventsToShow = eliminationEvents.filter((e) =>
       filterStep === null ? true : e.step === filterStep
     );
-    
+
     // Track which steps have had eliminations inserted
     const eliminationsInserted = new Set<number>();
-    
+
     for (const entry of entriesToShow) {
       // Add step marker if step changed
       if (entry.step !== lastStep) {
@@ -720,7 +713,7 @@ export default function GameDetailPage() {
           }
           eliminationsInserted.add(lastStep);
         }
-        
+
         // Determine phase from the entry's action or raw_prompt
         let phase = '';
         if (entry.action?.includes('SPEAK')) {
@@ -730,14 +723,14 @@ export default function GameDetailPage() {
         } else if (entry.action?.includes('MOVE') || entry.action?.includes('TASK') || entry.action?.includes('KILL')) {
           phase = 'Task';
         }
-        
+
         items.push({ type: 'step-marker', step: entry.step, phase });
         lastStep = entry.step;
       }
-      
+
       items.push({ type: 'log', entry });
     }
-    
+
     // Add any remaining eliminations after the last step
     if (lastStep >= 0 && !eliminationsInserted.has(lastStep)) {
       const lastStepEliminations = eventsToShow.filter(e => e.step === lastStep);
@@ -746,7 +739,7 @@ export default function GameDetailPage() {
       }
       eliminationsInserted.add(lastStep);
     }
-    
+
     // Also add elimination events that might be at a step not in the logs
     for (const event of eventsToShow) {
       if (!eliminationsInserted.has(event.step)) {
@@ -763,9 +756,46 @@ export default function GameDetailPage() {
         eliminationsInserted.add(event.step);
       }
     }
-    
+
     return items;
   }, [parsedEntries, eliminationEvents, filterStep]);
+
+  // Pre-calculate the set of eliminated players at each index of the list
+  const [topVisibleIndex, setTopVisibleIndex] = useState(0);
+
+  const deadPlayersTimeline = useMemo(() => {
+    const timeline: Set<number>[] = [];
+    const currentDead = new Set<number>();
+
+    for (const item of displayItems) {
+      // Snapshot state BEFORE this item is fully processed
+      timeline.push(new Set(currentDead));
+
+      if (item.type === 'elimination') {
+        currentDead.add(item.event.victimPlayerNumber);
+      }
+    }
+    // Add one more for the end state
+    timeline.push(new Set(currentDead));
+
+    return timeline;
+  }, [displayItems]);
+
+  const currentAliveParticipants = useMemo(() => {
+    if (!game?.participants) return [];
+
+    // Safety check for index
+    // Add a small offset so the state updates as soon as the event hits the top of the screen (or just before)
+    // We want the "past" log to reflect the state *after* the events we've scrolled past.
+    // Virtuoso's startIndex is the first rendered item. With top buffer, this might be off-screen.
+    // Adjusted to +2 to make it feel reactive.
+    const index = Math.min(topVisibleIndex + 2, deadPlayersTimeline.length - 1);
+    const deadSet = deadPlayersTimeline[index] || new Set();
+
+    return game.participants
+      .filter(p => !deadSet.has(p.player_number))
+      .sort((a, b) => a.player_number - b.player_number);
+  }, [game?.participants, deadPlayersTimeline, topVisibleIndex]);
 
   // Filter entries by step if selected (legacy - now handled in displayItems)
   const filteredEntries = useMemo(() => {
@@ -832,13 +862,12 @@ export default function GameDetailPage() {
             <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
               <div className="mb-4 flex items-center justify-between">
                 <span
-                  className={`rounded-full px-3 py-1 text-sm font-medium ${
-                    game.status === 'completed'
+                  className={`rounded-full px-3 py-1 text-sm font-medium ${game.status === 'completed'
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                       : game.status === 'failed'
                         ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                  }`}
+                    }`}
                 >
                   {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
                 </span>
@@ -862,7 +891,7 @@ export default function GameDetailPage() {
                         const displayColor = effectiveSummary
                           ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
-                        
+
                         // Check if this player was eliminated
                         const eliminationEvent = eliminationEvents.find(
                           e => e.victimPlayerNumber === p.player_number
@@ -903,14 +932,14 @@ export default function GameDetailPage() {
                         const displayColor = effectiveSummary
                           ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
                           : p.player_color;
-                        
+
                         // Check if this player was eliminated
                         const eliminationEvent = eliminationEvents.find(
                           e => e.victimPlayerNumber === p.player_number
                         );
                         const isEliminated = !!eliminationEvent;
                         const eliminationEmoji = eliminationEvent?.type === 'ejected' ? '🚀' : eliminationEvent?.type === 'killed' ? '💀' : '';
-                          
+
                         return (
                           <div key={p.player_number} className={`flex items-center gap-2 ${isEliminated ? 'opacity-60' : ''}`}>
                             <div className={isEliminated ? 'line-through decoration-2' : ''}>
@@ -979,12 +1008,45 @@ export default function GameDetailPage() {
             {parsedEntries.length > 0 && (
               <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
                 {/* Chat header */}
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">Game Replay</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {filteredEntries.length} messages, {eliminationEvents.length} eliminations
-                    {filterStep !== null && ` (Step ${filterStep})`}
-                  </p>
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="font-semibold text-gray-900 dark:text-gray-100">Game Replay</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {filteredEntries.length} messages, {eliminationEvents.length} eliminations
+                      {filterStep !== null && ` (Step ${filterStep})`}
+                    </p>
+                  </div>
+
+                  {/* Alive Players Indicator */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Alive:</span>
+                    <div className="flex items-center gap-1">
+                      {currentAliveParticipants.map(p => {
+                        const displayColor = effectiveSummary
+                          ? getPlayerColorFromSummary(effectiveSummary, p.player_number)
+                          : p.player_color;
+                        const bgColor = PLAYER_COLORS[displayColor.toLowerCase()] || '#808080';
+
+                        return (
+                          <div
+                            key={p.player_number}
+                            className="group relative"
+                          >
+                            <div
+                              className="h-3 w-3 rounded-full shadow-sm ring-1 ring-black/10 transition-transform hover:scale-125"
+                              style={{ backgroundColor: bgColor }}
+                            />
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 z-50 mb-2 hidden w-max -translate-x-1/2 group-hover:block px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg whitespace-nowrap pointer-events-none">
+                              P{p.player_number} • {p.model_name}
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <span className="ml-1 text-xs text-gray-400">({currentAliveParticipants.length})</span>
+                  </div>
                 </div>
 
                 {/* Messages container - virtualized for performance */}
@@ -996,7 +1058,10 @@ export default function GameDetailPage() {
                   <div className="h-[600px] overflow-hidden">
                     <Virtuoso
                       data={displayItems}
-                      increaseViewportBy={{ top: 200, bottom: 200 }}
+                      increaseViewportBy={{ top: 0, bottom: 200 }}
+                      rangeChanged={(range) => {
+                        setTopVisibleIndex(range.startIndex);
+                      }}
                       itemContent={(index, item) => {
                         if (item.type === 'elimination') {
                           return <EliminationCard key={`elim-${item.event.step}-${item.event.victimPlayerNumber}`} event={item.event} />;
