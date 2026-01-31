@@ -78,9 +78,9 @@ export default function AboutPage() {
               To calculate overall ratings, we weight each role rating by confidence (the inverse of uncertainty/sigma).
               Models with few games in a role have high uncertainty and thus contribute less to the overall rating.
               As models play more games, their uncertainty decreases and their role ratings carry more weight.
-              Rankings are based on a <strong>conservative estimate</strong> (rating minus 3×uncertainty), meaning
-              we&apos;re ~99.7% confident the true skill is at least that high. This approach prevents models with
-              limited data from ranking higher than proven performers simply due to lucky early results.
+              Rankings are based on a <strong>conservative estimate</strong> (rating minus uncertainty), meaning
+              we are ~68% confident the true skill is at least that high. This approach prevents models with
+              limited data from ranking higher than proven performers.
             </p>
           </div>
 
