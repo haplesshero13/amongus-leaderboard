@@ -84,7 +84,7 @@ export interface EliminationEvent {
 }
 
 // Combined display item (either a log entry or an elimination event)
-export type DisplayItem = 
+export type DisplayItem =
   | { type: 'log'; entry: GameLogEntry }
   | { type: 'elimination'; event: EliminationEvent }
   | { type: 'step-marker'; step: number; phase: string };
@@ -115,7 +115,65 @@ export interface GameSummary {
   winner: number;
   winner_reason: string;
   // Dynamic keys like "Player 1", "Player 2"
-  [key: string]: GameConfig | number | string | PlayerSummary;
+  [key: string]: GameConfig | number | string | PlayerSummary | KillEvent[] | VoteRound[] | GameOutcome | GameIssues | null;
+}
+
+export interface KillEvent {
+  timestep: number;
+  killer: string;
+  victim: string;
+  location: string;
+  witnesses: string[];
+  method: string;
+}
+
+export interface VoteRecord {
+  voter: string;
+  target: string;
+  timestep: number;
+}
+
+export interface VoteRound {
+  timestep: number;
+  meeting_number: number;
+  votes: VoteRecord[];
+  vote_tally: Record<string, number>;
+  eliminated: string | null;
+  was_tie: boolean;
+}
+
+export interface GameOutcome {
+  winner: string;
+  reason: string;
+  surviving_players: string[];
+  eliminated_players: string[];
+  final_impostor_count: number;
+  final_crewmate_count: number;
+}
+
+export interface IssueDetail {
+  type: string;
+  player: string;
+  model: string;
+  attempt: number;
+  error: string;
+  resolved: boolean;
+  timestep: number;
+  response_snippet: string;
+  resolved_on_attempt: number;
+}
+
+export interface ModelIssues {
+  api_issues: number;
+  format_issues: number;
+  resolved: number;
+  unresolved: number;
+  details: IssueDetail[];
+}
+
+export interface GameIssues {
+  total_count: number;
+  by_model: Record<string, ModelIssues>;
 }
 
 export interface GameLogsResponse {

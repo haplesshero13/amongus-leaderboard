@@ -19,6 +19,9 @@ import {
   edgeCaseSummary,
 } from './fixtures/game-logs-edge-cases';
 
+import { reproSummary } from './fixtures/reproduction-summary';
+import { legacyKillLog } from './fixtures/legacy-logs';
+
 describe('extractEliminationEvents', () => {
   describe('standard kill and ejection', () => {
     it('detects a kill at step 5', () => {
@@ -236,5 +239,51 @@ describe('extractEliminationEvents', () => {
       // Should still get brown from the log's player name "Player 1: brown"
       expect(killEvent?.victimColor).toBe('brown');
     });
+
+    describe('issue reproduction (missing elimination events)', () => {
+      it('extracts all events from summary including multiple kills at same timestep', () => {
+        // We pass empty logs because the summary should take precedence
+        const events = extractEliminationEvents([], reproSummary as any);
+
+        // We expect 2 kills and 1 ejection
+        expect(events.length).toBe(3);
+
+        const kills = events.filter((e) => e.type === 'killed');
+        expect(kills.length).toBe(2);
+
+        const ejections = events.filter((e) => e.type === 'ejected');
+        expect(ejections.length).toBe(1);
+
+        // Verify details of first kill (Player 6: blue)
+        const kill1 = kills.find((k) => k.victimPlayerNumber === 6);
+        expect(kill1).toBeDefined();
+        expect(kill1?.victimColor).toBe('blue');
+
+        // Verify details of second kill (Player 7: orange)
+        const kill2 = kills.find((k) => k.victimPlayerNumber === 7);
+        expect(kill2).toBeDefined();
+        expect(kill2?.victimColor).toBe('orange');
+
+        // Verify ejection (Player 2: yellow)
+        expect(ejections[0].victimPlayerNumber).toBe(2);
+        expect(ejections[0].victimColor).toBe('yellow');
+      });
+    });
+  });
+});
+
+describe('legacy log support', () => {
+  it('correctly parses kills from legacy logs without summary', () => {
+    // Pass null/undefined for summary to force usage of manual parsing logic
+    const events = extractEliminationEvents(legacyKillLog, null);
+
+    expect(events.length).toBe(1);
+    expect(events[0].type).toBe('killed');
+    expect(events[0].killerPlayerNumber).toBe(6); // Player 6: pink
+
+    // The victim is "Player 7: lime"
+    // "Player 6: pink" killed "Player 7: lime"
+    expect(events[0].victimPlayerNumber).toBe(7);
+    expect(events[0].victimColor).toBe('lime');
   });
 });
