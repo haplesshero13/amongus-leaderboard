@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractEliminationEvents } from '@/lib/utils/eliminationEvents';
+import { GameSummary } from '@/types/game';
 
 import {
   killAndEjectLogs,
@@ -243,7 +244,7 @@ describe('extractEliminationEvents', () => {
     describe('issue reproduction (missing elimination events)', () => {
       it('extracts all events from summary including multiple kills at same timestep', () => {
         // We pass empty logs because the summary should take precedence
-        const events = extractEliminationEvents([], reproSummary as any);
+        const events = extractEliminationEvents([], reproSummary as unknown as GameSummary);
 
         // We expect 2 kills and 1 ejection
         expect(events.length).toBe(3);
