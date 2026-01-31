@@ -1,5 +1,7 @@
 import json
 
+from pydantic import BaseModel, Field
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
@@ -234,6 +236,37 @@ async def stream_game_logs(game_id: str, db: Session = Depends(get_db)):
             "X-Accel-Buffering": "no",  # Disable nginx buffering
         },
     )
+
+
+class MarkGameFailedRequest(BaseModel):
+    """Request to mark a game as failed."""
+    error_message: str = Field(..., description="Error message explaining why the game failed validation")
+
+
+@router.patch("/games/{game_id}/fail", status_code=200)
+async def mark_game_failed(
+    game_id: str,
+    request: MarkGameFailedRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Mark a game as failed with an error message.
+
+    This is used for games that completed but failed validation
+    (e.g., truncated LLM responses, missing actions, etc.).
+    Failed games are excluded from ratings calculations.
+    Requires API key authentication.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    game.status = GameStatus.FAILED
+    game.error_message = request.error_message
+    db.commit()
+
+    return {"game_id": game_id, "status": "failed", "error_message": request.error_message}
 
 
 @router.delete("/games/{game_id}", status_code=204)

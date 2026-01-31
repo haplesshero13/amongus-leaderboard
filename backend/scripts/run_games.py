@@ -30,8 +30,8 @@ import httpx
 # All registered models except kimi-k2.5 (unstable)
 MODELS = [
     "claude-haiku-4.5",
-    "gemini-3-flash",
-    "gpt-5-mini",
+    # "gemini-3-flash",
+    # "gpt-5-mini",
     # "gpt-oss-20b",
     # "solar-pro-3",
     # "mistral-large-2512",
@@ -39,21 +39,21 @@ MODELS = [
     # "llama-3.3-70b",
     # "deepseek-r1",
     # "qwen3-235b",
-    # "glm-4.7",
+    "glm-4.7",
     "claude-sonnet-4.5",
-    # "gpt-oss-120b",
-    # "deepseek-v3.2",
-    # "llama-4-maverick",
-    # "llama-4-scout",
+    "gpt-oss-120b",
+    "deepseek-v3.2",
+    "llama-4-maverick",
+    "llama-4-scout",
     # "llama-3.1-405b",
-    # "qwen3-next-80b-thinking",
-    "minimax-m2",
+    "qwen3-next-80b-thinking",
+    # "minimax-m2",
     "kimi-k2-thinking",
-    "glm-4.7-flash",
-    "olmo-3.1-32b",
+    # "glm-4.7-flash",
+    # "olmo-3.1-32b",
     # "mimo-v2-flash",
     # "nemotron-3-nano-30b",
-    "gpt-5.2-chat",
+    # "gpt-5.2-chat",
     "gemini-2.5-flash",
 ]
 
@@ -174,7 +174,7 @@ def main():
 
     triggered = []
     for i, game_models in enumerate(games, 1):
-        print(f"Game {i}/{len(games)}: {game_models[:2]}... ", end="", flush=True)
+        print(f"Game {i}/{len(games)}: {game_models}", end="", flush=True)
 
         try:
             result = trigger_game(args.api_url, api_key, game_models)

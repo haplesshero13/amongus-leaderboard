@@ -474,3 +474,80 @@ class TestGamesEndpoint:
         data = response.json()
         assert len(data) == 2
         assert all(g["status"] == "completed" for g in data)
+
+    def test_mark_game_failed(self, client, db_session, auth_headers):
+        """Should mark a completed game as failed with error message."""
+        # Create a completed game
+        game = Game(status=GameStatus.COMPLETED, winner=1, winner_reason="Test win")
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/games/{game.id}/fail",
+            json={"error_message": "Missing Action in response for Player 5"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["game_id"] == game.id
+        assert data["status"] == "failed"
+        assert "Missing Action" in data["error_message"]
+
+        # Verify database was updated
+        db_session.refresh(game)
+        assert game.status == GameStatus.FAILED
+        assert "Missing Action" in game.error_message
+
+    def test_mark_game_failed_requires_auth(self, client, db_session):
+        """Should require API key to mark game as failed."""
+        game = Game(status=GameStatus.COMPLETED, winner=1)
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/games/{game.id}/fail",
+            json={"error_message": "Test error"},
+        )
+
+        assert response.status_code == 401
+
+    def test_mark_game_failed_not_found(self, client, auth_headers):
+        """Should return 404 for nonexistent game."""
+        response = client.patch(
+            "/api/games/nonexistent-game-id/fail",
+            json={"error_message": "Test error"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_mark_game_failed_requires_error_message(self, client, db_session, auth_headers):
+        """Should require error_message field."""
+        game = Game(status=GameStatus.COMPLETED, winner=1)
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/games/{game.id}/fail",
+            json={},  # Missing error_message
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_list_games_filter_by_failed_status(self, client, db_session):
+        """Should filter games by failed status."""
+        db_session.add(Game(status=GameStatus.COMPLETED, winner=1))
+        db_session.add(Game(status=GameStatus.FAILED, error_message="Test failure"))
+        db_session.add(Game(status=GameStatus.PENDING))
+        db_session.commit()
+
+        response = client.get("/api/games?status=failed")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["status"] == "failed"
+        assert data[0]["error_message"] == "Test failure"
+
