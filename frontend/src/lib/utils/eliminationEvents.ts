@@ -13,20 +13,70 @@ function isPlayerSummary(data: unknown): data is PlayerSummary {
 }
 
 /**
+ * Extract the Action field from a log entry's response.
+ * Returns the trimmed action string, or null if not found/empty.
+ */
+export function getActionFromLog(log: RawAgentLog): string | null {
+  const response = log.interaction?.response;
+
+  if (typeof response === 'string') {
+    const trimmed = response.trim();
+    return trimmed || null;
+  }
+
+  if (typeof response === 'object' && response !== null) {
+    const responseObj = response as Record<string, unknown>;
+    // Check both "Action" and "action" (case sensitivity)
+    const action = responseObj.Action || responseObj.action;
+    if (typeof action === 'string') {
+      const trimmed = action.trim();
+      return trimmed || null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse a KILL action string. Returns victim player number or null.
+ * Action must start with "KILL Player N" to match.
+ */
+export function parseKillAction(action: string): number | null {
+  if (!action.toUpperCase().startsWith('KILL ')) {
+    return null;
+  }
+  const match = action.match(/^KILL\s+Player\s*(\d+)/i);
+  return match ? parseInt(match[1]) : null;
+}
+
+/**
+ * Parse a VOTE action string. Returns target player number or null.
+ * Action must start with "VOTE Player N" to match.
+ */
+export function parseVoteAction(action: string): number | null {
+  if (!action.toUpperCase().startsWith('VOTE ')) {
+    return null;
+  }
+  const match = action.match(/^VOTE\s+Player\s*(\d+)/i);
+  return match ? parseInt(match[1]) : null;
+}
+
+/**
+ * Extract player number from a player name like "Player 3: red"
+ */
+export function getPlayerNumber(playerName: string): number | null {
+  const match = playerName.match(/Player\s*(\d+)/i);
+  return match ? parseInt(match[1]) : null;
+}
+
+/**
  * Extract elimination events from raw game logs.
- *
- * Looks for:
- * 1. KILL actions in full_response -> killed event
- * 2. VOTE actions to determine ejections
- *
- * Known formats for KILL actions:
- * - "[Action] KILL Player N"
- * - "[Action] KILL Player N: color"
- * - "KILL Player N"
- *
- * Known formats for VOTE actions:
- * - "[Action] VOTE Player N"
- * - "VOTE Player N"
+ * 
+ * The action must START with the action type (KILL or VOTE) to be detected.
+ * 
+ * Known formats:
+ * - "KILL Player N" or "KILL Player N: color"
+ * - "VOTE Player N" or "VOTE Player N: color"
  */
 export function extractEliminationEvents(
   rawLogs: RawAgentLog[],
@@ -73,119 +123,60 @@ export function extractEliminationEvents(
     return { color, role };
   };
 
-  // Process each step
   const sortedSteps = [...logsByStep.keys()].sort((a, b) => a - b);
 
-  // First pass: find KILL actions directly
+  // First pass: find KILL actions
   for (const step of sortedSteps) {
-    const stepLogs = logsByStep.get(step)!;
+    for (const log of logsByStep.get(step)!) {
+      const action = getActionFromLog(log);
+      if (!action) continue;
 
-    for (const log of stepLogs) {
-      const fullResponse = log.interaction?.full_response || '';
+      const victimNum = parseKillAction(action);
+      if (victimNum && log.player?.identity === 'Impostor' && !eliminatedPlayers.has(victimNum)) {
+        eliminatedPlayers.add(victimNum);
+        const { color, role } = getPlayerInfo(victimNum);
+        const killerNum = getPlayerNumber(log.player?.name || '');
 
-      // Also check the response.Action field directly
-      const responseAction =
-        typeof log.interaction?.response === 'object'
-          ? (log.interaction.response as Record<string, unknown>).Action ||
-            (log.interaction.response as Record<string, unknown>).action
-          : typeof log.interaction?.response === 'string'
-            ? log.interaction.response
-            : '';
-      const actionStr = typeof responseAction === 'string' ? responseAction : '';
-
-      // Combine both sources to check for KILL
-      const textToSearch = `${fullResponse}\n${actionStr}`;
-
-      // Look for KILL actions in multiple formats:
-      // 1. "[Action] KILL Player N: color" or "[Action] KILL Player N"
-      // 2. Just "KILL Player N" (without [Action] prefix)
-      const killPatterns = [
-        /\[Action\]\s*KILL\s+Player\s*(\d+)/i,
-        /\bKILL\s+Player\s*(\d+)/i,
-      ];
-
-      for (const pattern of killPatterns) {
-        const killMatch = textToSearch.match(pattern);
-        if (killMatch && log.player?.identity === 'Impostor') {
-          const victimNum = parseInt(killMatch[1]);
-          if (victimNum > 0 && !eliminatedPlayers.has(victimNum)) {
-            eliminatedPlayers.add(victimNum);
-            const { color, role } = getPlayerInfo(victimNum);
-            const killerNum = log.player?.name?.match(/Player (\d+)/)?.[1];
-
-            events.push({
-              step,
-              type: 'killed',
-              victimPlayerNumber: victimNum,
-              victimColor: color,
-              victimRole: role,
-              killerPlayerNumber: killerNum ? parseInt(killerNum) : undefined,
-              location: log.player?.location || 'Unknown',
-            });
-            break; // Found a match, don't process other patterns
-          }
-        }
+        events.push({
+          step,
+          type: 'killed',
+          victimPlayerNumber: victimNum,
+          victimColor: color,
+          victimRole: role,
+          killerPlayerNumber: killerNum ?? undefined,
+          location: log.player?.location || 'Unknown',
+        });
       }
     }
   }
 
   // Second pass: find ejections from votes
   for (const step of sortedSteps) {
-    const stepLogs = logsByStep.get(step)!;
-
-    // Collect votes from this step
     const votes: Record<string, string> = {};
     const voteCounts: Record<string, number> = {};
 
-    for (const log of stepLogs) {
-      const fullResponse = log.interaction?.full_response || '';
-      const playerName = log.player?.name || 'Unknown';
+    for (const log of logsByStep.get(step)!) {
+      const action = getActionFromLog(log);
+      if (!action) continue;
 
-      // Also check the response.Action field directly
-      const responseAction =
-        typeof log.interaction?.response === 'object'
-          ? (log.interaction.response as Record<string, unknown>).Action ||
-            (log.interaction.response as Record<string, unknown>).action
-          : typeof log.interaction?.response === 'string'
-            ? log.interaction.response
-            : '';
-      const actionStr = typeof responseAction === 'string' ? responseAction : '';
-
-      // Combine both sources to check for VOTE
-      const textToSearch = `${fullResponse}\n${actionStr}`;
-
-      // Look for VOTE actions in multiple formats:
-      // 1. "[Action] VOTE Player N"
-      // 2. Just "VOTE Player N"
-      const votePatterns = [
-        /\[Action\]\s*VOTE\s+Player\s*(\d+)/i,
-        /\bVOTE\s+Player\s*(\d+)/i,
-      ];
-
-      for (const pattern of votePatterns) {
-        const voteMatch = textToSearch.match(pattern);
-        if (voteMatch) {
-          const targetNum = parseInt(voteMatch[1]);
-          const targetKey = `Player ${targetNum}`;
-          votes[playerName] = targetKey;
-          voteCounts[targetKey] = (voteCounts[targetKey] || 0) + 1;
-          break; // Found a match, don't process other patterns
-        }
+      const targetNum = parseVoteAction(action);
+      if (targetNum) {
+        const voterName = log.player?.name || 'Unknown';
+        const targetKey = `Player ${targetNum}`;
+        votes[voterName] = targetKey;
+        voteCounts[targetKey] = (voteCounts[targetKey] || 0) + 1;
       }
     }
 
-    // Determine if someone was ejected (vote majority)
+    // Determine if someone was ejected (majority vote, no tie)
     if (Object.keys(voteCounts).length > 0) {
       const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
-      const topVote = sortedVotes[0];
-      const secondVote = sortedVotes[1];
+      const [topVote, secondVote] = sortedVotes;
 
-      // Check if there's a clear winner (not a tie)
       if (!secondVote || topVote[1] > secondVote[1]) {
-        const ejectedKey = topVote[0];
-        const ejectedNum = parseInt(ejectedKey.match(/Player (\d+)/)?.[1] || '0');
+        const ejectedNum = getPlayerNumber(topVote[0]);
 
-        if (ejectedNum > 0 && !eliminatedPlayers.has(ejectedNum)) {
+        if (ejectedNum && !eliminatedPlayers.has(ejectedNum)) {
           eliminatedPlayers.add(ejectedNum);
           const { color, role } = getPlayerInfo(ejectedNum);
 
