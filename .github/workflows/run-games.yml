@@ -12,6 +12,8 @@ on:
 jobs:
   run-games:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: backend
