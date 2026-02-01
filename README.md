@@ -214,6 +214,21 @@ Push to `main` triggers automatic deployment. Set up once:
 2. Add `RAILWAY_TOKEN` to GitHub repo secrets (Settings > Secrets > Actions)
 3. Push to main - both services deploy automatically
 
+### Run Games via GitHub Actions
+
+Trigger games remotely via GitHub Actions workflow:
+
+1. Add `OPENROUTER_API_KEY` to GitHub repo secrets (Settings > Secrets > Actions)
+2. Go to Actions tab → "Run Games" workflow → "Run workflow"
+3. Enter the number of games to run (default: 10)
+4. Click "Run workflow"
+
+The workflow will:
+- Set up Python environment
+- Install dependencies
+- Execute `python -m scripts.run_games --games N --yes`
+- Show results in the workflow logs
+
 ### Manual Deploy (One-liner)
 
 ```bash
