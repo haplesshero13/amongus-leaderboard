@@ -14,6 +14,9 @@ Usage:
     # Run custom number of games
     python -m scripts.run_games --games 5
 
+    # Skip confirmation prompt (useful for CI/CD)
+    python -m scripts.run_games --games 5 --yes
+
     # Dry run (show games without triggering)
     python -m scripts.run_games --dry-run
 """
@@ -133,6 +136,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run multiple balanced games")
     parser.add_argument("--games", type=int, default=10, help="Number of games to run")
     parser.add_argument("--dry-run", action="store_true", help="Show plan without triggering")
+    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt")
     parser.add_argument("--delay", type=int, default=5, help="Seconds between game triggers")
     parser.add_argument(
         "--api-url",
@@ -158,11 +162,12 @@ def main():
         return
 
     # Confirm
-    print(f"\nReady to trigger {len(games)} games.")
-    response = input("Proceed? [y/N] ").strip().lower()
-    if response != "y":
-        print("Aborted.")
-        return
+    if not args.yes:
+        print(f"\nReady to trigger {len(games)} games.")
+        response = input("Proceed? [y/N] ").strip().lower()
+        if response != "y":
+            print("Aborted.")
+            return
 
     # Trigger games
     print(f"\n{'=' * 60}")
