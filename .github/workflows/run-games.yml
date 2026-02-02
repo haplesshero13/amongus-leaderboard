@@ -4,21 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       games:
-        description: 'Number of games to run'
+        description: "Number of games to run"
         required: true
-        default: '10'
+        default: 5
         type: number
 
 jobs:
   run-games:
     runs-on: ubuntu-latest
-    container:
-      image: astral/uv:python3.11-trixie-slim
     permissions:
       contents: read
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
         run: uv pip install --system -e ".[dev]"
