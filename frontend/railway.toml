@@ -4,6 +4,8 @@ dockerfilePath = "Dockerfile"
 
 [build.args]
 NEXT_PUBLIC_API_URL = "${{NEXT_PUBLIC_API_URL}}"
+NEXT_PUBLIC_POSTHOG_KEY = "${{NEXT_PUBLIC_POSTHOG_KEY}}"
+NEXT_PUBLIC_POSTHOG_HOST = "${{NEXT_PUBLIC_POSTHOG_HOST}}"
 
 [deploy]
 restartPolicyType = "on_failure"
