@@ -1,6 +1,36 @@
 'use client';
 
+import posthog from 'posthog-js';
 import { PageLayout } from '@/components/layout/PageLayout';
+
+interface ExternalLinkProps {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  linkType?: string;
+}
+
+function ExternalLink({ href, children, className = "text-blue-600 hover:underline dark:text-blue-400", linkType = "external" }: ExternalLinkProps) {
+  const handleClick = () => {
+    posthog.capture('external_link_clicked', {
+      url: href,
+      link_text: typeof children === 'string' ? children : undefined,
+      link_type: linkType,
+    });
+  };
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleClick}
+      className={className}
+    >
+      {children}
+    </a>
+  );
+}
 
 export default function AboutPage() {
   return (
@@ -25,14 +55,12 @@ export default function AboutPage() {
           </p>
           <p>
             This project builds directly on the open-source code from{' '}
-            <a
+            <ExternalLink
               href="https://github.com/7vik/AmongUs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline dark:text-blue-400"
+              linkType="github"
             >
               Golechha & Garriga-Alonso&apos;s &quot;Among Us: A Sandbox&quot;
-            </a>{' '}
+            </ExternalLink>{' '}
             research, with our extension for running games with many distinct models,
             rather than a single model per role.
           </p>
@@ -59,14 +87,9 @@ export default function AboutPage() {
             </h3>
             <p className="text-gray-700 dark:text-gray-300">
               We use the{' '}
-              <a
-                href="https://openskill.me/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
+              <ExternalLink href="https://openskill.me/" linkType="documentation">
                 OpenSkill
-              </a>{' '}
+              </ExternalLink>{' '}
               rating system (similar to TrueSkill) to track model performance. Each model has
               separate ratings for Impostor and Crewmate roles, reflecting the different skills
               required for each. The overall rating is a weighted average based on games played.
@@ -98,14 +121,9 @@ export default function AboutPage() {
             <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Latest Models</h3>
             <p className="text-gray-700 dark:text-gray-300">
               We add new models as they become available through{' '}
-              <a
-                href="https://openrouter.ai/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
+              <ExternalLink href="https://openrouter.ai/" linkType="service">
                 OpenRouter
-              </a>
+              </ExternalLink>
               . This includes frontier models from OpenAI, Anthropic, Google, DeepSeek, and others,
               including closed and open-weight models. Our goal is to provide comprehensive coverage
               of the LLM landscape.
@@ -148,41 +166,33 @@ export default function AboutPage() {
             <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
               The primary research this project is built on. Introduces a text-based Among Us
               environment for studying deceptive behavior in LLM agents. We directly use and{' '}
-              <a
-                href="https://github.com/haplesshero13/AmongLLMs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
+              <ExternalLink href="https://github.com/haplesshero13/AmongLLMs" linkType="github">
                 extend
-              </a>{' '}
+              </ExternalLink>{' '}
               their open-source implementation.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a
+              <ExternalLink
                 href="https://arxiv.org/abs/2504.04072"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="paper"
               >
                 arXiv Paper
-              </a>
-              <a
+              </ExternalLink>
+              <ExternalLink
                 href="https://github.com/7vik/AmongUs"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="github"
               >
                 Original Code
-              </a>
-              <a
+              </ExternalLink>
+              <ExternalLink
                 href="https://github.com/haplesshero13/AmongLLMs"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="github"
               >
                 Our Fork
-              </a>
+              </ExternalLink>
             </div>
           </div>
 
@@ -201,22 +211,20 @@ export default function AboutPage() {
               they truly comprehend strategic gameplay.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a
+              <ExternalLink
                 href="https://arxiv.org/abs/2407.16521"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="paper"
               >
                 arXiv Paper
-              </a>
-              <a
+              </ExternalLink>
+              <ExternalLink
                 href="https://github.com/cyzus/among-agents"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="github"
               >
                 GitHub
-              </a>
+              </ExternalLink>
             </div>
           </div>
 
@@ -235,14 +243,13 @@ export default function AboutPage() {
               advantage.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a
+              <ExternalLink
                 href="https://arxiv.org/abs/2502.20426"
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
+                linkType="paper"
               >
                 arXiv Paper
-              </a>
+              </ExternalLink>
             </div>
           </div>
         </div>

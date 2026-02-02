@@ -1,4 +1,5 @@
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
@@ -56,7 +57,17 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
             return (
               <tr
                 key={model.model_id}
-                onClick={() => router.push(`/games?models=${model.model_id}`)}
+                onClick={() => {
+                  posthog.capture('model_clicked', {
+                    model_id: model.model_id,
+                    model_name: model.model_name,
+                    provider: model.provider,
+                    current_rank: model.current_rank,
+                    overall_rating: model.overall_rating,
+                    games_played: model.games_played,
+                  });
+                  router.push(`/games?models=${model.model_id}`);
+                }}
                 className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <td className="px-4 py-4">

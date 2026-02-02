@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Markdown from 'react-markdown';
 import { Virtuoso } from 'react-virtuoso';
+import posthog from 'posthog-js';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { useGameStream } from '@/lib/hooks/useGameStream';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -536,6 +537,24 @@ export default function GameDetailPage() {
   const [filterStep, setFilterStep] = useState<number | null>(null);
   const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
 
+  const handleThinkingToggle = (newValue: boolean) => {
+    posthog.capture('thinking_visibility_toggled', {
+      game_id: gameId,
+      hide_thinking: newValue,
+      action: newValue ? 'hidden' : 'shown',
+    });
+    setHideThinking(newValue);
+  };
+
+  const handleStepFilterChange = (newStep: number | null) => {
+    posthog.capture('game_step_filter_changed', {
+      game_id: gameId,
+      from_step: filterStep,
+      to_step: newStep,
+    });
+    setFilterStep(newStep);
+  };
+
   const { data: game, isLoading: gameLoading, error: gameError, refetch: refetchGame } = useGame(gameId);
   const { data: logs, isLoading: logsLoading, error: logsError } = useGameLogs(gameId);
 
@@ -898,7 +917,7 @@ export default function GameDetailPage() {
                 <input
                   type="checkbox"
                   checked={hideThinking}
-                  onChange={(e) => setHideThinking(e.target.checked)}
+                  onChange={(e) => handleThinkingToggle(e.target.checked)}
                   className="rounded"
                 />
                 Hide AI thinking/memory
@@ -910,7 +929,7 @@ export default function GameDetailPage() {
                   <select
                     value={filterStep ?? ''}
                     onChange={(e) =>
-                      setFilterStep(e.target.value ? parseInt(e.target.value) : null)
+                      handleStepFilterChange(e.target.value ? parseInt(e.target.value) : null)
                     }
                     className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700"
                   >

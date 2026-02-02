@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import posthog from 'posthog-js';
 import { useRankings } from '../../lib/hooks/useRankings';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
@@ -12,6 +13,16 @@ const ITEMS_PER_PAGE = 20;
 export function Leaderboard() {
   const [page, setPage] = useState(1);
   const { data, isLoading, error, refetch } = useRankings(page, ITEMS_PER_PAGE);
+
+  const handlePageChange = (newPage: number) => {
+    posthog.capture('leaderboard_page_changed', {
+      from_page: page,
+      to_page: newPage,
+      total_pages: data?.total_pages,
+      total_models: data?.total,
+    });
+    setPage(newPage);
+  };
 
   // Show loading spinner only on initial load
   if (isLoading && !data) {
@@ -58,7 +69,7 @@ export function Leaderboard() {
           <div className="flex items-center gap-2">
             {/* First page */}
             <button
-              onClick={() => setPage(1)}
+              onClick={() => handlePageChange(1)}
               disabled={page === 1 || isLoading}
               className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
                 disabled:cursor-not-allowed disabled:opacity-40
@@ -71,7 +82,7 @@ export function Leaderboard() {
 
             {/* Previous page */}
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1 || isLoading}
               className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
                 disabled:cursor-not-allowed disabled:opacity-40
@@ -92,7 +103,7 @@ export function Leaderboard() {
                 ) : (
                   <button
                     key={pageNum}
-                    onClick={() => setPage(pageNum as number)}
+                    onClick={() => handlePageChange(pageNum as number)}
                     disabled={isLoading}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors
                       ${page === pageNum
@@ -109,7 +120,7 @@ export function Leaderboard() {
 
             {/* Next page */}
             <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               disabled={page === totalPages || isLoading}
               className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
                 disabled:cursor-not-allowed disabled:opacity-40
@@ -122,7 +133,7 @@ export function Leaderboard() {
 
             {/* Last page */}
             <button
-              onClick={() => setPage(totalPages)}
+              onClick={() => handlePageChange(totalPages)}
               disabled={page === totalPages || isLoading}
               className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
                 disabled:cursor-not-allowed disabled:opacity-40

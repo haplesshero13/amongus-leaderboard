@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
@@ -17,6 +18,16 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
           <Link
             key={model.model_id}
             href={`/games?models=${model.model_id}`}
+            onClick={() => {
+              posthog.capture('model_card_clicked', {
+                model_id: model.model_id,
+                model_name: model.model_name,
+                provider: model.provider,
+                current_rank: model.current_rank,
+                overall_rating: model.overall_rating,
+                games_played: model.games_played,
+              });
+            }}
             className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex items-start justify-between">

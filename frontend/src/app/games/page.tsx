@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import posthog from 'posthog-js';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useGames } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -33,9 +34,21 @@ function GameCard({ game }: { game: Game }) {
   const impostors = game.participants.filter((p) => p.role === 'Impostor');
   const crewmates = game.participants.filter((p) => p.role === 'Crewmate');
 
+  const handleGameCardClick = () => {
+    posthog.capture('game_card_clicked', {
+      game_id: game.game_id,
+      game_status: game.status,
+      winner: game.winner,
+      impostor_models: impostors.map((p) => p.model_name),
+      crewmate_models: crewmates.map((p) => p.model_name),
+      participant_count: game.participants.length,
+    });
+  };
+
   return (
     <Link
       href={`/games/${game.game_id}`}
+      onClick={handleGameCardClick}
       className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
     >
       <div className="mb-3 flex items-center justify-between">
@@ -130,9 +143,20 @@ function GamesContent() {
       });
 
   const handleModelToggle = (modelId: string) => {
-    const newModels = models.includes(modelId)
+    const isRemoving = models.includes(modelId);
+    const newModels = isRemoving
       ? models.filter((m) => m !== modelId)
       : [...models, modelId];
+
+    const modelName = uniqueModels.find((m) => m.model_id === modelId)?.model_name || modelId;
+
+    posthog.capture('game_filter_applied', {
+      action: isRemoving ? 'removed' : 'added',
+      model_id: modelId,
+      model_name: modelName,
+      total_filters: newModels.length,
+      selected_models: newModels,
+    });
 
     const params = new URLSearchParams(searchParams);
     if (newModels.length === 0) {
@@ -218,6 +242,10 @@ function GamesContent() {
           <div className="mt-3 flex justify-end">
             <button
               onClick={() => {
+                posthog.capture('game_filter_cleared', {
+                  cleared_models: models,
+                  cleared_count: models.length,
+                });
                 window.history.replaceState({}, '', '/games');
                 // Force re-render by clearing local state via URL update
               }}
