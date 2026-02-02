@@ -9,4 +9,5 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   capture_exceptions: true,
   // Turn on debug in development mode
   debug: process.env.NODE_ENV === "development",
+  person_profiles: "always",
 });
