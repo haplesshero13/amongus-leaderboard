@@ -35,5 +35,6 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           echo "Starting ${{ inputs.games }} game(s)..."
+          source .venv/bin/activate
           python -m scripts.run_games --games ${{ inputs.games }} --yes
         working-directory: backend
