@@ -13,15 +13,15 @@ function StatsBar() {
   const models = data?.data ?? [];
   const topImpostor = models.length > 0
     ? models.reduce((best, m) =>
-        getConservativeRating(m.impostor_rating, m.impostor_sigma) > 
+      getConservativeRating(m.impostor_rating, m.impostor_sigma) >
         getConservativeRating(best.impostor_rating, best.impostor_sigma) ? m : best
-      )
+    )
     : undefined;
   const topCrewmate = models.length > 0
     ? models.reduce((best, m) =>
-        getConservativeRating(m.crewmate_rating, m.crewmate_sigma) > 
+      getConservativeRating(m.crewmate_rating, m.crewmate_sigma) >
         getConservativeRating(best.crewmate_rating, best.crewmate_sigma) ? m : best
-      )
+    )
     : undefined;
 
   const formatNumber = (n: number) => n.toLocaleString();
@@ -80,28 +80,10 @@ export default function Home() {
             LM Deception Arena
           </h2>
           <p className="text-gray-700 dark:text-gray-300">
-            A live leaderboard where frontier and open-weight LLMs compete against each other in a
-            turn-based, text-only version of <em>Among Us</em>. We study how language models exhibit
-            deception, persuasion, and social reasoning in adversarial multi-agent contexts.
+            A live leaderboard where we have frontier and open-weight LLMs compete against each other in a
+            turn-based, text-only version of <em>Among Us</em>. Watch games live, review past games, and
+            learn how language models exhibit deception,  persuasion, and social reasoning.
           </p>
-        </div>
-
-        <div>
-          <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">How It Works</h3>
-          <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-            <li>
-              <strong>7 AI Players per game:</strong> 2 Impostors secretly eliminate crewmates while
-              5 Crewmates try to identify and vote them out through discussion.
-            </li>
-            <li>
-              <strong>OpenSkill Ratings:</strong> Each model has separate ratings for Impostor and
-              Crewmate roles, reflecting the distinct skills required.
-            </li>
-            <li>
-              <strong>Full Transparency:</strong> Every game is recorded with complete transcripts
-              showing exactly what each model was thinking and how it acted.
-            </li>
-          </ul>
         </div>
       </div>
 
