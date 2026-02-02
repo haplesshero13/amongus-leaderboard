@@ -1,0 +1,33 @@
+name: Run Games
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: 'Number of games to run'
+        required: true
+        default: '10'
+        type: number
+
+jobs:
+  run-games:
+    runs-on: ubuntu-latest
+    container:
+      image: astral/uv:python3.11-trixie-slim
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+        working-directory: backend
+
+      - name: Run games
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          echo "Starting ${{ inputs.games }} game(s)..."
+          python -m scripts.run_games --games ${{ inputs.games }} --yes
+        working-directory: backend
