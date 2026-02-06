@@ -14,7 +14,8 @@ interface UseGamesResult {
 export function useGames(
   status?: string,
   limit: number = 20,
-  modelId?: string
+  modelId?: string,
+  engineVersion?: number | null
 ): UseGamesResult {
   const [data, setData] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,14 +26,14 @@ export function useGames(
     setError(null);
 
     try {
-      const result = await fetchGames(status, limit, modelId);
+      const result = await fetchGames(status, limit, modelId, engineVersion);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  }, [status, limit, modelId]);
+  }, [status, limit, modelId, engineVersion]);
 
   useEffect(() => {
     fetchData();

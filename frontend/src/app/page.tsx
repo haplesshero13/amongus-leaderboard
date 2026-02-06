@@ -1,14 +1,20 @@
 'use client';
 
+import { useState } from 'react';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Leaderboard } from '../components/features/Leaderboard';
 import { useRankings } from '../lib/hooks/useRankings';
 import { useGames } from '../lib/hooks/useGames';
 import { getConservativeRating } from '../types/leaderboard';
 
-function StatsBar() {
-  const { data, isLoading } = useRankings(1, 100);
-  const { data: games, isLoading: gamesLoading } = useGames('completed', 1000);
+function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
+  const { data, isLoading } = useRankings(1, 100, selectedSeason);
+  const { data: games, isLoading: gamesLoading } = useGames(
+    'completed',
+    1000,
+    undefined,
+    selectedSeason
+  );
 
   const models = data?.data ?? [];
   const topImpostor = models.length > 0
@@ -71,6 +77,8 @@ function StatsBar() {
 }
 
 export default function Home() {
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+
   return (
     <PageLayout activePage="/">
       {/* About section */}
@@ -88,10 +96,13 @@ export default function Home() {
       </div>
 
       {/* Stats banner */}
-      <StatsBar />
+      <StatsBar selectedSeason={selectedSeason} />
 
       {/* Leaderboard */}
-      <Leaderboard />
+      <Leaderboard
+        selectedSeason={selectedSeason}
+        onSeasonChange={setSelectedSeason}
+      />
     </PageLayout>
   );
 }

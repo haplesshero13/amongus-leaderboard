@@ -11,9 +11,13 @@ import { SeasonSelector } from './SeasonSelector';
 
 const ITEMS_PER_PAGE = 20;
 
-export function Leaderboard() {
+interface LeaderboardProps {
+  selectedSeason: number | null;
+  onSeasonChange: (version: number | null) => void;
+}
+
+export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps) {
   const [page, setPage] = useState(1);
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const { data, isLoading, error, refetch } = useRankings(page, ITEMS_PER_PAGE, selectedSeason);
 
   const handlePageChange = (newPage: number) => {
@@ -31,23 +35,36 @@ export function Leaderboard() {
       from_season: selectedSeason,
       to_season: version,
     });
-    setSelectedSeason(version);
+    onSeasonChange(version);
     setPage(1);
   };
 
   // Show loading spinner only on initial load
   if (isLoading && !data) {
-    return <LoadingSpinner />;
+    return (
+      <div>
+        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (error) {
-    return <ErrorMessage error={error} onRetry={refetch} />;
+    return (
+      <div>
+        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+        <ErrorMessage error={error} onRetry={refetch} />
+      </div>
+    );
   }
 
   if (!data || data.data.length === 0) {
     return (
-      <div className="flex items-center justify-center p-8 text-gray-500 dark:text-gray-400">
-        No rankings available
+      <div>
+        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+        <div className="flex items-center justify-center p-8 text-gray-500 dark:text-gray-400">
+          No rankings available yet for this season
+        </div>
       </div>
     );
   }
