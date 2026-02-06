@@ -46,11 +46,11 @@ describe('StatsBar games count', () => {
 
     // Mock exactly 5 completed games - this is the source of truth
     const mockGames = [
-      { game_id: 'g1', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null },
-      { game_id: 'g2', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null },
-      { game_id: 'g3', status: 'completed' as const, started_at: null, ended_at: null, winner: 2, winner_reason: 'Test', participants: [], error_message: null },
-      { game_id: 'g4', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null },
-      { game_id: 'g5', status: 'completed' as const, started_at: null, ended_at: null, winner: 2, winner_reason: 'Test', participants: [], error_message: null },
+      { game_id: 'g1', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null, engine_version: 1 },
+      { game_id: 'g2', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null, engine_version: 1 },
+      { game_id: 'g3', status: 'completed' as const, started_at: null, ended_at: null, winner: 2, winner_reason: 'Test', participants: [], error_message: null, engine_version: 1 },
+      { game_id: 'g4', status: 'completed' as const, started_at: null, ended_at: null, winner: 1, winner_reason: 'Test', participants: [], error_message: null, engine_version: 1 },
+      { game_id: 'g5', status: 'completed' as const, started_at: null, ended_at: null, winner: 2, winner_reason: 'Test', participants: [], error_message: null, engine_version: 1 },
     ];
 
     vi.mocked(useRankings).mockReturnValue({
