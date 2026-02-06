@@ -15,6 +15,7 @@ from app.api.schemas import (
     GameStatusEnum,
     GameLogsResponse,
 )
+from app.core.constants import CURRENT_ENGINE_VERSION
 from app.core.database import get_db
 from app.models import Game, GameStatus, Model, GameParticipant
 from app.services.storage_service import get_game_logs, delete_game_logs
@@ -49,6 +50,7 @@ async def trigger_game(
     game = Game(
         status=GameStatus.PENDING,
         webhook_url=request.webhook_url,
+        engine_version=CURRENT_ENGINE_VERSION,
     )
     db.add(game)
     db.flush()
@@ -73,9 +75,12 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
 
     Returns game details including participants and outcome if completed.
     """
-    game = db.query(Game).options(
-        joinedload(Game.participants).joinedload(GameParticipant.model)
-    ).filter(Game.id == game_id).first()
+    game = (
+        db.query(Game)
+        .options(joinedload(Game.participants).joinedload(GameParticipant.model))
+        .filter(Game.id == game_id)
+        .first()
+    )
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
@@ -103,6 +108,7 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
         winner_reason=game.winner_reason,
         participants=participants,
         error_message=game.error_message,
+        engine_version=game.engine_version,
     )
 
 
@@ -110,6 +116,7 @@ async def get_game(game_id: str, db: Session = Depends(get_db)):
 async def list_games(
     status: GameStatusEnum | None = None,
     model_id: str | None = None,
+    engine_version: int | None = None,
     limit: int = 20,
     db: Session = Depends(get_db),
 ):
@@ -121,12 +128,17 @@ async def list_games(
         model_id: Filter to games where this model participated (uses model's model_id, not internal id)
         limit: Maximum number of games to return
     """
-    query = db.query(Game).options(
-        joinedload(Game.participants).joinedload(GameParticipant.model)
-    ).order_by(Game.created_at.desc())
+    query = (
+        db.query(Game)
+        .options(joinedload(Game.participants).joinedload(GameParticipant.model))
+        .order_by(Game.created_at.desc())
+    )
 
     if status:
         query = query.filter(Game.status == GameStatus(status.value))
+
+    if engine_version is not None:
+        query = query.filter(Game.engine_version == engine_version)
 
     if model_id:
         # Filter to games where the specified model participated
@@ -159,6 +171,7 @@ async def list_games(
                 winner_reason=game.winner_reason,
                 participants=participants,
                 error_message=game.error_message,
+                engine_version=game.engine_version,
             )
         )
 
@@ -240,7 +253,10 @@ async def stream_game_logs(game_id: str, db: Session = Depends(get_db)):
 
 class MarkGameFailedRequest(BaseModel):
     """Request to mark a game as failed."""
-    error_message: str = Field(..., description="Error message explaining why the game failed validation")
+
+    error_message: str = Field(
+        ..., description="Error message explaining why the game failed validation"
+    )
 
 
 @router.patch("/games/{game_id}/fail", status_code=200)

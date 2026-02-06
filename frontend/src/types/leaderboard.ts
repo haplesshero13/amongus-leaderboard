@@ -31,6 +31,12 @@ export interface LeaderboardResponse {
   total_pages: number;
 }
 
+export interface Season {
+  version: number;
+  label: string;
+  game_count: number;
+}
+
 export type SortField = 'overall_rating' | 'impostor_rating' | 'crewmate_rating' | 'games_played';
 export type SortDirection = 'asc' | 'desc';
 

@@ -108,6 +108,7 @@ class GameResponse(BaseModel):
     winner_reason: str | None
     participants: list[GameParticipantResponse]
     error_message: str | None = None
+    engine_version: int | None = None
 
 
 # === Model Registry Schemas ===
@@ -145,6 +146,17 @@ class ModelResponse(BaseModel):
     openrouter_id: str
     release_date: date | None
     avatar_color: str
+
+
+# === Season Schemas ===
+
+
+class SeasonResponse(BaseModel):
+    """Season / engine version info."""
+
+    version: int
+    label: str
+    game_count: int
 
 
 # === Game Log Schemas ===

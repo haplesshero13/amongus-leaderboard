@@ -52,9 +52,20 @@ function GameCard({ game }: { game: Game }) {
       className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
     >
       <div className="mb-3 flex items-center justify-between">
-        <span className="font-mono text-sm text-gray-500 dark:text-gray-400">
-          {game.game_id.slice(0, 8)}...
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-gray-500 dark:text-gray-400">
+            {game.game_id.slice(0, 8)}...
+          </span>
+          {game.engine_version != null && (
+            <span className={`rounded px-1.5 py-0.5 text-xs font-medium
+              ${game.engine_version === 0
+                ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300'
+              }`}>
+              S{game.engine_version}
+            </span>
+          )}
+        </div>
         <GameStatusBadge status={game.status} />
       </div>
 

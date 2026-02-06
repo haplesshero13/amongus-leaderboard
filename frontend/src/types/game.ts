@@ -17,6 +17,7 @@ export interface Game {
   winner_reason: string | null;
   participants: GameParticipant[];
   error_message: string | null;
+  engine_version: number | null;
 }
 
 // Raw log entry from the backend (directly from amongagents)

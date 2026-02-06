@@ -166,12 +166,29 @@ async def recalculate_all_ratings(
 
     db.flush()
 
-    # Get all completed games in chronological order
+    # Get all completed games in chronological order for the current season.
+    # Only games with engine_version matching CURRENT_ENGINE_VERSION are included;
+    # older seasons are excluded to keep ratings comparable.
+    from app.core.constants import CURRENT_ENGINE_VERSION
+
     completed_games = (
         db.query(Game)
-        .filter(Game.status == GameStatus.COMPLETED)
+        .filter(
+            Game.status == GameStatus.COMPLETED,
+            Game.engine_version == CURRENT_ENGINE_VERSION,
+        )
         .order_by(Game.ended_at.asc())
         .all()
+    )
+
+    # Count excluded games for the response
+    excluded_games = (
+        db.query(Game)
+        .filter(
+            Game.status == GameStatus.COMPLETED,
+            Game.engine_version != CURRENT_ENGINE_VERSION,
+        )
+        .count()
     )
 
     # Replay each game to rebuild ratings
@@ -180,4 +197,8 @@ async def recalculate_all_ratings(
 
     db.commit()
 
-    return {"models_reset": models_reset, "games_processed": len(completed_games)}
+    return {
+        "models_reset": models_reset,
+        "games_processed": len(completed_games),
+        "games_excluded": excluded_games,
+    }

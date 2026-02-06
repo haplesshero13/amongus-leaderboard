@@ -13,7 +13,8 @@ interface UseRankingsResult {
 
 export function useRankings(
   page: number = 1,
-  perPage: number = 20
+  perPage: number = 20,
+  engineVersion?: number | null
 ): UseRankingsResult {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,14 +25,14 @@ export function useRankings(
     setError(null);
 
     try {
-      const result = await fetchLeaderboard(page, perPage);
+      const result = await fetchLeaderboard(page, perPage, engineVersion);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage]);
+  }, [page, perPage, engineVersion]);
 
   useEffect(() => {
     fetchData();

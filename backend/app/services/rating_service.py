@@ -156,18 +156,22 @@ def scale_rating_for_display(mu: float) -> int:
     return round(mu * 100)
 
 
-def get_model_rankings(db: Session) -> list[dict]:
+def _build_rankings_from_ratings(
+    models: list[Model], ratings_map: dict[str, ModelRating]
+) -> list[dict]:
     """
-    Get all models with their ratings, ranked by overall rating.
+    Build ranked leaderboard dicts from models and a ratings map.
 
-    Returns a list of dicts ready for the leaderboard API response.
+    Args:
+        models: All registered models.
+        ratings_map: Map of model.id -> ModelRating (real or temporary).
+
+    Returns:
+        List of dicts ready for the leaderboard API, sorted by conservative rating.
     """
-    # Query all models with their ratings
-    models = db.query(Model).all()
-
     rankings = []
     for model in models:
-        rating = model.ratings or ModelRating(model_id=model.id)
+        rating = ratings_map.get(model.id, ModelRating(model_id=model.id))
 
         rankings.append(
             {
@@ -184,10 +188,8 @@ def get_model_rankings(db: Session) -> list[dict]:
             }
         )
 
-    # Sort by conservative rating (floor) descending - accounts for uncertainty
     rankings.sort(key=lambda x: x["conservative"], reverse=True)
 
-    # Assign ranks
     result = []
     for i, r in enumerate(rankings, start=1):
         model = r["model"]
@@ -206,7 +208,6 @@ def get_model_rankings(db: Session) -> list[dict]:
                 "crewmate_sigma": scale_rating_for_display(r["crewmate_sigma"]),
                 "games_played": r["games"],
                 "current_rank": i,
-                # Win/loss stats
                 "impostor_games": rating.impostor_games,
                 "impostor_wins": rating.impostor_wins,
                 "crewmate_games": rating.crewmate_games,
@@ -220,3 +221,118 @@ def get_model_rankings(db: Session) -> list[dict]:
         )
 
     return result
+
+
+def get_model_rankings(db: Session) -> list[dict]:
+    """
+    Get all models with their current persisted ratings, ranked by overall rating.
+
+    Returns a list of dicts ready for the leaderboard API response.
+    """
+    models = db.query(Model).all()
+    ratings_map = {}
+    for model in models:
+        if model.ratings is not None:
+            ratings_map[model.id] = model.ratings
+    return _build_rankings_from_ratings(models, ratings_map)
+
+
+def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
+    """
+    Compute rankings for a past season by replaying its games in memory.
+
+    Creates temporary ModelRating objects (NOT added to the DB session),
+    replays all completed games for the given engine_version chronologically,
+    and returns rankings sorted by conservative_rating.
+    """
+    from app.models import Game, GameStatus
+
+    models = db.query(Model).all()
+
+    # Create in-memory ratings (not attached to session)
+    temp_ratings: dict[str, ModelRating] = {}
+    for model in models:
+        r = ModelRating.__new__(ModelRating)
+        r.model_id = model.id
+        r.impostor_mu = ModelRating.DEFAULT_MU
+        r.impostor_sigma = ModelRating.DEFAULT_SIGMA
+        r.impostor_games = 0
+        r.impostor_wins = 0
+        r.crewmate_mu = ModelRating.DEFAULT_MU
+        r.crewmate_sigma = ModelRating.DEFAULT_SIGMA
+        r.crewmate_games = 0
+        r.crewmate_wins = 0
+        temp_ratings[model.id] = r
+
+    # Get completed games for this engine version
+    games = (
+        db.query(Game)
+        .filter(Game.status == GameStatus.COMPLETED, Game.engine_version == engine_version)
+        .order_by(Game.ended_at.asc())
+        .all()
+    )
+
+    # Replay each game using the same meta-agent logic
+    for game in games:
+        if game.winner is None:
+            continue
+
+        impostors_won = game.impostors_won
+
+        impostor_data = []
+        crewmate_data = []
+
+        for p in game.participants:
+            r = temp_ratings.get(p.model_id)
+            if r is None:
+                continue
+            if p.role == PlayerRole.IMPOSTOR:
+                os_r = RATING_MODEL.rating(mu=r.impostor_mu, sigma=r.impostor_sigma)
+                impostor_data.append((p, r, os_r))
+            else:
+                os_r = RATING_MODEL.rating(mu=r.crewmate_mu, sigma=r.crewmate_sigma)
+                crewmate_data.append((p, r, os_r))
+
+        if not impostor_data or not crewmate_data:
+            continue
+
+        impostor_team = [d[2] for d in impostor_data]
+        crewmate_team = [d[2] for d in crewmate_data]
+
+        def create_meta(team: list) -> object:
+            avg_mu = sum(r.mu for r in team) / len(team)
+            avg_var = sum(r.sigma**2 for r in team) / len(team)
+            return RATING_MODEL.rating(mu=avg_mu, sigma=math.sqrt(avg_var))
+
+        meta_imp = create_meta(impostor_team)
+        meta_crew = create_meta(crewmate_team)
+
+        ranks = [0, 1] if impostors_won else [1, 0]
+        new_imp, new_crew = RATING_MODEL.rate([[meta_imp], [meta_crew]], ranks=ranks)
+
+        imp_mu_delta = new_imp[0].mu - meta_imp.mu
+        crew_mu_delta = new_crew[0].mu - meta_crew.mu
+        imp_sigma_ratio = new_imp[0].sigma / meta_imp.sigma
+        crew_sigma_ratio = new_crew[0].sigma / meta_crew.sigma
+
+        imp_total_var = sum(r.sigma**2 for r in impostor_team)
+        imp_pool = imp_mu_delta * len(impostor_team)
+        for _, rating, old_r in impostor_data:
+            share = old_r.sigma**2 / imp_total_var
+            rating.impostor_mu = old_r.mu + (imp_pool * share)
+            rating.impostor_sigma = max(0.1, old_r.sigma * imp_sigma_ratio)
+            rating.impostor_games += 1
+            if impostors_won:
+                rating.impostor_wins += 1
+
+        crew_total_var = sum(r.sigma**2 for r in crewmate_team)
+        crew_pool = crew_mu_delta * len(crewmate_team)
+        for _, rating, old_r in crewmate_data:
+            share = old_r.sigma**2 / crew_total_var
+            rating.crewmate_mu = old_r.mu + (crew_pool * share)
+            rating.crewmate_sigma = max(0.1, old_r.sigma * crew_sigma_ratio)
+            rating.crewmate_games += 1
+            if not impostors_won:
+                rating.crewmate_wins += 1
+
+    return _build_rankings_from_ratings(models, temp_ratings)

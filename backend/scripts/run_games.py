@@ -30,14 +30,14 @@ from collections import Counter
 
 import httpx
 
-# All registered models except kimi-k2.5 (unstable)
 MODELS = [
     "claude-haiku-4.5",
+    "claude-opus-4.6",
     "gemini-3-flash",
     "gemini-3-pro",
     "gpt-5-mini",
     "gpt-oss-20b",
-    # "solar-pro-3",
+    "solar-pro-3",
     "mistral-large-2512",
     "kimi-k2.5",
     "llama-3.3-70b",
@@ -57,6 +57,14 @@ MODELS = [
     "gpt-5.2-chat",
     "gemini-2.5-flash",
     "gemini-2.5-pro",
+    "pony-alpha",
+    "step-3.5-flash",
+    "trinity-large",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "o4-mini",
+    "o3",
+    "gpt-4.1",
 ]
 
 PLAYERS_PER_GAME = 7

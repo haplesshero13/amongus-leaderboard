@@ -7,12 +7,14 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { LeaderboardTable } from './LeaderboardTable';
 import { LeaderboardCards } from './LeaderboardCards';
+import { SeasonSelector } from './SeasonSelector';
 
 const ITEMS_PER_PAGE = 20;
 
 export function Leaderboard() {
   const [page, setPage] = useState(1);
-  const { data, isLoading, error, refetch } = useRankings(page, ITEMS_PER_PAGE);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const { data, isLoading, error, refetch } = useRankings(page, ITEMS_PER_PAGE, selectedSeason);
 
   const handlePageChange = (newPage: number) => {
     posthog.capture('leaderboard_page_changed', {
@@ -22,6 +24,15 @@ export function Leaderboard() {
       total_models: data?.total,
     });
     setPage(newPage);
+  };
+
+  const handleSeasonChange = (version: number | null) => {
+    posthog.capture('season_changed', {
+      from_season: selectedSeason,
+      to_season: version,
+    });
+    setSelectedSeason(version);
+    setPage(1);
   };
 
   // Show loading spinner only on initial load
@@ -47,6 +58,8 @@ export function Leaderboard() {
 
   return (
     <div>
+      <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+
       {/* Desktop view */}
       <div className="hidden md:block">
         <LeaderboardTable rankings={data.data} />

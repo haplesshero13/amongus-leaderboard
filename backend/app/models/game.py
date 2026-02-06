@@ -6,6 +6,7 @@ from enum import Enum
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.constants import CURRENT_ENGINE_VERSION
 from app.core.database import Base
 from app.models.base import TimestampMixin, generate_uuid
 
@@ -76,6 +77,12 @@ class Game(Base, TimestampMixin):
 
     # Model IDs participating in this game (stored before game runs, participants created after)
     model_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+    # Engine version tracks which version of the game engine was used.
+    # Used to separate seasons and filter rating recalculations.
+    engine_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=CURRENT_ENGINE_VERSION
+    )
 
     # Relationships
     participants: Mapped[list["GameParticipant"]] = relationship(

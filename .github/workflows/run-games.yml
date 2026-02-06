@@ -1,6 +1,9 @@
 name: Run Games
 
 on:
+  schedule:
+    # Run 2 games every ~2.5 hours (5 runs/day = 10 games/day)
+    - cron: "0 1,4,7,10,13 * * *"  # UTC: 1am, 4am, 7am, 10am, 1pm
   workflow_dispatch:
     inputs:
       games:
@@ -33,8 +36,9 @@ jobs:
       - name: Run games
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GAME_COUNT: ${{ inputs.games || '2' }}
         run: |
-          echo "Starting ${{ inputs.games }} game(s)..."
+          echo "Starting $GAME_COUNT game(s)..."
           source .venv/bin/activate
-          python -m scripts.run_games --games ${{ inputs.games }} --yes
+          python -m scripts.run_games --games "$GAME_COUNT" --yes
         working-directory: backend

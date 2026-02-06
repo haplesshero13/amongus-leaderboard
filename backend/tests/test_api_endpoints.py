@@ -550,4 +550,3 @@ class TestGamesEndpoint:
         assert len(data) == 1
         assert data[0]["status"] == "failed"
         assert data[0]["error_message"] == "Test failure"
-

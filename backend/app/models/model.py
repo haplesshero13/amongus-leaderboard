@@ -131,7 +131,7 @@ class ModelRating(Base, TimestampMixin):
         # Weight by confidence: 1/sigma. Higher sigma = less confidence = less weight
         imp_sigma = self.impostor_sigma if self.impostor_sigma is not None else self.DEFAULT_SIGMA
         crew_sigma = self.crewmate_sigma if self.crewmate_sigma is not None else self.DEFAULT_SIGMA
-        
+
         imp_weight = 1.0 / imp_sigma
         crew_weight = 1.0 / crew_sigma
         total = imp_weight + crew_weight
@@ -142,13 +142,13 @@ class ModelRating(Base, TimestampMixin):
     def overall_sigma(self) -> float:
         """
         Combined uncertainty for overall rating.
-        
+
         Calculated as weighted average of role sigmas using same weights as overall_rating.
         This represents our confidence in the overall rating estimate.
         """
         imp_sigma = self.impostor_sigma if self.impostor_sigma is not None else self.DEFAULT_SIGMA
         crew_sigma = self.crewmate_sigma if self.crewmate_sigma is not None else self.DEFAULT_SIGMA
-        
+
         imp_weight = 1.0 / imp_sigma
         crew_weight = 1.0 / crew_sigma
         total = imp_weight + crew_weight
@@ -159,7 +159,7 @@ class ModelRating(Base, TimestampMixin):
     def conservative_rating(self) -> float:
         """
         Conservative estimate of skill: rating - sigma.
-        
+
         This is the "floor" - we're ~68% confident the true skill is at least this high.
         Used for ranking to avoid overrating models with high uncertainty.
         """
