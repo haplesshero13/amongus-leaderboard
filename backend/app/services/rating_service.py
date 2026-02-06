@@ -252,16 +252,16 @@ def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
     # Create in-memory ratings (not attached to session)
     temp_ratings: dict[str, ModelRating] = {}
     for model in models:
-        r = ModelRating.__new__(ModelRating)
-        r.model_id = model.id
-        r.impostor_mu = ModelRating.DEFAULT_MU
-        r.impostor_sigma = ModelRating.DEFAULT_SIGMA
-        r.impostor_games = 0
-        r.impostor_wins = 0
-        r.crewmate_mu = ModelRating.DEFAULT_MU
-        r.crewmate_sigma = ModelRating.DEFAULT_SIGMA
-        r.crewmate_games = 0
-        r.crewmate_wins = 0
+        r = ModelRating(
+            impostor_mu=ModelRating.DEFAULT_MU,
+            impostor_sigma=ModelRating.DEFAULT_SIGMA,
+            impostor_games=0,
+            impostor_wins=0,
+            crewmate_mu=ModelRating.DEFAULT_MU,
+            crewmate_sigma=ModelRating.DEFAULT_SIGMA,
+            crewmate_games=0,
+            crewmate_wins=0,
+        )
         temp_ratings[model.id] = r
 
     # Get completed games for this engine version
