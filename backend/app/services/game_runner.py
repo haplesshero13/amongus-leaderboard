@@ -311,8 +311,9 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
         db.refresh(game)
 
         # Upload logs to S3 with retry
-        max_retries = 3
-        retry_delay = 1.0  # seconds, doubles each retry
+        settings = get_settings()
+        max_retries = settings.s3_max_retries
+        retry_delay = settings.s3_retry_delay  # seconds, doubles each retry
         last_error = None
 
         for attempt in range(max_retries):
@@ -455,7 +456,7 @@ async def call_webhook(webhook_url: str, game_id: str, winner: int, winner_reaso
                     "winner": winner,
                     "winner_reason": winner_reason,
                 },
-                timeout=10.0,
+                timeout=get_settings().webhook_timeout,
             )
     except Exception as e:
         # Webhook failures shouldn't crash the game runner

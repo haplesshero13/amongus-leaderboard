@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Leaderboard } from '../components/features/Leaderboard';
 import { useRankings } from '../lib/hooks/useRankings';
 import { useGames } from '../lib/hooks/useGames';
+import { useSeasons } from '../lib/hooks/useSeasons';
 import { getConservativeRating } from '../types/leaderboard';
 
 function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
@@ -78,6 +79,20 @@ function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
 
 export default function Home() {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const { seasons } = useSeasons();
+
+  // Default to current (latest) season when seasons are loaded
+  useState(() => {
+    // This is strictly client-side effect to set initial state if data allows, but with async data we use useEffect
+  });
+
+  // Use effect to set default season once loaded
+  useEffect(() => {
+    if (selectedSeason === null && seasons.length > 0) {
+      // seasons are sorted desc, so [0] is latest
+      setSelectedSeason(seasons[0].version);
+    }
+  }, [seasons, selectedSeason]);
 
   return (
     <PageLayout activePage="/">

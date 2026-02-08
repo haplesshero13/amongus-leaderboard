@@ -6,8 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import posthog from 'posthog-js';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useGames } from '@/lib/hooks/useGames';
+import { useSeasons } from '@/lib/hooks/useSeasons';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { SeasonSelector } from '@/components/features/SeasonSelector';
 import { Game, WINNER_LABELS } from '@/types/game';
 
 function GameStatusBadge({ status }: { status: Game['status'] }) {
@@ -120,7 +122,17 @@ function GamesContent() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: games, isLoading, error } = useGames(undefined, 100, undefined);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const { seasons } = useSeasons();
+
+  // Get default season
+  useEffect(() => {
+    if (selectedSeason === null && seasons.length > 0) {
+      setSelectedSeason(seasons[0].version);
+    }
+  }, [seasons, selectedSeason]);
+
+  const { data: games, isLoading, error } = useGames(undefined, 100, undefined, selectedSeason);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -182,6 +194,10 @@ function GamesContent() {
 
   return (
     <PageLayout activePage="/games">
+      <div className="mb-6">
+        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={setSelectedSeason} />
+      </div>
+
       {/* Model Filter */}
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
         <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-gray-100">

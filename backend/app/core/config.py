@@ -30,6 +30,13 @@ class Settings(BaseSettings):
 
     # API settings
     api_prefix: str = "/api"
+    api_url: str = "http://localhost:8000"
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+    # Timeout & Retry settings
+    webhook_timeout: float = 10.0
+    s3_max_retries: int = 3
+    s3_retry_delay: float = 1.0
 
 
 @lru_cache

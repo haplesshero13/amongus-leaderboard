@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_api_key
 from app.api.schemas import ModelCreateRequest, ModelResponse, ModelUpdateRequest
 from app.core.database import get_db
-from app.models import Model, ModelRating
+from app.models import Game, GameParticipant, Model, ModelRating
 
 router = APIRouter(tags=["models"])
 
@@ -51,6 +52,7 @@ async def create_model(
         openrouter_id=model.openrouter_id,
         release_date=model.release_date,
         avatar_color=model.avatar_color,
+        games_played_by_season={},
     )
 
 
@@ -58,6 +60,26 @@ async def create_model(
 async def list_models(db: Session = Depends(get_db)):
     """List all registered models."""
     models = db.query(Model).order_by(Model.model_name).all()
+
+    # Pre-fetch games played counts by season
+    # Result: [(model_uuid, engine_version, count), ...]
+    counts = (
+        db.query(
+            GameParticipant.model_id,
+            Game.engine_version,
+            func.count(GameParticipant.game_id),
+        )
+        .join(Game, Game.id == GameParticipant.game_id)
+        .group_by(GameParticipant.model_id, Game.engine_version)
+        .all()
+    )
+
+    # Map model_uuid -> season -> count
+    stats_map: dict[str, dict[int, int]] = {}
+    for mid, season, count in counts:
+        if mid not in stats_map:
+            stats_map[mid] = {}
+        stats_map[mid][season] = count
 
     return [
         ModelResponse(
@@ -67,6 +89,7 @@ async def list_models(db: Session = Depends(get_db)):
             openrouter_id=m.openrouter_id,
             release_date=m.release_date,
             avatar_color=m.avatar_color,
+            games_played_by_season=stats_map.get(m.id, {}),
         )
         for m in models
     ]
@@ -79,6 +102,16 @@ async def get_model(model_id: str, db: Session = Depends(get_db)):
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
 
+    # Fetch game counts
+    counts = (
+        db.query(Game.engine_version, func.count(GameParticipant.game_id))
+        .join(GameParticipant, Game.id == GameParticipant.game_id)
+        .filter(GameParticipant.model_id == model.id)
+        .group_by(Game.engine_version)
+        .all()
+    )
+    games_played_by_season = {season: count for season, count in counts}
+
     return ModelResponse(
         model_id=model.model_id,
         model_name=model.model_name,
@@ -86,6 +119,7 @@ async def get_model(model_id: str, db: Session = Depends(get_db)):
         openrouter_id=model.openrouter_id,
         release_date=model.release_date,
         avatar_color=model.avatar_color,
+        games_played_by_season=games_played_by_season,
     )
 
 
@@ -116,6 +150,16 @@ async def update_model(
     db.commit()
     db.refresh(model)
 
+    # Fetch game counts
+    counts = (
+        db.query(Game.engine_version, func.count(GameParticipant.game_id))
+        .join(GameParticipant, Game.id == GameParticipant.game_id)
+        .filter(GameParticipant.model_id == model.id)
+        .group_by(Game.engine_version)
+        .all()
+    )
+    games_played_by_season = {season: count for season, count in counts}
+
     return ModelResponse(
         model_id=model.model_id,
         model_name=model.model_name,
@@ -123,6 +167,7 @@ async def update_model(
         openrouter_id=model.openrouter_id,
         release_date=model.release_date,
         avatar_color=model.avatar_color,
+        games_played_by_season=games_played_by_season,
     )
 
 

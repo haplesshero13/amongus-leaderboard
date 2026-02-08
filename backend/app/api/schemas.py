@@ -146,6 +146,7 @@ class ModelResponse(BaseModel):
     openrouter_id: str
     release_date: date | None
     avatar_color: str
+    games_played_by_season: dict[int, int] = Field(default_factory=dict, description="Number of games played per engine version/season")
 
 
 # === Season Schemas ===
