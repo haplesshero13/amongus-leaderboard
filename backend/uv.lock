@@ -143,7 +143,7 @@ wheels = [
 [[package]]
 name = "amongagents"
 version = "0.1.0"
-source = { git = "https://github.com/haplesshero13/AmongLLMs.git?subdirectory=among-agents#8aa3d5d68ddea66d74630d1537fe4ac92dad598b" }
+source = { git = "https://github.com/haplesshero13/AmongLLMs.git?subdirectory=among-agents#cc7fd81789cfc333c25a09ad4a2144d74c9ae0fd" }
 dependencies = [
     { name = "aiohttp" },
     { name = "networkx" },
