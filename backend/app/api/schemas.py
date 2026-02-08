@@ -81,6 +81,14 @@ class TriggerGameResponse(BaseModel):
     status: GameStatusEnum
 
 
+class MatchmakeRequest(BaseModel):
+    """Request to matchmake a new game."""
+
+    webhook_url: str | None = Field(
+        None, description="Optional webhook URL to call on game completion"
+    )
+
+
 class GameParticipantResponse(BaseModel):
     """Participant in a game."""
 

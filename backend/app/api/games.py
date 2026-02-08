@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import require_api_key
 from app.api.schemas import (
     TriggerGameRequest,
+    MatchmakeRequest,
     TriggerGameResponse,
     GameResponse,
     GameParticipantResponse,
@@ -51,6 +52,7 @@ async def trigger_game(
         status=GameStatus.PENDING,
         webhook_url=request.webhook_url,
         engine_version=CURRENT_ENGINE_VERSION,
+        model_ids=[m.id for m in models],
     )
     db.add(game)
     db.flush()
@@ -59,6 +61,47 @@ async def trigger_game(
     from app.services.game_runner import run_game_task
 
     background_tasks.add_task(run_game_task, game.id, [m.id for m in models])
+
+    db.commit()
+
+    return TriggerGameResponse(
+        game_id=game.id,
+        status=GameStatusEnum.PENDING,
+    )
+
+
+@router.post("/games/matchmake", response_model=TriggerGameResponse)
+async def matchmake_game(
+    request: MatchmakeRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Trigger a new game with matchmaking.
+
+    Selects models with the fewest games played and assigns roles to balance experience.
+    """
+    from app.services.matchmaking import select_participants
+    from app.services.game_runner import run_game_task
+
+    # Select participants (returns UUIDs)
+    # Impostors are first 2, Crewmates are next 5
+    model_ids = select_participants(db)
+
+    # Create game record
+    game = Game(
+        status=GameStatus.PENDING,
+        webhook_url=request.webhook_url,
+        engine_version=CURRENT_ENGINE_VERSION,
+        model_ids=model_ids,
+    )
+    db.add(game)
+    db.flush()
+
+    # Schedule background task to run the game
+    # randomize_roles=False keeps the order (Impostors first)
+    background_tasks.add_task(run_game_task, game.id, model_ids, randomize_roles=False)
 
     db.commit()
 

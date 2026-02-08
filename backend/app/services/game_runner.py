@@ -191,7 +191,7 @@ def validate_agent_logs(agent_logs: list) -> None:
             )
 
 
-def run_game_task(game_id: str, model_ids: list[str]) -> None:
+def run_game_task(game_id: str, model_ids: list[str], randomize_roles: bool = True) -> None:
     """
     Background task to run a game.
 
@@ -201,12 +201,12 @@ def run_game_task(game_id: str, model_ids: list[str]) -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(run_game_async(game_id, model_ids))
+        loop.run_until_complete(run_game_async(game_id, model_ids, randomize_roles))
     finally:
         loop.close()
 
 
-async def run_game_async(game_id: str, model_ids: list[str]) -> None:
+async def run_game_async(game_id: str, model_ids: list[str], randomize_roles: bool = True) -> None:
     """
     Run a game asynchronously.
 
@@ -242,7 +242,8 @@ async def run_game_async(game_id: str, model_ids: list[str]) -> None:
 
         # Shuffle models to randomize who gets impostor/crewmate roles
         # amongagents assigns Player 1-2 as impostors, 3-7 as crewmates
-        random.shuffle(models)
+        if randomize_roles:
+            random.shuffle(models)
 
         # Update status to running and store model IDs
         game.status = GameStatus.RUNNING
