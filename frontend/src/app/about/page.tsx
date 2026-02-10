@@ -131,11 +131,9 @@ export default function AboutPage() {
           </div>
 
           <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Self-Funded</h3>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Acknowledgements</h3>
             <p className="text-gray-700 dark:text-gray-300">
-              This project is currently self-funded as a community resource.
-              If you&apos;re interested in sponsoring more games or specific model
-              matchups, feel free to reach out to avery _AT_ averyyen.dev.
+              This project is generously supported by the <a href="https://cbai.ai">Cambridge Boston Alignment Initiative</a>
             </p>
           </div>
         </div>
