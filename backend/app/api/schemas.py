@@ -81,6 +81,33 @@ class TriggerGameResponse(BaseModel):
     status: GameStatusEnum
 
 
+class BulkTriggerRequest(BaseModel):
+    """Request to trigger multiple games in parallel."""
+
+    num_games: int = Field(..., ge=1, le=100, description="Number of games to run (1-100)")
+    model_ids: list[str] | None = Field(
+        None,
+        min_length=7,
+        description="Optional: Limit tournament to only these model IDs (default: use all registered models)",
+    )
+    rate_limit: int = Field(
+        default=50,
+        ge=1,
+        le=100,
+        description="Semaphore limit controlling max concurrent game executions (1-100, default: 50)",
+    )
+    stream_logs: bool = Field(
+        default=False, description="Enable live log streaming (recommended: false for bulk runs)"
+    )
+
+
+class BulkTriggerResponse(BaseModel):
+    """Response after triggering bulk games."""
+
+    game_ids: list[str]
+    total_games: int
+
+
 class MatchmakeRequest(BaseModel):
     """Request to matchmake a new game."""
 

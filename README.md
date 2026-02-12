@@ -128,37 +128,6 @@ curl -X POST "$API_URL/api/ratings/recalculate" \
   -H "X-API-Key: $OPENROUTER_API_KEY"
 ```
 
-## Registered Models
-
-| Model ID | Display Name | Provider | OpenRouter ID |
-|----------|--------------|----------|---------------|
-| claude-haiku-4.5 | Claude Haiku 4.5 | Anthropic | anthropic/claude-haiku-4.5 |
-| gemini-3-flash | Gemini 3 Flash | Google | google/gemini-3-flash-preview |
-| gpt-oss-20b | GPT-OSS 20B | OpenAI | openai/gpt-oss-20b |
-| solar-pro-3 | Solar Pro 3 | Upstage | upstage/solar-pro-3:free |
-| mistral-large-2512 | Mistral Large | Mistral AI | mistralai/mistral-large-2512 |
-| llama-3.3-70b | Llama 3.3 70B | Meta | meta-llama/llama-3.3-70b-instruct:free |
-| gpt-5-mini | GPT-5 Mini | OpenAI | openai/gpt-5-mini |
-| kimi-k2.5 | Kimi K2.5 | Moonshot AI | moonshotai/kimi-k2.5 |
-| deepseek-r1 | DeepSeek R1 | DeepSeek | deepseek/deepseek-r1-0528 |
-| qwen3-235b | Qwen3 235B | Alibaba | qwen/qwen3-235b-a22b-2507 |
-| glm-4.7 | Z.AI GLM 4.7 | Z.AI | z-ai/glm-4.7 |
-| claude-sonnet-4.5 | Claude Sonnet 4.5 | Anthropic | anthropic/claude-sonnet-4.5 |
-| gpt-oss-120b | GPT OSS 120B | OpenAI | openai/gpt-oss-120b |
-| deepseek-v3.2 | DeepSeek V3.2 | DeepSeek | deepseek/deepseek-v3.2 |
-| llama-4-maverick | Llama 4 Maverick | Meta | meta-llama/llama-4-maverick |
-| llama-4-scout | Llama 4 Scout | Meta | meta-llama/llama-4-scout |
-| llama-3.1-405b | Llama 3.1 405B | Meta | meta-llama/llama-3.1-405b-instruct |
-| qwen3-next-80b-thinking | Qwen3 Next 80B (Think) | Alibaba | qwen/qwen3-next-80b-a3b-thinking |
-| minimax-m2 | MiniMax M2 | MiniMax | minimax/minimax-m2 |
-| kimi-k2-thinking | Kimi K2 Thinking | Moonshot AI | moonshotai/kimi-k2-thinking |
-| glm-4.7-flash | Z.AI GLM 4.7 Flash | Z.AI | z-ai/glm-4.7-flash |
-| olmo-3.1-32b | OLMo 3.1 32B | Allen AI | allenai/olmo-3.1-32b-instruct |
-| mimo-v2-flash | MiMo V2 Flash | Xiaomi | xiaomi/mimo-v2-flash |
-| nemotron-3-nano-30b | Nemotron 3 Nano 30B | NVIDIA | nvidia/nemotron-3-nano-30b-a3b:free |
-| gpt-5.2-chat | GPT-5.2 Chat | OpenAI | openai/gpt-5.2-chat |
-| gemini-2.5-flash | Gemini 2.5 Flash | Google | google/gemini-2.5-flash |
-
 ## Local Development
 
 ### Backend
@@ -249,6 +218,40 @@ Batch mode requirements:
   - `S3_SECRET_KEY`
   - `S3_REGION`
   - `S3_ENDPOINT_URL` (required for R2/MinIO; omit for AWS S3)
+
+### Upload Local Game Logs
+
+If you ran games locally using the amongagents package directly (not through the API), you can upload those logs to S3 and import them into the database:
+
+```bash
+cd backend
+
+# Upload all games from a local experiment directory
+python -m scripts.upload_local_logs /path/to/amongagents/logs/experiment_name
+
+# Upload only a specific game (e.g., game index 5)
+python -m scripts.upload_local_logs /path/to/logs --game-index 5
+
+# Add a prefix to generated game IDs
+python -m scripts.upload_local_logs /path/to/logs --prefix batch1
+
+# Dry run to preview what would be uploaded
+python -m scripts.upload_local_logs /path/to/logs --dry-run
+
+# Skip rating updates (upload logs only)
+python -m scripts.upload_local_logs /path/to/logs --skip-ratings
+```
+
+Requirements:
+- `DATABASE_URL`: Database connection for creating game/participant records
+- `OPENROUTER_API_KEY`: Not needed for upload (logs already generated)
+- S3 credentials (`S3_BUCKET_NAME`, `S3_ACCESS_KEY`, etc.): For log storage
+
+This script will:
+1. Read `summary.json` and `agent-logs-compact.json` from the experiment directory
+2. Create a `Game` record and 7 `GameParticipant` records in the database
+3. Upload logs to S3
+4. Recalculate OpenSkill ratings for all participants
 
 ### Manual Deploy (One-liner)
 

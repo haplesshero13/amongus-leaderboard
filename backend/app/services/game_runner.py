@@ -212,9 +212,7 @@ def run_game_task(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(
-            run_game_async(game_id, model_ids, randomize_roles, stream_logs)
-        )
+        loop.run_until_complete(run_game_async(game_id, model_ids, randomize_roles, stream_logs))
     finally:
         loop.close()
 
@@ -498,3 +496,71 @@ async def call_webhook(webhook_url: str, game_id: str, winner: int, winner_reaso
     except Exception as e:
         # Webhook failures shouldn't crash the game runner
         print(f"Webhook call failed: {e}")
+
+
+async def run_multiple_games_async(
+    game_ids: list[str],
+    model_ids_list: list[list[str]],
+    rate_limit: int = 50,
+    randomize_roles: bool = True,
+    stream_logs: bool = False,
+) -> None:
+    """
+    Run multiple games concurrently with rate limiting.
+
+    This is the async version of the bulk game runner, similar to
+    AmongLLMs/main.py's multiple_games function.
+
+    Args:
+        game_ids: List of game IDs to run
+        model_ids_list: List of model ID lists (one per game)
+        rate_limit: Maximum number of concurrent games
+        randomize_roles: Whether to shuffle models before assigning roles
+        stream_logs: Enable live log streaming (recommended: false for bulk)
+    """
+    semaphore = asyncio.Semaphore(rate_limit)
+
+    async def run_limited_game(game_id: str, model_ids: list[str]):
+        async with semaphore:
+            try:
+                await run_game_async(game_id, model_ids, randomize_roles, stream_logs)
+            except Exception as e:
+                print(f"Game {game_id} failed with error: {e}")
+                traceback.print_exc()
+
+    tasks = [
+        run_limited_game(game_id, model_ids) for game_id, model_ids in zip(game_ids, model_ids_list)
+    ]
+    await asyncio.gather(*tasks)
+
+
+def run_multiple_games_task(
+    game_ids: list[str],
+    model_ids_list: list[list[str]],
+    rate_limit: int = 50,
+    randomize_roles: bool = True,
+    stream_logs: bool = False,
+) -> None:
+    """
+    Background task to run multiple games concurrently.
+
+    This creates its own event loop for running async games, similar to
+    run_game_task but for bulk operations.
+
+    Args:
+        game_ids: List of game IDs to run
+        model_ids_list: List of model ID lists (one per game)
+        rate_limit: Maximum number of concurrent games
+        randomize_roles: Whether to shuffle models before assigning roles
+        stream_logs: Enable live log streaming (recommended: false for bulk)
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(
+            run_multiple_games_async(
+                game_ids, model_ids_list, rate_limit, randomize_roles, stream_logs
+            )
+        )
+    finally:
+        loop.close()

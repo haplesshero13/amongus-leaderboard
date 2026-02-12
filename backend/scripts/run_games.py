@@ -121,9 +121,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             continue
 
         try:
-            await run_game_async(
-                game_id, model_ids, randomize_roles=False, stream_logs=False
-            )
+            await run_game_async(game_id, model_ids, randomize_roles=False, stream_logs=False)
             print(f" ✓ {game_id}")
             triggered.append(game_id)
         except (KeyboardInterrupt, SystemExit):
