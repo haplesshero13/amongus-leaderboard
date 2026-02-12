@@ -43,7 +43,7 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
     return response.json()
 
 
-def create_and_matchmake_game() -> tuple[str, list[str]]:
+def create_game_and_matchmake() -> tuple[str, list[str]]:
     """Select participants, create a game record, and return (game_id, model_ids).
 
     Returns:
@@ -90,7 +90,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         print(f"Game {i}/{num_games}: Direct run...", end="", flush=True)
 
         try:
-            game_id, model_ids = create_and_matchmake_game()
+            game_id, model_ids = create_game_and_matchmake()
         except Exception as e:
             print(f" ✗ setup failed: {e}")
             continue
