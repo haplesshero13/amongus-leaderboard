@@ -29,8 +29,6 @@ import time
 import httpx
 
 logger = logging.getLogger(__name__)
-if not logging.getLogger().hasHandlers():
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def trigger_matchmake(api_url: str, api_key: str) -> dict:
@@ -108,8 +106,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
-            logger.error("Matchmaking failed", exc_info=True)
-            print(" ✗ Matchmaking failed (see error details in logs)")
+            logger.error("✗ Matchmaking failed: %s", e, exc_info=True)
             failed_matchmaking += 1
             continue
 
@@ -122,8 +119,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
-            logger.error("Run failed", exc_info=True)
-            print(" ✗ Run failed (see error details in logs)")
+            logger.error("✗ Run failed: %s", e, exc_info=True)
             failed_runs += 1
             continue
 
@@ -156,6 +152,9 @@ def main():
         help="API base URL",
     )
     args = parser.parse_args()
+
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
