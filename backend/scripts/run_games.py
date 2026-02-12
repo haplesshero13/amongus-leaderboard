@@ -103,9 +103,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
 
         try:
             game_id, model_ids = create_game_with_matchmaking()
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception as e:
-            if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                raise
             logger.error("Matchmaking failed", exc_info=e)
             print(f" ✗ Matchmaking failed: {e}")
             failed_matchmaking += 1
@@ -117,9 +117,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             )
             print(f" ✓ {game_id}")
             triggered.append(game_id)
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception as e:
-            if isinstance(e, (KeyboardInterrupt, SystemExit)):
-                raise
             logger.error("Run failed", exc_info=e)
             print(f" ✗ Run failed: {e}")
             failed_runs += 1
