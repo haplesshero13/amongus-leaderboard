@@ -238,6 +238,18 @@ cd backend
 python -m scripts.run_games --games 5 --mode direct --yes
 ```
 
+Batch mode requirements:
+- **Database access**: set `DATABASE_URL` so results can be written to the backend DB.
+- **OpenRouter key**: set `OPENROUTER_API_KEY` to run agent calls.
+- **Log storage (S3/R2)**: game logs are uploaded after completion to S3-compatible
+  storage at `games/YYYY/MM/DD/<game_id>.json` (bucket is created if credentials
+  allow; otherwise create it ahead of time). Configure:
+  - `S3_BUCKET_NAME`
+  - `S3_ACCESS_KEY`
+  - `S3_SECRET_KEY`
+  - `S3_REGION`
+  - `S3_ENDPOINT_URL` (required for R2/MinIO; omit for AWS S3)
+
 ### Manual Deploy (One-liner)
 
 ```bash
