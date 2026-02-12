@@ -226,8 +226,16 @@ Trigger games remotely via GitHub Actions workflow:
 The workflow will:
 - Set up Python environment
 - Install dependencies
-- Execute `python -m scripts.run_games --games N --yes`
+- Execute `python -m scripts.run_games --games N --yes` (API mode)
 - Show results in the workflow logs
+
+For local runs where the backend database is available, you can avoid API calls by
+using the direct runner (mirrors AmongLLMs' multi-game entrypoint):
+
+```bash
+cd backend
+python -m scripts.run_games --games 5 --mode direct --yes
+```
 
 ### Manual Deploy (One-liner)
 
