@@ -43,7 +43,7 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
     return response.json()
 
 
-def setup_game_with_matchmaking() -> tuple[str, list[str]]:
+def create_game_with_matchmaking() -> tuple[str, list[str]]:
     """Select participants, create a game record, and return (game_id, model_ids).
 
     Returns:
@@ -62,7 +62,7 @@ def setup_game_with_matchmaking() -> tuple[str, list[str]]:
         try:
             model_ids = select_participants(db)
         except Exception as e:
-            raise RuntimeError("Failed to select participants") from e
+            raise RuntimeError(f"Failed to select participants: {e}") from e
         game = Game(
             status=GameStatus.PENDING,
             engine_version=CURRENT_ENGINE_VERSION,
@@ -73,7 +73,7 @@ def setup_game_with_matchmaking() -> tuple[str, list[str]]:
             db.commit()
         except Exception as e:
             db.rollback()
-            raise RuntimeError("Failed to create game record") from e
+            raise RuntimeError(f"Failed to create game record: {e}") from e
         game_id = game.id
         return game_id, model_ids
     finally:
@@ -97,9 +97,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         print(f"Game {game_num}/{num_games}: Direct run...", end="", flush=True)
 
         try:
-            game_id, model_ids = setup_game_with_matchmaking()
+            game_id, model_ids = create_game_with_matchmaking()
         except Exception as e:
-            print(f" ✗ setup failed: {e}")
+            print(f" ✗ Setup failed: {e}")
             continue
 
         try:
@@ -109,7 +109,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             print(f" ✓ {game_id}")
             triggered.append(game_id)
         except Exception as e:
-            print(f" ✗ run failed: {e}")
+            print(f" ✗ Run failed: {e}")
 
         if game_num < num_games:
             await asyncio.sleep(delay)

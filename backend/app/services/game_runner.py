@@ -445,7 +445,7 @@ async def execute_amongagents_game(
     try:
         winner = await game_instance.run_game()
     finally:
-        if stop_polling and polling_task:
+        if stream_logs:
             # Stop the polling task
             stop_polling.set()
             await polling_task
