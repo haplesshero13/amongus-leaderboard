@@ -29,7 +29,8 @@ import time
 import httpx
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+if not logging.getLogger().hasHandlers():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def trigger_matchmake(api_url: str, api_key: str) -> dict:
@@ -108,7 +109,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             logger.error("Matchmaking failed", exc_info=True)
-            print(" ✗ Matchmaking failed")
+            print(" ✗ Matchmaking failed (see logs)")
             failed_matchmaking += 1
             continue
 
@@ -122,7 +123,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             logger.error("Run failed", exc_info=True)
-            print(" ✗ Run failed")
+            print(" ✗ Run failed (see logs)")
             failed_runs += 1
             continue
 
