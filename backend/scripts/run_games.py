@@ -21,11 +21,14 @@ Usage:
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 import time
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def trigger_matchmake(api_url: str, api_key: str) -> dict:
@@ -101,6 +104,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         try:
             game_id, model_ids = create_game_with_matchmaking()
         except Exception as e:
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("Matchmaking failed", exc_info=e)
             print(f" ✗ Matchmaking failed: {e}")
             failed_matchmaking += 1
             continue
@@ -112,6 +118,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             print(f" ✓ {game_id}")
             triggered.append(game_id)
         except Exception as e:
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("Run failed", exc_info=e)
             print(f" ✗ Run failed: {e}")
             failed_runs += 1
             continue
