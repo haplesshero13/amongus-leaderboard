@@ -109,7 +109,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             logger.error("Matchmaking failed", exc_info=True)
-            print(" ✗ Matchmaking failed (see log output above)")
+            print(" ✗ Matchmaking failed (see error details in logs)")
             failed_matchmaking += 1
             continue
 
@@ -123,7 +123,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             logger.error("Run failed", exc_info=True)
-            print(" ✗ Run failed (see log output above)")
+            print(" ✗ Run failed (see error details in logs)")
             failed_runs += 1
             continue
 
