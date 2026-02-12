@@ -7,7 +7,7 @@ from scripts.run_games import run_direct_games
 @pytest.mark.asyncio
 async def test_run_direct_games_invokes_runner():
     with patch(
-        "scripts.run_games.create_matchmade_game_record",
+        "scripts.run_games.create_and_matchmake_game",
         side_effect=[("game-1", ["m1"]), ("game-2", ["m2"])],
     ) as create_game, patch(
         "app.services.game_runner.run_game_async",

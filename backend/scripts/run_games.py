@@ -43,8 +43,8 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
     return response.json()
 
 
-def create_matchmade_game_record() -> tuple[str, list[str]]:
-    """Create a matchmade game record and return (game_id, model_ids)."""
+def create_and_matchmake_game() -> tuple[str, list[str]]:
+    """Select participants, create a game record, and return (game_id, model_ids)."""
     from app.core.constants import CURRENT_ENGINE_VERSION
     from app.core.database import SessionLocal
     from app.models import Game, GameStatus
@@ -59,9 +59,8 @@ def create_matchmade_game_record() -> tuple[str, list[str]]:
             model_ids=model_ids,
         )
         db.add(game)
-        db.flush()
-        game_id = game.id
         db.commit()
+        game_id = game.id
         return game_id, model_ids
     finally:
         db.close()
@@ -76,7 +75,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         print(f"Game {i}/{num_games}: Direct run...", end="", flush=True)
 
         try:
-            game_id, model_ids = create_matchmade_game_record()
+            game_id, model_ids = create_and_matchmake_game()
         except Exception as e:
             print(f" ✗ setup failed: {e}")
             continue
@@ -124,7 +123,7 @@ def main():
     if args.mode == "api":
         print(f"URL: {args.api_url}/api/games/matchmake")
     else:
-        print("Mode: direct (no HTTP, uses local database)")
+        print("Mode: direct (no HTTP calls, requires local database access)")
 
     if args.dry_run:
         print("\n[DRY RUN] No games triggered.")
