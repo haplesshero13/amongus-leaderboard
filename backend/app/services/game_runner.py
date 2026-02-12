@@ -204,6 +204,9 @@ def run_game_task(
     It creates its own event loop to run the async game code.
 
     Args:
+        game_id: Game ID to run.
+        model_ids: Model UUIDs for players.
+        randomize_roles: Whether to shuffle models before assigning roles.
         stream_logs: When False, skip live log streaming during bulk runs.
     """
     loop = asyncio.new_event_loop()
@@ -225,6 +228,12 @@ async def run_game_async(
     """
     Run a game asynchronously.
 
+    Args:
+        game_id: Game ID to run.
+        model_ids: Model UUIDs for players.
+        randomize_roles: Whether to shuffle models before assigning roles.
+        stream_logs: When False, skip live log streaming during bulk runs.
+
     Steps:
     1. Update game status to RUNNING
     2. Set up players and assign roles
@@ -233,9 +242,6 @@ async def run_game_async(
     5. Update ratings
     6. Upload logs to S3
     7. Call webhook if configured
-
-    Args:
-        stream_logs: When False, skip live log streaming during bulk runs.
     """
     db = SessionLocal()
     settings = get_settings()
@@ -394,11 +400,11 @@ async def execute_amongagents_game(
     """
     Execute the actual Among Us game using amongagents.
 
-    Returns:
-        tuple of (winner_code, winner_reason, summary_dict, agent_logs_list, experiment_dir)
-
     Args:
         stream_logs: When False, skip live log streaming during bulk runs.
+
+    Returns:
+        tuple of (winner_code, winner_reason, summary_dict, agent_logs_list, experiment_dir)
     """
     # Set up experiment path for amongagents (required for agent logging)
     experiment_dir = tempfile.mkdtemp(prefix=f"game_{game.id}_")
