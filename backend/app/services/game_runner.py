@@ -202,6 +202,9 @@ def run_game_task(
 
     This is called by FastAPI's BackgroundTasks and runs synchronously.
     It creates its own event loop to run the async game code.
+
+    Args:
+        stream_logs: When False, skip live log streaming during bulk runs.
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -230,6 +233,9 @@ async def run_game_async(
     5. Update ratings
     6. Upload logs to S3
     7. Call webhook if configured
+
+    Args:
+        stream_logs: When False, skip live log streaming during bulk runs.
     """
     db = SessionLocal()
     settings = get_settings()
@@ -390,6 +396,9 @@ async def execute_amongagents_game(
 
     Returns:
         tuple of (winner_code, winner_reason, summary_dict, agent_logs_list, experiment_dir)
+
+    Args:
+        stream_logs: When False, skip live log streaming during bulk runs.
     """
     # Set up experiment path for amongagents (required for agent logging)
     experiment_dir = tempfile.mkdtemp(prefix=f"game_{game.id}_")

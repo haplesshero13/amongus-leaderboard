@@ -46,6 +46,9 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
 def create_and_matchmake_game() -> tuple[str, list[str]]:
     """Select participants, create a game record, and return (game_id, model_ids).
 
+    Returns:
+        tuple[str, list[str]]: Game ID and ordered model IDs.
+
     Raises:
         Exception: If matchmaking or database operations fail.
     """
@@ -71,7 +74,15 @@ def create_and_matchmake_game() -> tuple[str, list[str]]:
 
 
 async def run_direct_games(num_games: int, delay: int) -> list[str]:
-    """Run games directly through the game runner without HTTP."""
+    """Run games directly through the game runner without HTTP.
+
+    Args:
+        num_games: Number of games to run.
+        delay: Seconds to wait between game runs.
+
+    Returns:
+        list[str]: Game IDs for successfully completed runs.
+    """
     from app.services.game_runner import run_game_async
 
     triggered = []
