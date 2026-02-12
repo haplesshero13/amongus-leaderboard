@@ -99,8 +99,8 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         try:
             game_id, model_ids = create_game_with_matchmaking()
         except Exception as e:
-            print(f" ✗ Setup failed: {e}")
-            continue
+            print(f" ✗ Matchmaking failed: {e}")
+            raise RuntimeError(f"Failed to create game with matchmaking: {e}") from e
 
         try:
             await run_game_async(
