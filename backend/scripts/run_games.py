@@ -91,7 +91,7 @@ async def run_direct_games(num_games: int, delay: int, dry_run: bool) -> list[st
         except Exception as e:
             print(f" ✗ run failed: {e}")
 
-        if i < num_games and delay > 0:
+        if i < num_games:
             await asyncio.sleep(delay)
 
     return triggered
@@ -127,12 +127,12 @@ def main():
     else:
         print("Mode: direct (no HTTP, uses local database)")
 
-    if args.dry_run:
+    if args.dry_run and args.mode == "api":
         print("\n[DRY RUN] No games triggered.")
         return
 
     # Confirm
-    if not args.yes:
+    if not args.yes and not args.dry_run:
         response = input("Proceed? [y/N] ").strip().lower()
         if response != "y":
             print("Aborted.")
