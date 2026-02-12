@@ -98,6 +98,9 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
     triggered = []
     failed_matchmaking = 0
     failed_runs = 0
+    if num_games <= 0:
+        logger.info("Summary: no games requested.")
+        return triggered
     for game_num in range(1, num_games + 1):
         print(f"Game {game_num}/{num_games}: Direct run...", end="", flush=True)
 
