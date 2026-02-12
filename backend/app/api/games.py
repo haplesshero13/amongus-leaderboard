@@ -11,6 +11,8 @@ from app.api.schemas import (
     TriggerGameRequest,
     MatchmakeRequest,
     TriggerGameResponse,
+    BulkTriggerRequest,
+    BulkTriggerResponse,
     GameResponse,
     GameParticipantResponse,
     GameStatusEnum,
@@ -108,6 +110,98 @@ async def matchmake_game(
     return TriggerGameResponse(
         game_id=game.id,
         status=GameStatusEnum.PENDING,
+    )
+
+
+@router.post("/games/trigger-bulk", response_model=BulkTriggerResponse)
+async def trigger_bulk_games(
+    request: BulkTriggerRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
+    """
+    Trigger multiple games in parallel.
+
+    This endpoint runs games concurrently with a rate limit (semaphore),
+    similar to the AmongLLMs/main.py approach. Much faster than triggering
+    games one-by-one for bulk test runs or tournaments.
+
+    Each game randomly selects 7 models from the pool. Default pool is all
+    registered models; optionally override with specific model IDs.
+
+    Args:
+        request: Bulk trigger configuration
+            - num_games: Number of games to run (1-100)
+            - model_ids: Optional list to limit pool (default: all registered models)
+            - rate_limit: Semaphore limit for max concurrent games (1-100, default: 50)
+            - stream_logs: Enable live streaming (default: false, recommended for bulk)
+
+    Returns:
+        List of created game IDs and total count
+    """
+    import random
+
+    # Default: use all registered models. Override: use only specified models.
+    if request.model_ids:
+        model_pool = request.model_ids
+    else:
+        all_models = db.query(Model).all()
+        model_pool = [m.model_id for m in all_models]
+
+    # Validate pool size
+    if len(model_pool) < 7:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least 7 models in pool, found {len(model_pool)}",
+        )
+
+    # Create games with randomly selected models from pool
+    game_ids = []
+    model_ids_list = []
+
+    for _ in range(request.num_games):
+        selected_model_ids = random.sample(model_pool, 7)
+
+        # Validate and get Model objects
+        models = []
+        for model_id in selected_model_ids:
+            model = db.query(Model).filter(Model.model_id == model_id).first()
+            if not model:
+                raise HTTPException(status_code=404, detail=f"Model not found: {model_id}")
+            models.append(model)
+
+        model_uuids = [m.id for m in models]
+
+        # Create game record
+        game = Game(
+            status=GameStatus.PENDING,
+            webhook_url=None,  # Bulk games don't support individual webhooks
+            engine_version=CURRENT_ENGINE_VERSION,
+            model_ids=model_uuids,
+        )
+        db.add(game)
+        db.flush()
+        game_ids.append(game.id)
+        model_ids_list.append(model_uuids)
+
+    db.commit()
+
+    # Schedule bulk background task
+    from app.services.game_runner import run_multiple_games_task
+
+    background_tasks.add_task(
+        run_multiple_games_task,
+        game_ids=game_ids,
+        model_ids_list=model_ids_list,
+        rate_limit=request.rate_limit,
+        randomize_roles=True,
+        stream_logs=request.stream_logs,
+    )
+
+    return BulkTriggerResponse(
+        game_ids=game_ids,
+        total_games=request.num_games,
     )
 
 
