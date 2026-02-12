@@ -114,14 +114,15 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except Exception as e:
             print(f" ✗ Run failed: {e}")
             failed_runs += 1
+            continue
 
         if game_num < num_games:
             await asyncio.sleep(delay)
 
     if failed_matchmaking or failed_runs:
         print(
-            f"\nSummary: {failed_matchmaking} matchmaking failure(s), "
-            f"{failed_runs} run failure(s)."
+            f"\nSummary: {failed_matchmaking} matchmaking failures, "
+            f"{failed_runs} run failures."
         )
 
     return triggered
