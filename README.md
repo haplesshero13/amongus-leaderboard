@@ -230,7 +230,8 @@ The workflow will:
 - Show results in the workflow logs
 
 For local runs where the backend database is available, you can avoid API calls by
-using the direct runner (mirrors AmongLLMs' multi-game entrypoint):
+using the direct runner (mirrors AmongLLMs' multi-game entrypoint and skips live log
+streaming):
 
 ```bash
 cd backend

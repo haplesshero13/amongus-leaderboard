@@ -66,17 +66,13 @@ def create_matchmade_game() -> tuple[str, list[str]]:
         db.close()
 
 
-async def run_direct_games(num_games: int, delay: int, dry_run: bool) -> list[str]:
+async def run_direct_games(num_games: int, delay: int) -> list[str]:
     """Run games directly through the game runner without HTTP."""
     from app.services.game_runner import run_game_async
 
     triggered = []
     for i in range(1, num_games + 1):
         print(f"Game {i}/{num_games}: Direct run...", end="", flush=True)
-
-        if dry_run:
-            print(" ✓ (dry run)")
-            continue
 
         try:
             game_id, model_ids = create_matchmade_game()
@@ -85,7 +81,9 @@ async def run_direct_games(num_games: int, delay: int, dry_run: bool) -> list[st
             continue
 
         try:
-            await run_game_async(game_id, model_ids, randomize_roles=False)
+            await run_game_async(
+                game_id, model_ids, randomize_roles=False, stream_logs=False
+            )
             print(f" ✓ {game_id}")
             triggered.append(game_id)
         except Exception as e:
@@ -127,12 +125,12 @@ def main():
     else:
         print("Mode: direct (no HTTP, uses local database)")
 
-    if args.dry_run and args.mode == "api":
+    if args.dry_run:
         print("\n[DRY RUN] No games triggered.")
         return
 
     # Confirm
-    if not args.yes and not args.dry_run:
+    if not args.yes:
         response = input("Proceed? [y/N] ").strip().lower()
         if response != "y":
             print("Aborted.")
@@ -161,7 +159,7 @@ def main():
             if i < args.games:
                 time.sleep(args.delay)
     else:
-        triggered = asyncio.run(run_direct_games(args.games, args.delay, args.dry_run))
+        triggered = asyncio.run(run_direct_games(args.games, args.delay))
 
     print(f"\n{'=' * 60}")
     print(f"COMPLETE: {len(triggered)}/{args.games} games triggered")

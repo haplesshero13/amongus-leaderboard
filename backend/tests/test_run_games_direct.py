@@ -13,13 +13,13 @@ async def test_run_direct_games_invokes_runner():
         "app.services.game_runner.run_game_async",
         new_callable=AsyncMock,
     ) as run_game:
-        triggered = await run_direct_games(num_games=2, delay=0, dry_run=False)
+        triggered = await run_direct_games(num_games=2, delay=0)
 
     assert triggered == ["game-1", "game-2"]
     assert create_game.call_count == 2
     run_game.assert_has_awaits(
         [
-            call("game-1", ["m1"], randomize_roles=False),
-            call("game-2", ["m2"], randomize_roles=False),
+            call("game-1", ["m1"], randomize_roles=False, stream_logs=False),
+            call("game-2", ["m2"], randomize_roles=False, stream_logs=False),
         ]
     )

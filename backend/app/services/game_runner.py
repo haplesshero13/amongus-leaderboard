@@ -191,7 +191,12 @@ def validate_agent_logs(agent_logs: list) -> None:
             )
 
 
-def run_game_task(game_id: str, model_ids: list[str], randomize_roles: bool = True) -> None:
+def run_game_task(
+    game_id: str,
+    model_ids: list[str],
+    randomize_roles: bool = True,
+    stream_logs: bool = True,
+) -> None:
     """
     Background task to run a game.
 
@@ -201,12 +206,19 @@ def run_game_task(game_id: str, model_ids: list[str], randomize_roles: bool = Tr
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(run_game_async(game_id, model_ids, randomize_roles))
+        loop.run_until_complete(
+            run_game_async(game_id, model_ids, randomize_roles, stream_logs)
+        )
     finally:
         loop.close()
 
 
-async def run_game_async(game_id: str, model_ids: list[str], randomize_roles: bool = True) -> None:
+async def run_game_async(
+    game_id: str,
+    model_ids: list[str],
+    randomize_roles: bool = True,
+    stream_logs: bool = True,
+) -> None:
     """
     Run a game asynchronously.
 
@@ -251,12 +263,13 @@ async def run_game_async(game_id: str, model_ids: list[str], randomize_roles: bo
         game.model_ids = [m.id for m in models]
         db.commit()
 
-        # Start live log streaming for this game
-        live_logs.start_game(game_id)
+        # Start live log streaming for this game (optional)
+        if stream_logs:
+            live_logs.start_game(game_id)
 
         # Run the actual game
         winner, winner_reason, summary, agent_logs, experiment_dir = await execute_amongagents_game(
-            game, models, settings.openrouter_api_key
+            game, models, settings.openrouter_api_key, stream_logs=stream_logs
         )
 
         # Update game with results
@@ -340,7 +353,8 @@ async def run_game_async(game_id: str, model_ids: list[str], randomize_roles: bo
         update_ratings_for_game(db, game)
 
         # End live streaming with summary
-        live_logs.end_game(game_id, summary)
+        if stream_logs:
+            live_logs.end_game(game_id, summary)
 
         db.commit()
 
@@ -352,7 +366,8 @@ async def run_game_async(game_id: str, model_ids: list[str], randomize_roles: bo
         # Handle any errors
         db.rollback()
         # End live streaming on failure
-        live_logs.end_game(game_id, None)
+        if stream_logs:
+            live_logs.end_game(game_id, None)
         game = db.query(Game).filter(Game.id == game_id).first()
         if game:
             game.status = GameStatus.FAILED
@@ -368,6 +383,7 @@ async def execute_amongagents_game(
     game: Game,
     models: list[Model],
     openrouter_api_key: str,
+    stream_logs: bool = True,
 ) -> tuple[int, str, dict, list, str]:
     """
     Execute the actual Among Us game using amongagents.
@@ -402,16 +418,22 @@ async def execute_amongagents_game(
         game_index=0,
     )
 
-    # Start log polling for live streaming
-    stop_polling = asyncio.Event()
-    polling_task = asyncio.create_task(poll_logs_to_stream(game.id, experiment_dir, stop_polling))
+    stop_polling = None
+    polling_task = None
+    if stream_logs:
+        # Start log polling for live streaming
+        stop_polling = asyncio.Event()
+        polling_task = asyncio.create_task(
+            poll_logs_to_stream(game.id, experiment_dir, stop_polling)
+        )
 
     try:
         winner = await game_instance.run_game()
     finally:
         # Stop the polling task
-        stop_polling.set()
-        await polling_task
+        if stop_polling and polling_task:
+            stop_polling.set()
+            await polling_task
 
     # Extract summary and logs
     summary = game_instance.summary_json.get("Game 0", {})
