@@ -7,7 +7,7 @@ from scripts.run_games import run_direct_games
 @pytest.mark.asyncio
 async def test_run_direct_games_invokes_runner():
     with patch(
-        "scripts.run_games.create_game_with_matchmaking",
+        "scripts.run_games.setup_game_with_matchmaking",
         side_effect=[("game-1", ["m1"]), ("game-2", ["m2"])],
     ) as create_game, patch(
         "app.services.game_runner.run_game_async",
@@ -28,8 +28,8 @@ async def test_run_direct_games_invokes_runner():
 @pytest.mark.asyncio
 async def test_run_direct_games_handles_setup_error():
     with patch(
-        "scripts.run_games.create_game_with_matchmaking",
-        side_effect=RuntimeError("boom"),
+        "scripts.run_games.setup_game_with_matchmaking",
+        side_effect=RuntimeError("Setup failed"),
     ) as create_game, patch(
         "app.services.game_runner.run_game_async",
         new_callable=AsyncMock,
@@ -44,13 +44,13 @@ async def test_run_direct_games_handles_setup_error():
 @pytest.mark.asyncio
 async def test_run_direct_games_handles_run_error():
     with patch(
-        "scripts.run_games.create_game_with_matchmaking",
+        "scripts.run_games.setup_game_with_matchmaking",
         return_value=("game-1", ["m1"]),
     ) as create_game, patch(
         "app.services.game_runner.run_game_async",
         new_callable=AsyncMock,
     ) as run_game:
-        run_game.side_effect = RuntimeError("boom")
+        run_game.side_effect = RuntimeError("Game execution failed")
         triggered = await run_direct_games(num_games=1, delay=0)
 
     assert triggered == []

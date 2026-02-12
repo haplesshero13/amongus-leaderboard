@@ -433,20 +433,22 @@ async def execute_amongagents_game(
         game_index=0,
     )
 
+    stop_polling = None
+    polling_task = None
     if stream_logs:
         # Start log polling for live streaming
         stop_polling = asyncio.Event()
         polling_task = asyncio.create_task(
             poll_logs_to_stream(game.id, experiment_dir, stop_polling)
         )
-        try:
-            winner = await game_instance.run_game()
-        finally:
+
+    try:
+        winner = await game_instance.run_game()
+    finally:
+        if stop_polling and polling_task:
             # Stop the polling task
             stop_polling.set()
             await polling_task
-    else:
-        winner = await game_instance.run_game()
 
     # Extract summary and logs
     summary = game_instance.summary_json.get("Game 0", {})
