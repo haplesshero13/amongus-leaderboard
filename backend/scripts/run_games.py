@@ -135,7 +135,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             await asyncio.sleep(delay)
 
     logger.info(
-        "Summary: %s matchmaking failures, %s run failures, %s successful games.",
+        "Summary: %s matchmaking failures, %s run failures, %s games completed successfully.",
         failed_matchmaking,
         failed_runs,
         len(triggered),
