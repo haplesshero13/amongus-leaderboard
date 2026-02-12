@@ -107,7 +107,13 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             print()
-            logger.error("Matchmaking failed: %s", e, exc_info=True)
+            logger.error(
+                "Matchmaking failed for game %s/%s: %s",
+                game_num,
+                num_games,
+                e,
+                exc_info=True,
+            )
             failed_matchmaking += 1
             continue
 
@@ -121,16 +127,18 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             raise
         except Exception as e:
             print()
-            logger.error("Run failed: %s", e, exc_info=True)
+            logger.error("Run failed for game %s: %s", game_id, e, exc_info=True)
             failed_runs += 1
             continue
 
         if game_num < num_games:
             await asyncio.sleep(delay)
 
-    print(
-        f"\nSummary: {failed_matchmaking} matchmaking failures, "
-        f"{failed_runs} run failures, {len(triggered)} successful games."
+    logger.info(
+        "Summary: %s matchmaking failures, %s run failures, %s successful games.",
+        failed_matchmaking,
+        failed_runs,
+        len(triggered),
     )
 
     return triggered
