@@ -106,7 +106,8 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
-            logger.error("✗ Matchmaking failed: %s", e, exc_info=True)
+            print()
+            logger.error("Matchmaking failed: %s", e, exc_info=True)
             failed_matchmaking += 1
             continue
 
@@ -119,7 +120,8 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
-            logger.error("✗ Run failed: %s", e, exc_info=True)
+            print()
+            logger.error("Run failed: %s", e, exc_info=True)
             failed_runs += 1
             continue
 
@@ -153,8 +155,11 @@ def main():
     )
     args = parser.parse_args()
 
-    if not logging.getLogger().hasHandlers():
-        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+        force=True,
+    )
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
