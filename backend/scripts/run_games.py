@@ -43,7 +43,7 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
     return response.json()
 
 
-def create_game_and_matchmake() -> tuple[str, list[str]]:
+def create_game_with_matchmaking() -> tuple[str, list[str]]:
     """Select participants, create a game record, and return (game_id, model_ids).
 
     Returns:
@@ -86,11 +86,11 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
     from app.services.game_runner import run_game_async
 
     triggered = []
-    for i in range(1, num_games + 1):
-        print(f"Game {i}/{num_games}: Direct run...", end="", flush=True)
+    for game_num in range(1, num_games + 1):
+        print(f"Game {game_num}/{num_games}: Direct run...", end="", flush=True)
 
         try:
-            game_id, model_ids = create_game_and_matchmake()
+            game_id, model_ids = create_game_with_matchmaking()
         except Exception as e:
             print(f" ✗ setup failed: {e}")
             continue
@@ -104,7 +104,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
         except Exception as e:
             print(f" ✗ run failed: {e}")
 
-        if i < num_games:
+        if game_num < num_games:
             await asyncio.sleep(delay)
 
     return triggered
