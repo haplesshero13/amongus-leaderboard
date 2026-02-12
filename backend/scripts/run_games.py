@@ -93,6 +93,8 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
     from app.services.game_runner import run_game_async
 
     triggered = []
+    failed_matchmaking = 0
+    failed_runs = 0
     for game_num in range(1, num_games + 1):
         print(f"Game {game_num}/{num_games}: Direct run...", end="", flush=True)
 
@@ -100,6 +102,7 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             game_id, model_ids = create_game_with_matchmaking()
         except Exception as e:
             print(f" ✗ Matchmaking failed: {e}")
+            failed_matchmaking += 1
             continue
 
         try:
@@ -110,9 +113,16 @@ async def run_direct_games(num_games: int, delay: int) -> list[str]:
             triggered.append(game_id)
         except Exception as e:
             print(f" ✗ Run failed: {e}")
+            failed_runs += 1
 
         if game_num < num_games:
             await asyncio.sleep(delay)
+
+    if failed_matchmaking or failed_runs:
+        print(
+            f"\nSummary: {failed_matchmaking} matchmaking failure(s), "
+            f"{failed_runs} run failure(s)."
+        )
 
     return triggered
 
