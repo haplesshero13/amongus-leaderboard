@@ -44,7 +44,11 @@ def trigger_matchmake(api_url: str, api_key: str) -> dict:
 
 
 def create_and_matchmake_game() -> tuple[str, list[str]]:
-    """Select participants, create a game record, and return (game_id, model_ids)."""
+    """Select participants, create a game record, and return (game_id, model_ids).
+
+    Raises:
+        Exception: If matchmaking or database operations fail.
+    """
     from app.core.constants import CURRENT_ENGINE_VERSION
     from app.core.database import SessionLocal
     from app.models import Game, GameStatus
