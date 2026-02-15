@@ -18,7 +18,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
 from app.models import Game, Model, ModelRating, GameStatus, PlayerRole
-from app.services.game_runner import run_game_async
+from app.services.game_runner import run_game_async, GameResult
 
 
 # Create a test engine
@@ -141,12 +141,12 @@ class TestGameCompletionFlow:
             # Configure mocks
             mock_session_local.return_value = db_session
             mock_settings.return_value = MagicMock(openrouter_api_key="test-key")
-            mock_execute.return_value = (
-                1,  # winner (impostors)
-                "Impostors win! (Crewmates outnumbered)",
-                mock_summary,
-                [],  # agent_logs
-                "/tmp/test",  # experiment_dir
+            mock_execute.return_value = GameResult(
+                winner=1,
+                winner_reason="Impostors win! (Crewmates outnumbered)",
+                summary=mock_summary,
+                agent_logs=[],
+                experiment_dir="/tmp/test",
             )
             mock_upload.return_value = ("test-bucket", "test-key")
 
@@ -215,12 +215,12 @@ class TestGameCompletionFlow:
         ):
             mock_session_local.return_value = db_session
             mock_settings.return_value = MagicMock(openrouter_api_key="test-key")
-            mock_execute.return_value = (
-                1,  # impostors win
-                "Impostors win!",
-                mock_summary,
-                [],
-                "/tmp/test",
+            mock_execute.return_value = GameResult(
+                winner=1,
+                winner_reason="Impostors win!",
+                summary=mock_summary,
+                agent_logs=[],
+                experiment_dir="/tmp/test",
             )
             mock_upload.return_value = ("test-bucket", "test-key")
 
@@ -266,7 +266,13 @@ class TestGameCompletionFlow:
         ):
             mock_session_local.return_value = db_session
             mock_settings.return_value = MagicMock(openrouter_api_key="test-key")
-            mock_execute.return_value = (1, "Impostors win!", mock_summary, [], "/tmp/test")
+            mock_execute.return_value = GameResult(
+                winner=1,
+                winner_reason="Impostors win!",
+                summary=mock_summary,
+                agent_logs=[],
+                experiment_dir="/tmp/test",
+            )
             mock_upload.return_value = ("test-bucket", "test-key")
 
             await run_game_async(game_id, model_ids)
@@ -307,12 +313,12 @@ class TestGameCompletionFlow:
         ):
             mock_session_local.return_value = db_session
             mock_settings.return_value = MagicMock(openrouter_api_key="test-key")
-            mock_execute.return_value = (
-                2,  # crewmates win
-                "Crewmates win! (All impostors eliminated)",
-                mock_summary,
-                [],
-                "/tmp/test",
+            mock_execute.return_value = GameResult(
+                winner=2,
+                winner_reason="Crewmates win! (All impostors eliminated)",
+                summary=mock_summary,
+                agent_logs=[],
+                experiment_dir="/tmp/test",
             )
             mock_upload.return_value = ("test-bucket", "test-key")
 

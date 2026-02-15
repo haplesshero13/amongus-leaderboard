@@ -224,28 +224,21 @@ async def run_game_async(
     stream_logs: bool = True,
 ) -> None:
     """
-    Run a game asynchronously.
+    Orchestrate a single game: load from DB, execute, save results.
+
+    The DB connection is only held during reads/writes, never during game execution.
 
     Args:
         game_id: Game ID to run.
         model_ids: Model UUIDs for players.
         randomize_roles: Whether to shuffle models before assigning roles.
         stream_logs: When False, skip live log streaming during bulk runs.
-
-    Steps:
-    1. Update game status to RUNNING
-    2. Set up players and assign roles
-    3. Run the game using amongagents
-    4. Update game with results
-    5. Update ratings
-    6. Upload logs to S3
-    7. Call webhook if configured
     """
-    db = SessionLocal()
     settings = get_settings()
 
+    # Step 1: Load game data, mark as RUNNING
+    db = SessionLocal()
     try:
-        # Get game and models
         game = db.query(Game).filter(Game.id == game_id).first()
         if not game:
             return
@@ -267,145 +260,200 @@ async def run_game_async(
         if randomize_roles:
             random.shuffle(models)
 
-        # Update status to running and store model IDs
         game.status = GameStatus.RUNNING
         game.started_at = datetime.now(timezone.utc)
         game.model_ids = [m.id for m in models]
         db.commit()
 
-        # Start live log streaming for this game (optional)
-        if stream_logs:
-            live_logs.start_game(game_id)
-
-        # Run the actual game
-        winner, winner_reason, summary, agent_logs, experiment_dir = await execute_amongagents_game(
-            game, models, settings.openrouter_api_key, stream_logs=stream_logs
-        )
-
-        # Update game with results
-        game.winner = winner
-        game.winner_reason = winner_reason
-        game.status = GameStatus.COMPLETED
-        game.ended_at = datetime.now(timezone.utc)
-
-        # Create participants from the game summary (source of truth)
-        # Build a map from openrouter_id -> Model for lookup
-        model_map = {m.openrouter_id: m for m in models}
-
-        for i in range(1, 8):
-            player_key = f"Player {i}"
-            player_data = summary.get(player_key)
-            if not player_data:
-                raise ValueError(f"Missing {player_key} in game summary")
-
-            openrouter_id = player_data.get("model")
-            if not openrouter_id:
-                raise ValueError(f"Missing 'model' for {player_key} in game summary")
-
-            model = model_map.get(openrouter_id)
-            if not model:
-                raise ValueError(f"Unknown model '{openrouter_id}' for {player_key}")
-
-            identity = player_data.get("identity")
-            if identity not in ("Impostor", "Crewmate"):
-                raise ValueError(f"Invalid identity '{identity}' for {player_key}")
-            role = PlayerRole.IMPOSTOR if identity == "Impostor" else PlayerRole.CREWMATE
-
-            color = player_data.get("color")
-            if not color:
-                raise ValueError(f"Missing 'color' for {player_key} in game summary")
-
-            # Determine if this player won based on game outcome
-            impostors_won = winner in (1, 4)  # Codes 1 and 4 are impostor wins
-            player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
-
-            participant = GameParticipant(
-                game_id=game.id,
-                model_id=model.id,
-                player_number=i,
-                player_color=color,
-                role=role,
-                won=player_won,
-                survived=None,  # Could be determined from logs if needed
-            )
-            db.add(participant)
-
-        # Flush to make participants visible for rating calculation
-        db.flush()
-        db.refresh(game)
-
-        # Upload logs to S3 with retry
-        max_retries = 3
-        retry_delay = 1.0  # seconds, doubles each retry
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                bucket, key = upload_game_logs(game.id, summary, agent_logs)
-                game.log_bucket = bucket
-                game.log_key = key
-                break  # Success
-            except Exception as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    print(f"Log upload attempt {attempt + 1}/{max_retries} failed: {e}")
-                    await asyncio.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-        else:
-            # All retries exhausted - fail the game with details
-            raise RuntimeError(
-                f"Failed to upload logs after {max_retries} attempts. "
-                f"Last error: {last_error}. "
-                f"Temp dir with logs: {experiment_dir}"
-            )
-
-        # Update ratings
-        update_ratings_for_game(db, game)
-
-        # End live streaming with summary
-        if stream_logs:
-            live_logs.end_game(game_id, summary)
-
-        db.commit()
-
-        # Call webhook if configured
-        if game.webhook_url:
-            await call_webhook(game.webhook_url, game.id, winner, winner_reason)
-
+        # Extract plain data for the game execution (no ORM objects leave this block)
+        openrouter_ids = [m.openrouter_id for m in models]
+        model_id_to_uuid = {m.openrouter_id: m.id for m in models}
+        webhook_url = game.webhook_url
     except Exception as e:
-        # Handle any errors
         db.rollback()
-        # End live streaming on failure
+        _mark_game_failed(db, game_id, e)
+        return
+    finally:
+        db.close()
+
+    # Step 2: Execute the game (no DB connection held)
+    if stream_logs:
+        live_logs.start_game(game_id)
+
+    try:
+        result = await execute_amongagents_game(
+            game_id, openrouter_ids, settings.openrouter_api_key, stream_logs=stream_logs
+        )
+    except Exception as e:
         if stream_logs:
             live_logs.end_game(game_id, None)
-        game = db.query(Game).filter(Game.id == game_id).first()
-        if game:
-            game.status = GameStatus.FAILED
-            game.error_message = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
-            game.ended_at = datetime.now(timezone.utc)
-            db.commit()
+        db = SessionLocal()
+        try:
+            _mark_game_failed(db, game_id, e)
+        finally:
+            db.close()
+        return
 
+    # Step 3: Save results to DB
+    db = SessionLocal()
+    try:
+        _save_game_results(db, game_id, result, model_id_to_uuid, stream_logs)
+
+        if webhook_url:
+            await call_webhook(webhook_url, game_id, result.winner, result.winner_reason)
+    except Exception as e:
+        db.rollback()
+        if stream_logs:
+            live_logs.end_game(game_id, None)
+        _mark_game_failed(db, game_id, e)
     finally:
         db.close()
 
 
+def _mark_game_failed(db, game_id: str, error: Exception) -> None:
+    """Mark a game as failed with the error details."""
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if game:
+        game.status = GameStatus.FAILED
+        game.error_message = f"{type(error).__name__}: {str(error)}\n{traceback.format_exc()}"
+        game.ended_at = datetime.now(timezone.utc)
+        db.commit()
+
+
+def _save_game_results(
+    db,
+    game_id: str,
+    result: "GameResult",
+    model_id_to_uuid: dict[str, str],
+    stream_logs: bool,
+) -> None:
+    """Save game results, participants, logs, and ratings to the DB."""
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        return
+
+    game.winner = result.winner
+    game.winner_reason = result.winner_reason
+    game.status = GameStatus.COMPLETED
+    game.ended_at = datetime.now(timezone.utc)
+
+    # Create participants from the game summary (source of truth)
+    for i in range(1, 8):
+        player_key = f"Player {i}"
+        player_data = result.summary.get(player_key)
+        if not player_data:
+            raise ValueError(f"Missing {player_key} in game summary")
+
+        openrouter_id = player_data.get("model")
+        if not openrouter_id:
+            raise ValueError(f"Missing 'model' for {player_key} in game summary")
+
+        model_uuid = model_id_to_uuid.get(openrouter_id)
+        if not model_uuid:
+            raise ValueError(f"Unknown model '{openrouter_id}' for {player_key}")
+
+        identity = player_data.get("identity")
+        if identity not in ("Impostor", "Crewmate"):
+            raise ValueError(f"Invalid identity '{identity}' for {player_key}")
+        role = PlayerRole.IMPOSTOR if identity == "Impostor" else PlayerRole.CREWMATE
+
+        color = player_data.get("color")
+        if not color:
+            raise ValueError(f"Missing 'color' for {player_key} in game summary")
+
+        impostors_won = result.winner in (1, 4)
+        player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
+
+        participant = GameParticipant(
+            game_id=game.id,
+            model_id=model_uuid,
+            player_number=i,
+            player_color=color,
+            role=role,
+            won=player_won,
+            survived=None,
+        )
+        db.add(participant)
+
+    db.flush()
+    db.refresh(game)
+
+    # Upload logs to S3 with retry
+    bucket, key = _upload_logs_with_retry(game.id, result)
+    game.log_bucket = bucket
+    game.log_key = key
+
+    # Update ratings
+    update_ratings_for_game(db, game)
+
+    if stream_logs:
+        live_logs.end_game(game_id, result.summary)
+
+    db.commit()
+
+
+def _upload_logs_with_retry(
+    game_id: str, result: "GameResult", max_retries: int = 3
+) -> tuple[str, str]:
+    """Upload logs to S3 with retries (sync version for use inside DB transaction)."""
+    import time
+
+    retry_delay = 1.0
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            return upload_game_logs(game_id, result.summary, result.agent_logs)
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                print(f"Log upload attempt {attempt + 1}/{max_retries} failed: {e}")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+
+    raise RuntimeError(
+        f"Failed to upload logs after {max_retries} attempts. "
+        f"Last error: {last_error}. "
+        f"Temp dir with logs: {result.experiment_dir}"
+    )
+
+
+class GameResult:
+    """Plain data object for game execution results. No ORM dependencies."""
+
+    __slots__ = ("winner", "winner_reason", "summary", "agent_logs", "experiment_dir")
+
+    def __init__(
+        self, winner: int, winner_reason: str, summary: dict, agent_logs: list, experiment_dir: str
+    ):
+        self.winner = winner
+        self.winner_reason = winner_reason
+        self.summary = summary
+        self.agent_logs = agent_logs
+        self.experiment_dir = experiment_dir
+
+
 async def execute_amongagents_game(
-    game: Game,
-    models: list[Model],
+    game_id: str,
+    openrouter_ids: list[str],
     openrouter_api_key: str,
     stream_logs: bool = True,
-) -> tuple[int, str, dict, list, str]:
+) -> GameResult:
     """
-    Execute the actual Among Us game using amongagents.
+    Execute an Among Us game. Pure function — no DB access.
 
     Args:
+        game_id: Game ID (used for temp dir naming and log streaming).
+        openrouter_ids: Ordered list of 7 model openrouter IDs
+                        (first 2 are impostors, rest are crewmates).
+        openrouter_api_key: API key for OpenRouter.
         stream_logs: When False, skip live log streaming during bulk runs.
 
     Returns:
-        tuple of (winner_code, winner_reason, summary_dict, agent_logs_list, experiment_dir)
+        GameResult with winner, summary, logs, and experiment dir.
     """
     # Set up experiment path for amongagents (required for agent logging)
-    experiment_dir = tempfile.mkdtemp(prefix=f"game_{game.id}_")
+    experiment_dir = tempfile.mkdtemp(prefix=f"game_{game_id}_")
     os.environ["EXPERIMENT_PATH"] = experiment_dir
     os.environ["OPENROUTER_API_KEY"] = openrouter_api_key
 
@@ -414,8 +462,8 @@ async def execute_amongagents_game(
     agent_config = {
         "Impostor": "LLM",
         "Crewmate": "LLM",
-        "CREWMATE_LLM_CHOICES": [m.openrouter_id for m in models[2:]],  # Crewmates
-        "IMPOSTOR_LLM_CHOICES": [m.openrouter_id for m in models[:2]],  # Impostors
+        "CREWMATE_LLM_CHOICES": list(openrouter_ids[2:]),  # Crewmates
+        "IMPOSTOR_LLM_CHOICES": list(openrouter_ids[:2]),  # Impostors
         "assignment_mode": "unique",
     }
 
@@ -431,20 +479,17 @@ async def execute_amongagents_game(
         game_index=0,
     )
 
-    stop_polling = None
+    stop_polling = asyncio.Event()
     polling_task = None
     if stream_logs:
-        # Start log polling for live streaming
-        stop_polling = asyncio.Event()
         polling_task = asyncio.create_task(
-            poll_logs_to_stream(game.id, experiment_dir, stop_polling)
+            poll_logs_to_stream(game_id, experiment_dir, stop_polling)
         )
 
     try:
         winner = await game_instance.run_game()
     finally:
-        if stream_logs:
-            # Stop the polling task
+        if polling_task is not None:
             stop_polling.set()
             await polling_task
 
@@ -452,15 +497,10 @@ async def execute_amongagents_game(
     summary = game_instance.summary_json.get("Game 0", {})
 
     # Validate that the models that played match what we requested
-    # This catches bugs in amongagents model assignment
-    requested_openrouter_ids = [m.openrouter_id for m in models]
-    validate_model_assignment(requested_openrouter_ids, summary)
+    validate_model_assignment(list(openrouter_ids), summary)
 
-    # Read agent logs from the experiment directory
+    # Read and validate agent logs
     agent_logs = read_agent_logs(experiment_dir)
-
-    # Validate that no model returned an empty response
-    # This will raise EmptyResponseError if any response is empty
     validate_agent_logs(agent_logs)
 
     winner_reasons = {
@@ -470,12 +510,12 @@ async def execute_amongagents_game(
         4: "Impostors win! (Time limit reached)",
     }
 
-    return (
-        winner,
-        winner_reasons.get(winner, f"Unknown outcome ({winner})"),
-        summary,
-        agent_logs,
-        experiment_dir,
+    return GameResult(
+        winner=winner,
+        winner_reason=winner_reasons.get(winner, f"Unknown outcome ({winner})"),
+        summary=summary,
+        agent_logs=agent_logs,
+        experiment_dir=experiment_dir,
     )
 
 
