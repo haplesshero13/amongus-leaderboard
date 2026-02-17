@@ -376,7 +376,7 @@ async def _run_game_async_inner(
     # Step 3: Save results to DB
     db = SessionLocal()
     try:
-        _save_game_results(db, game_id, result, model_id_to_uuid, stream_logs)
+        await _save_game_results(db, game_id, result, model_id_to_uuid, stream_logs)
     except Exception as e:
         db.rollback()
         if stream_logs:
@@ -399,6 +399,37 @@ def _mark_game_failed(db, game_id: str, error: Exception) -> None:
         game.error_message = f"{type(error).__name__}: {str(error)}\n{traceback.format_exc()}"
         game.ended_at = datetime.now(timezone.utc)
         db.commit()
+
+
+def _force_fail_game(db, game_id: str, error: Exception) -> None:
+    """Last-resort: force a game to FAILED state using a fresh session.
+
+    Called when _mark_game_failed itself fails (e.g. the session is in a
+    broken state after a rollback). Uses a fresh session to prevent games
+    from being stuck in RUNNING forever.
+    """
+    try:
+        db.rollback()
+    except Exception:
+        pass
+
+    fresh_db = SessionLocal()
+    try:
+        game = fresh_db.query(Game).filter(Game.id == game_id).first()
+        if game and game.status != GameStatus.FAILED:
+            game.status = GameStatus.FAILED
+            game.error_message = f"FORCE FAILED — original error: {type(error).__name__}: {error}"
+            game.ended_at = datetime.now(timezone.utc)
+            fresh_db.commit()
+            logger.warning("Force-failed game %s with fresh session", game_id)
+    except Exception:
+        logger.critical(
+            "Could not force-fail game %s — game may be stuck in RUNNING",
+            game_id,
+            exc_info=True,
+        )
+    finally:
+        fresh_db.close()
 
 
 def _prepare_game(
@@ -440,7 +471,7 @@ def _prepare_game(
     )
 
 
-def _save_game_results(
+async def _save_game_results(
     db,
     game_id: str,
     result: "GameResult",
@@ -498,8 +529,8 @@ def _save_game_results(
     db.flush()
     db.refresh(game)
 
-    # Upload logs to S3 with retry
-    bucket, key = _upload_logs_with_retry(game.id, result)
+    # Upload logs to S3 with retry (async — doesn't block event loop)
+    bucket, key = await _upload_logs_with_retry(game.id, result)
     game.log_bucket = bucket
     game.log_key = key
 
@@ -512,23 +543,27 @@ def _save_game_results(
     db.commit()
 
 
-def _upload_logs_with_retry(
+async def _upload_logs_with_retry(
     game_id: str, result: "GameResult", max_retries: int = 3
 ) -> tuple[str, str]:
-    """Upload logs to S3 with retries (sync version for use inside DB transaction)."""
-    import time
+    """Upload logs to S3 with retries.
 
+    Uses asyncio.to_thread for the synchronous boto3 call and asyncio.sleep
+    for retry delays, so the event loop is never blocked.
+    """
     retry_delay = 1.0
     last_error = None
 
     for attempt in range(max_retries):
         try:
-            return upload_game_logs(game_id, result.summary, result.agent_logs)
+            return await asyncio.to_thread(
+                upload_game_logs, game_id, result.summary, result.agent_logs
+            )
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
                 logger.warning("Log upload attempt %d/%d failed: %s", attempt + 1, max_retries, e)
-                time.sleep(retry_delay)
+                await asyncio.sleep(retry_delay)
                 retry_delay *= 2
 
     raise RuntimeError(
@@ -742,9 +777,10 @@ async def run_multiple_games_async(
                         logger.error(
                             "Failed to mark game %s as failed", prep.game_id, exc_info=True
                         )
+                        _force_fail_game(db, prep.game_id, result)
                 else:
                     try:
-                        _save_game_results(
+                        await _save_game_results(
                             db, prep.game_id, result, prep.model_id_to_uuid, stream_logs
                         )
                     except Exception as e:
@@ -764,6 +800,7 @@ async def run_multiple_games_async(
                                 prep.game_id,
                                 exc_info=True,
                             )
+                            _force_fail_game(db, prep.game_id, e)
             finally:
                 db.close()
 
