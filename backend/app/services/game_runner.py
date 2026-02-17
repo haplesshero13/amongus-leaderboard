@@ -6,6 +6,7 @@ updating ratings, and storing game logs.
 
 import asyncio
 import json
+import logging
 import os
 import random
 import tempfile
@@ -18,11 +19,14 @@ import httpx
 from amongagents import AmongUs
 from amongagents.envs.configs.game_config import SEVEN_MEMBER_GAME
 from app.core.config import get_settings
+from app.core.constants import GAME_TIMEOUT_SECONDS
 from app.core.database import SessionLocal
 from app.models import Game, GameParticipant, GameStatus, Model, PlayerRole
 from app.services.rating_service import update_ratings_for_game
 from app.services.storage_service import upload_game_logs
 from app.services import live_logs
+
+logger = logging.getLogger(__name__)
 
 
 class EmptyResponseError(Exception):
@@ -126,7 +130,7 @@ async def poll_logs_to_stream(game_id: str, experiment_dir: str, stop_event: asy
                 pass  # Continue polling
         except Exception as e:
             # Log but don't crash - streaming is best-effort
-            print(f"Error polling logs for game {game_id}: {e}")
+            logger.warning("Error polling logs for game %s: %s", game_id, e)
             await asyncio.sleep(1.5)
 
 
@@ -191,6 +195,39 @@ def validate_agent_logs(agent_logs: list) -> None:
             )
 
 
+class GameResult:
+    """Plain data object for game execution results. No ORM dependencies."""
+
+    __slots__ = ("winner", "winner_reason", "summary", "agent_logs", "experiment_dir")
+
+    def __init__(
+        self, winner: int, winner_reason: str, summary: dict, agent_logs: list, experiment_dir: str
+    ):
+        self.winner = winner
+        self.winner_reason = winner_reason
+        self.summary = summary
+        self.agent_logs = agent_logs
+        self.experiment_dir = experiment_dir
+
+
+class _GamePrep:
+    """Internal data for a prepared game ready for execution. No ORM dependencies."""
+
+    __slots__ = ("game_id", "openrouter_ids", "model_id_to_uuid", "webhook_url")
+
+    def __init__(
+        self,
+        game_id: str,
+        openrouter_ids: list[str],
+        model_id_to_uuid: dict[str, str],
+        webhook_url: str | None,
+    ):
+        self.game_id = game_id
+        self.openrouter_ids = openrouter_ids
+        self.model_id_to_uuid = model_id_to_uuid
+        self.webhook_url = webhook_url
+
+
 def run_game_task(
     game_id: str,
     model_ids: list[str],
@@ -209,12 +246,14 @@ def run_game_task(
         randomize_roles: Whether to shuffle models before assigning roles.
         stream_logs: When False, skip live log streaming during bulk runs.
     """
+    logger.info("Starting background task for game %s", game_id)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(run_game_async(game_id, model_ids, randomize_roles, stream_logs))
     finally:
         loop.close()
+    logger.info("Background task for game %s finished", game_id)
 
 
 async def run_game_async(
@@ -234,6 +273,30 @@ async def run_game_async(
         randomize_roles: Whether to shuffle models before assigning roles.
         stream_logs: When False, skip live log streaming during bulk runs.
     """
+    try:
+        await _run_game_async_inner(game_id, model_ids, randomize_roles, stream_logs)
+    except BaseException as e:
+        # Failsafe: if anything escapes the inner function, mark game as FAILED.
+        # Uses BaseException (not Exception) to also catch CancelledError, which
+        # is a BaseException in Python 3.9+. Without this, cancelled games
+        # (e.g. from asyncio.gather cancellation) stay RUNNING forever.
+        logger.error("Unhandled error in game %s: %s", game_id, e, exc_info=True)
+        db = SessionLocal()
+        try:
+            _mark_game_failed(db, game_id, e)
+        except Exception:
+            logger.error("Failed to mark game %s as failed", game_id, exc_info=True)
+        finally:
+            db.close()
+
+
+async def _run_game_async_inner(
+    game_id: str,
+    model_ids: list[str],
+    randomize_roles: bool,
+    stream_logs: bool,
+) -> None:
+    """Inner implementation of run_game_async (unwrapped)."""
     settings = get_settings()
 
     # Step 1: Load game data, mark as RUNNING
@@ -241,6 +304,7 @@ async def run_game_async(
     try:
         game = db.query(Game).filter(Game.id == game_id).first()
         if not game:
+            logger.error("Game %s not found in DB", game_id)
             return
 
         models = []
@@ -281,9 +345,24 @@ async def run_game_async(
         live_logs.start_game(game_id)
 
     try:
-        result = await execute_amongagents_game(
-            game_id, openrouter_ids, settings.openrouter_api_key, stream_logs=stream_logs
+        result = await asyncio.wait_for(
+            execute_amongagents_game(
+                game_id, openrouter_ids, settings.openrouter_api_key, stream_logs=stream_logs
+            ),
+            timeout=GAME_TIMEOUT_SECONDS,
         )
+    except asyncio.TimeoutError:
+        logger.error("Game %s timed out after %d seconds", game_id, GAME_TIMEOUT_SECONDS)
+        if stream_logs:
+            live_logs.end_game(game_id, None)
+        db = SessionLocal()
+        try:
+            _mark_game_failed(
+                db, game_id, TimeoutError(f"Game execution timed out after {GAME_TIMEOUT_SECONDS}s")
+            )
+        finally:
+            db.close()
+        return
     except Exception as e:
         if stream_logs:
             live_logs.end_game(game_id, None)
@@ -298,16 +377,18 @@ async def run_game_async(
     db = SessionLocal()
     try:
         _save_game_results(db, game_id, result, model_id_to_uuid, stream_logs)
-
-        if webhook_url:
-            await call_webhook(webhook_url, game_id, result.winner, result.winner_reason)
     except Exception as e:
         db.rollback()
         if stream_logs:
             live_logs.end_game(game_id, None)
         _mark_game_failed(db, game_id, e)
+        return
     finally:
         db.close()
+
+    # Step 4: Webhook (best-effort, after DB is committed and closed)
+    if webhook_url:
+        await call_webhook(webhook_url, game_id, result.winner, result.winner_reason)
 
 
 def _mark_game_failed(db, game_id: str, error: Exception) -> None:
@@ -318,6 +399,45 @@ def _mark_game_failed(db, game_id: str, error: Exception) -> None:
         game.error_message = f"{type(error).__name__}: {str(error)}\n{traceback.format_exc()}"
         game.ended_at = datetime.now(timezone.utc)
         db.commit()
+
+
+def _prepare_game(
+    db, game_id: str, model_ids: list[str], randomize_roles: bool
+) -> _GamePrep | None:
+    """Load models and mark a game as RUNNING. Returns None on failure.
+
+    This is used by the bulk runner to prepare all games with a single
+    DB connection before concurrent execution begins.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        logger.error("Game %s not found in DB", game_id)
+        return None
+
+    models = []
+    for mid in model_ids:
+        model = db.query(Model).filter(Model.id == mid).first()
+        if model:
+            models.append(model)
+
+    if len(models) != 7:
+        game.status = GameStatus.FAILED
+        game.error_message = f"Expected 7 models, got {len(models)}"
+        return None
+
+    if randomize_roles:
+        random.shuffle(models)
+
+    game.status = GameStatus.RUNNING
+    game.started_at = datetime.now(timezone.utc)
+    game.model_ids = [m.id for m in models]
+
+    return _GamePrep(
+        game_id=game_id,
+        openrouter_ids=[m.openrouter_id for m in models],
+        model_id_to_uuid={m.openrouter_id: m.id for m in models},
+        webhook_url=game.webhook_url,
+    )
 
 
 def _save_game_results(
@@ -407,7 +527,7 @@ def _upload_logs_with_retry(
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
-                print(f"Log upload attempt {attempt + 1}/{max_retries} failed: {e}")
+                logger.warning("Log upload attempt %d/%d failed: %s", attempt + 1, max_retries, e)
                 time.sleep(retry_delay)
                 retry_delay *= 2
 
@@ -416,21 +536,6 @@ def _upload_logs_with_retry(
         f"Last error: {last_error}. "
         f"Temp dir with logs: {result.experiment_dir}"
     )
-
-
-class GameResult:
-    """Plain data object for game execution results. No ORM dependencies."""
-
-    __slots__ = ("winner", "winner_reason", "summary", "agent_logs", "experiment_dir")
-
-    def __init__(
-        self, winner: int, winner_reason: str, summary: dict, agent_logs: list, experiment_dir: str
-    ):
-        self.winner = winner
-        self.winner_reason = winner_reason
-        self.summary = summary
-        self.agent_logs = agent_logs
-        self.experiment_dir = experiment_dir
 
 
 async def execute_amongagents_game(
@@ -535,7 +640,7 @@ async def call_webhook(webhook_url: str, game_id: str, winner: int, winner_reaso
             )
     except Exception as e:
         # Webhook failures shouldn't crash the game runner
-        print(f"Webhook call failed: {e}")
+        logger.warning("Webhook call failed for game %s: %s", game_id, e)
 
 
 async def run_multiple_games_async(
@@ -548,8 +653,13 @@ async def run_multiple_games_async(
     """
     Run multiple games concurrently with rate limiting.
 
-    This is the async version of the bulk game runner, similar to
-    AmongLLMs/main.py's multiple_games function.
+    Follows the AmongLLMs/main.py pattern: pure concurrent game execution
+    with zero DB connections during execution, and serial result saving
+    afterward using a single DB connection.
+
+    Phase 1: One DB connection — prepare all games (mark RUNNING, load models)
+    Phase 2: Concurrent execution — no DB connections
+    Phase 3: One DB connection — save all results serially
 
     Args:
         game_ids: List of game IDs to run
@@ -558,20 +668,114 @@ async def run_multiple_games_async(
         randomize_roles: Whether to shuffle models before assigning roles
         stream_logs: Enable live log streaming (recommended: false for bulk)
     """
-    semaphore = asyncio.Semaphore(rate_limit)
+    settings = get_settings()
+    logger.info("Running %d games concurrently (rate_limit=%d)", len(game_ids), rate_limit)
 
-    async def run_limited_game(game_id: str, model_ids: list[str]):
-        async with semaphore:
+    # ── Phase 1: Prepare all games (one DB connection) ──────────────
+    db = SessionLocal()
+    preps: list[_GamePrep | None] = []
+    try:
+        for game_id, model_ids in zip(game_ids, model_ids_list):
             try:
-                await run_game_async(game_id, model_ids, randomize_roles, stream_logs)
+                prep = _prepare_game(db, game_id, model_ids, randomize_roles)
             except Exception as e:
-                print(f"Game {game_id} failed with error: {e}")
-                traceback.print_exc()
+                logger.error("Failed to prepare game %s: %s", game_id, e)
+                prep = None
+            preps.append(prep)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
-    tasks = [
-        run_limited_game(game_id, model_ids) for game_id, model_ids in zip(game_ids, model_ids_list)
-    ]
-    await asyncio.gather(*tasks)
+    valid_preps = [p for p in preps if p is not None]
+    if not valid_preps:
+        logger.warning("No games could be prepared, nothing to execute")
+        return
+
+    logger.info("Prepared %d/%d games, starting execution", len(valid_preps), len(game_ids))
+
+    # ── Phase 2: Execute games concurrently, save each result immediately ──
+    # An asyncio.Lock serializes DB writes so only one connection is open at
+    # a time, but games don't have to wait for all others to finish before
+    # their results are persisted.
+    semaphore = asyncio.Semaphore(rate_limit)
+    db_lock = asyncio.Lock()
+    failures = 0
+
+    async def run_and_save(prep: _GamePrep) -> None:
+        nonlocal failures
+
+        # Execute (no DB)
+        if stream_logs:
+            live_logs.start_game(prep.game_id)
+        try:
+            async with semaphore:
+                result = await asyncio.wait_for(
+                    execute_amongagents_game(
+                        prep.game_id,
+                        prep.openrouter_ids,
+                        settings.openrouter_api_key,
+                        stream_logs=stream_logs,
+                    ),
+                    timeout=GAME_TIMEOUT_SECONDS,
+                )
+        except asyncio.TimeoutError:
+            logger.error("Game %s timed out after %ds", prep.game_id, GAME_TIMEOUT_SECONDS)
+            result = TimeoutError(f"Game execution timed out after {GAME_TIMEOUT_SECONDS}s")
+        except BaseException as exc:
+            if stream_logs:
+                live_logs.end_game(prep.game_id, None)
+            result = exc
+
+        # Save (one DB connection at a time via lock)
+        async with db_lock:
+            db = SessionLocal()
+            try:
+                if isinstance(result, BaseException):
+                    failures += 1
+                    logger.error("Game %s failed: %s", prep.game_id, result)
+                    try:
+                        _mark_game_failed(db, prep.game_id, result)
+                    except Exception:
+                        logger.error(
+                            "Failed to mark game %s as failed", prep.game_id, exc_info=True
+                        )
+                else:
+                    try:
+                        _save_game_results(
+                            db, prep.game_id, result, prep.model_id_to_uuid, stream_logs
+                        )
+                    except Exception as e:
+                        failures += 1
+                        logger.error(
+                            "Failed to save results for game %s: %s",
+                            prep.game_id,
+                            e,
+                            exc_info=True,
+                        )
+                        db.rollback()
+                        try:
+                            _mark_game_failed(db, prep.game_id, e)
+                        except Exception:
+                            logger.error(
+                                "Failed to mark game %s as failed",
+                                prep.game_id,
+                                exc_info=True,
+                            )
+            finally:
+                db.close()
+
+        # Webhook (best-effort, after DB is closed)
+        if not isinstance(result, BaseException) and prep.webhook_url:
+            await call_webhook(prep.webhook_url, prep.game_id, result.winner, result.winner_reason)
+
+    tasks = [run_and_save(p) for p in valid_preps]
+    # return_exceptions=True prevents one failing game from cancelling all others.
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    logger.info("All %d games finished (%d failures)", len(valid_preps), failures)
 
 
 def run_multiple_games_task(
@@ -594,6 +798,7 @@ def run_multiple_games_task(
         randomize_roles: Whether to shuffle models before assigning roles
         stream_logs: Enable live log streaming (recommended: false for bulk)
     """
+    logger.info("Starting bulk background task for %d games", len(game_ids))
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -604,3 +809,4 @@ def run_multiple_games_task(
         )
     finally:
         loop.close()
+    logger.info("Bulk background task finished for %d games", len(game_ids))
