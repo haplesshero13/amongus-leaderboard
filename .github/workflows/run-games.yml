@@ -1,9 +1,6 @@
 name: Run Games
 
 on:
-  schedule:
-    # Run 1 game every hour during the day (10 games/day)
-    - cron: "0 11,12,13,14,15,16,17,18,19,20 * * *"  # UTC: 12pm, 2pm, 4pm, 6pm, 8pm
   workflow_dispatch:
     inputs:
       games:
