@@ -22,7 +22,7 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('overall_rating');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const { data, isLoading, error, refetch } = useRankings(1, 1000, selectedSeason);
+  const { data, isLoading, error, refetch } = useRankings(1, 100, selectedSeason);
 
   const handlePageChange = (newPage: number) => {
     posthog.capture('leaderboard_page_changed', {

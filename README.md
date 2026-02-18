@@ -305,6 +305,34 @@ Uses OpenSkill (Weng-Lin rating system) with:
 - Overall rating is weighted average
 - Starting rating: 2500 (μ=25, σ=8.333)
 
+### Meta-Agent Approach
+
+To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed into a single meta-agent, a 1v1 match is run, and the resulting delta is redistributed back to individuals.
+
+**Meta-agent creation** — for a team of $n$ players with ratings $(\mu_i, \sigma_i)$:
+
+$$\mu_{\text{meta}} = \frac{1}{n} \sum_{i=1}^{n} \mu_i \qquad \sigma_{\text{meta}} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \sigma_i^2}$$
+
+**Team-level deltas** from the 1v1 OpenSkill match:
+
+$$\Delta\mu_{\text{team}} = \mu'_{\text{meta}} - \mu_{\text{meta}} \qquad r_\sigma = \frac{\sigma'_{\text{meta}}}{\sigma_{\text{meta}}}$$
+
+**Variance-weighted redistribution** to each player $i$:
+
+$$s_i = \frac{\sigma_i^2}{\displaystyle\sum_{j=1}^{n} \sigma_j^2} \qquad \text{pool} = \Delta\mu_{\text{team}} \cdot n$$
+
+$$\mu'_i = \mu_i + s_i \cdot \text{pool} \qquad \sigma'_i = \max\!\left(0.1,\ \sigma_i \cdot r_\sigma\right)$$
+
+> When all $\sigma_i$ are equal, $s_i = \tfrac{1}{n}$ and every player receives $\Delta\mu_{\text{team}}$ — backward compatible with uniform updates.
+
+**Display rating** and **leaderboard sort key**:
+
+$$R_{\text{display}} = \text{round}(\mu \times 100) \qquad R_{\text{conservative}} = \mu - 3\sigma$$
+
+**Overall rating** (weighted average by games played in each role):
+
+$$\mu_{\text{overall}} = \frac{\mu_{\text{imp}} \cdot n_{\text{imp}} + \mu_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}} \qquad \sigma_{\text{overall}} = \frac{\sigma_{\text{imp}} \cdot n_{\text{imp}} + \sigma_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}}$$
+
 ## Credits & Related Research
 
 This project builds on the code from Golechha & Garriga-Alonso's research:
