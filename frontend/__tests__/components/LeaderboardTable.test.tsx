@@ -59,21 +59,27 @@ const mockRankings: ModelRanking[] = [
   },
 ];
 
+const defaultSortProps = {
+  sortField: 'overall_rating' as const,
+  sortDirection: 'desc' as const,
+  onSort: vi.fn(),
+};
+
 describe('LeaderboardTable', () => {
   it('renders model names', () => {
-    render(<LeaderboardTable rankings={mockRankings} />);
+    render(<LeaderboardTable rankings={mockRankings} {...defaultSortProps} />);
     expect(screen.getByText('GPT-5')).toBeDefined();
     expect(screen.getByText('Claude 4')).toBeDefined();
   });
 
   it('renders provider names', () => {
-    render(<LeaderboardTable rankings={mockRankings} />);
+    render(<LeaderboardTable rankings={mockRankings} {...defaultSortProps} />);
     expect(screen.getByText('OpenAI')).toBeDefined();
     expect(screen.getByText('Anthropic')).toBeDefined();
   });
 
   it('renders overall ratings', () => {
-    render(<LeaderboardTable rankings={mockRankings} />);
+    render(<LeaderboardTable rankings={mockRankings} {...defaultSortProps} />);
     // Now displays conservative ratings (rating - sigma) prominently
     // Note: 1650 appears in both overall and impostor columns, so use getAllByText
     expect(screen.getAllByText('1650').length).toBeGreaterThan(0); // GPT-5: 1850 - 200 (overall) and 1900 - 250 (impostor)
@@ -84,7 +90,7 @@ describe('LeaderboardTable', () => {
   });
 
   it('renders win-loss records', () => {
-    render(<LeaderboardTable rankings={mockRankings} />);
+    render(<LeaderboardTable rankings={mockRankings} {...defaultSortProps} />);
     // GPT-5: 26 wins (8+18), 16 losses (42-26)
     expect(screen.getByText('26-16')).toBeDefined();
     // Claude 4: 24 wins (4+20), 14 losses (38-24)
@@ -92,7 +98,7 @@ describe('LeaderboardTable', () => {
   });
 
   it('renders empty table without crashing', () => {
-    render(<LeaderboardTable rankings={[]} />);
+    render(<LeaderboardTable rankings={[]} {...defaultSortProps} />);
     // Should render header but no rows
     expect(screen.getByText('Rank')).toBeDefined();
     expect(screen.getByText('Model')).toBeDefined();
