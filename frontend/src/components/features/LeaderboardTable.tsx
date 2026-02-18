@@ -1,6 +1,6 @@
 import { useRouter } from 'next/navigation';
 import posthog from 'posthog-js';
-import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
+import { ModelRanking, getConservativeRating, SortField, SortDirection } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
 
 function WinRate({ rate, games }: { rate: number; games: number }) {
@@ -14,12 +14,46 @@ function WinRate({ rate, games }: { rate: number; games: number }) {
   );
 }
 
-interface LeaderboardTableProps {
-  rankings: ModelRanking[];
+function SortIndicator({ active, direction }: { active: boolean; direction: SortDirection }) {
+  return (
+    <span className="ml-1 inline-flex flex-col leading-[0]">
+      <svg
+        className={`h-2 w-2 transition-colors ${active && direction === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-300 dark:text-gray-600'}`}
+        viewBox="0 0 8 5" fill="currentColor"
+      >
+        <path d="M4 0L8 5H0L4 0Z" />
+      </svg>
+      <svg
+        className={`h-2 w-2 transition-colors ${active && direction === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-300 dark:text-gray-600'}`}
+        viewBox="0 0 8 5" fill="currentColor"
+      >
+        <path d="M4 5L0 0H8L4 5Z" />
+      </svg>
+    </span>
+  );
 }
 
-export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
+interface LeaderboardTableProps {
+  rankings: ModelRanking[];
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}
+
+export function LeaderboardTable({ rankings, sortField, sortDirection, onSort }: LeaderboardTableProps) {
   const router = useRouter();
+
+  const sortableHeader = (label: string, field: SortField, className: string) => (
+    <th className={className}>
+      <button
+        onClick={() => onSort(field)}
+        className="inline-flex items-center gap-0.5 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+      >
+        {label}
+        <SortIndicator active={sortField === field} direction={sortDirection} />
+      </button>
+    </th>
+  );
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -32,21 +66,13 @@ export function LeaderboardTable({ rankings }: LeaderboardTableProps) {
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Model
             </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Rating
-            </th>
-            <th className="hidden px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 lg:table-cell">
-              Impostor
-            </th>
-            <th className="hidden px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 lg:table-cell">
-              Crewmate
-            </th>
+            {sortableHeader('Rating', 'overall_rating', 'px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400')}
+            {sortableHeader('Impostor', 'impostor_rating', 'hidden px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 lg:table-cell')}
+            {sortableHeader('Crewmate', 'crewmate_rating', 'hidden px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 lg:table-cell')}
             <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               W-L
             </th>
-            <th className="hidden px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 md:table-cell">
-              Win%
-            </th>
+            {sortableHeader('Win%', 'winrate', 'hidden px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 md:table-cell')}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">

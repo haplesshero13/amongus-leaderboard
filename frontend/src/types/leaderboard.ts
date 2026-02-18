@@ -37,7 +37,7 @@ export interface Season {
   game_count: number;
 }
 
-export type SortField = 'overall_rating' | 'impostor_rating' | 'crewmate_rating' | 'games_played';
+export type SortField = 'overall_rating' | 'impostor_rating' | 'crewmate_rating' | 'winrate';
 export type SortDirection = 'asc' | 'desc';
 
 /**

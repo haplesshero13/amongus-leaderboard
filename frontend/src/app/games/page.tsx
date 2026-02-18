@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import posthog from 'posthog-js';
@@ -9,6 +9,8 @@ import { useGames } from '@/lib/hooks/useGames';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Game, WINNER_LABELS } from '@/types/game';
+
+const ITEMS_PER_PAGE = 20;
 
 function GameStatusBadge({ status }: { status: Game['status'] }) {
   const styles: Record<Game['status'], string> = {
@@ -118,9 +120,10 @@ function GamesContent() {
   const searchParams = useSearchParams();
   const models = (searchParams.get('models') ?? '').split(',').filter(Boolean);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: games, isLoading, error } = useGames(undefined, 100, undefined);
+  const { data: games, isLoading, error } = useGames(undefined, 500, undefined);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -143,15 +146,41 @@ function GamesContent() {
   ).sort((a, b) => a.model_name.localeCompare(b.model_name));
 
   // Filter games by selected models - show only games where ALL selected models participate
-  const filteredGames = models.length === 0
-    ? games.filter((g) => g.status !== 'failed')
-    : games.filter((g) => {
-        // Every selected model must be present in this game
-        const gameHasAllSelectedModels = models.every((modelId) =>
-          g.participants.some((p) => p.model_id === modelId)
-        );
-        return gameHasAllSelectedModels && g.status !== 'failed';
-      });
+  const filteredGames = useMemo(() => {
+    const filtered = models.length === 0
+      ? games.filter((g) => g.status !== 'failed')
+      : games.filter((g) => {
+          // Every selected model must be present in this game
+          const gameHasAllSelectedModels = models.every((modelId) =>
+            g.participants.some((p) => p.model_id === modelId)
+          );
+          return gameHasAllSelectedModels && g.status !== 'failed';
+        });
+    return filtered;
+  }, [games, models]);
+
+  // Paginate filtered games
+  const { paginatedGames, totalGames, totalPages } = useMemo(() => {
+    const total = filteredGames.length;
+    const pages = Math.ceil(total / ITEMS_PER_PAGE);
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIdx = startIdx + ITEMS_PER_PAGE;
+    return {
+      paginatedGames: filteredGames.slice(startIdx, endIdx),
+      totalGames: total,
+      totalPages: pages,
+    };
+  }, [filteredGames, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    posthog.capture('games_page_changed', {
+      from_page: currentPage,
+      to_page: newPage,
+      total_pages: totalPages,
+      total_games: totalGames,
+    });
+    setCurrentPage(newPage);
+  };
 
   const handleModelToggle = (modelId: string) => {
     const isRemoving = models.includes(modelId);
@@ -178,6 +207,7 @@ function GamesContent() {
 
     const newUrl = `/games?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
+    setCurrentPage(1);  // Reset to first page when filter changes
   };
 
   return (
@@ -272,7 +302,7 @@ function GamesContent() {
 
       {error && <ErrorMessage error={error} onRetry={() => window.location.reload()} />}
 
-      {!isLoading && !error && filteredGames.length === 0 && (
+      {!isLoading && !error && totalGames === 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
           <p className="text-gray-600 dark:text-gray-400">
             {models.length > 0
@@ -282,15 +312,149 @@ function GamesContent() {
         </div>
       )}
 
-      {!isLoading && !error && filteredGames.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredGames.map((game) => (
-            <GameCard key={game.game_id} game={game} />
-          ))}
+      {!isLoading && !error && totalGames > 0 && (
+        <div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedGames.map((game) => (
+              <GameCard key={game.game_id} game={game} />
+            ))}
+          </div>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+              {/* Page info */}
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Showing {Math.max(1, (currentPage - 1) * ITEMS_PER_PAGE + 1)}–{Math.min(currentPage * ITEMS_PER_PAGE, totalGames)} of {totalGames} games
+              </div>
+
+              {/* Pagination buttons */}
+              <div className="flex items-center gap-2">
+                {/* First page */}
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1 || isLoading}
+                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    disabled:cursor-not-allowed disabled:opacity-40
+                    enabled:hover:bg-gray-100 dark:enabled:hover:bg-gray-800
+                    text-gray-700 dark:text-gray-300"
+                  title="First page"
+                >
+                  ««
+                </button>
+
+                {/* Previous page */}
+                <button
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1 || isLoading}
+                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    disabled:cursor-not-allowed disabled:opacity-40
+                    enabled:hover:bg-gray-100 dark:enabled:hover:bg-gray-800
+                    text-gray-700 dark:text-gray-300"
+                  title="Previous page"
+                >
+                  «
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {generatePageNumbers(currentPage, totalPages).map((pageNum, idx) => (
+                    pageNum === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum as number)}
+                        disabled={isLoading}
+                        className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                          ${currentPage === pageNum
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }
+                          disabled:cursor-not-allowed`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  ))}
+                </div>
+
+                {/* Next page */}
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages || isLoading}
+                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    disabled:cursor-not-allowed disabled:opacity-40
+                    enabled:hover:bg-gray-100 dark:enabled:hover:bg-gray-800
+                    text-gray-700 dark:text-gray-300"
+                  title="Next page"
+                >
+                  »
+                </button>
+
+                {/* Last page */}
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages || isLoading}
+                  className="rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    disabled:cursor-not-allowed disabled:opacity-40
+                    enabled:hover:bg-gray-100 dark:enabled:hover:bg-gray-800
+                    text-gray-700 dark:text-gray-300"
+                  title="Last page"
+                >
+                  »»
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </PageLayout>
   );
+}
+
+/**
+ * Generate an array of page numbers with ellipsis for large ranges
+ * Shows: first, last, current, and 1 page on each side of current
+ */
+function generatePageNumbers(currentPage: number, totalPages: number): (number | '...')[] {
+  if (totalPages <= 7) {
+    // Show all pages if 7 or fewer
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const pages: (number | '...')[] = [];
+
+  // Always show first page
+  pages.push(1);
+
+  // Calculate range around current page
+  const rangeStart = Math.max(2, currentPage - 1);
+  const rangeEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  // Add ellipsis if there's a gap after 1
+  if (rangeStart > 2) {
+    pages.push('...');
+  }
+
+  // Add pages in range
+  for (let i = rangeStart; i <= rangeEnd; i++) {
+    pages.push(i);
+  }
+
+  // Add ellipsis if there's a gap before last page
+  if (rangeEnd < totalPages - 1) {
+    pages.push('...');
+  }
+
+  // Always show last page
+  if (totalPages > 1) {
+    pages.push(totalPages);
+  }
+
+  return pages;
 }
 
 export default function GamesPage() {

@@ -81,21 +81,15 @@ export function PageLayout({
             <div className="flex items-center gap-3">
               {navLinks.map((link) => {
                 const isActive = activePage === link.href;
-                return isActive ? (
+                const baseClass = "px-4 py-2 rounded-lg text-sm transition-colors";
+                const activeClass = "bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
+                const inactiveClass = "font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
+                return (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => handleNavClick(link.href, link.label)}
-                    className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                  >
-                    {link.label}
-                  </Link>
-                ) : (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => handleNavClick(link.href, link.label)}
-                    className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                    className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
                   >
                     {link.label}
                   </Link>

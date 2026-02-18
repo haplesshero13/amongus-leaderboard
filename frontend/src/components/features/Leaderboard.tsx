@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import posthog from 'posthog-js';
 import { useRankings } from '../../lib/hooks/useRankings';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
@@ -8,6 +8,8 @@ import { ErrorMessage } from '../ui/ErrorMessage';
 import { LeaderboardTable } from './LeaderboardTable';
 import { LeaderboardCards } from './LeaderboardCards';
 import { SeasonSelector } from './SeasonSelector';
+import type { SortField, SortDirection, ModelRanking } from '../../types/leaderboard';
+import { getConservativeRating } from '../../types/leaderboard';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -18,13 +20,15 @@ interface LeaderboardProps {
 
 export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps) {
   const [page, setPage] = useState(1);
-  const { data, isLoading, error, refetch } = useRankings(page, ITEMS_PER_PAGE, selectedSeason);
+  const [sortField, setSortField] = useState<SortField>('overall_rating');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const { data, isLoading, error, refetch } = useRankings(1, 1000, selectedSeason);
 
   const handlePageChange = (newPage: number) => {
     posthog.capture('leaderboard_page_changed', {
       from_page: page,
       to_page: newPage,
-      total_pages: data?.total_pages,
+      total_pages: Math.ceil((data?.total ?? 0) / ITEMS_PER_PAGE),
       total_models: data?.total,
     });
     setPage(newPage);
@@ -38,6 +42,62 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
     onSeasonChange(version);
     setPage(1);
   };
+
+  const handleSortChange = (field: SortField) => {
+    const newDirection = field === sortField && sortDirection === 'desc' ? 'asc' : 'desc';
+    posthog.capture('leaderboard_sort_changed', {
+      sort_field: field,
+      sort_direction: newDirection,
+    });
+    setSortField(field);
+    setSortDirection(newDirection);
+    setPage(1);
+  };
+
+  // Sort and paginate client-side
+  const { sortedAndPaginated, totalModels } = useMemo(() => {
+    if (!data || !data.data) {
+      return { sortedAndPaginated: [], totalModels: 0 };
+    }
+
+    const sorted = [...data.data];
+
+    // Sort based on selected field
+    sorted.sort((a: ModelRanking, b: ModelRanking) => {
+      let aValue: number, bValue: number;
+
+      switch (sortField) {
+        case 'overall_rating':
+          aValue = getConservativeRating(a.overall_rating, a.overall_sigma);
+          bValue = getConservativeRating(b.overall_rating, b.overall_sigma);
+          break;
+        case 'impostor_rating':
+          aValue = getConservativeRating(a.impostor_rating, a.impostor_sigma);
+          bValue = getConservativeRating(b.impostor_rating, b.impostor_sigma);
+          break;
+        case 'crewmate_rating':
+          aValue = getConservativeRating(a.crewmate_rating, a.crewmate_sigma);
+          bValue = getConservativeRating(b.crewmate_rating, b.crewmate_sigma);
+          break;
+        case 'winrate':
+          aValue = a.win_rate;
+          bValue = b.win_rate;
+          break;
+        default:
+          aValue = 0;
+          bValue = 0;
+      }
+
+      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+    });
+
+    const total = sorted.length;
+    const startIdx = (page - 1) * ITEMS_PER_PAGE;
+    const endIdx = startIdx + ITEMS_PER_PAGE;
+    const paginated = sorted.slice(startIdx, endIdx);
+
+    return { sortedAndPaginated: paginated, totalModels: total };
+  }, [data, sortField, sortDirection, page]);
 
   // Show loading spinner only on initial load
   if (isLoading && !data) {
@@ -69,29 +129,36 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
     );
   }
 
-  const totalPages = data.total_pages;
+  const totalPages = Math.ceil(totalModels / ITEMS_PER_PAGE);
   const startIndex = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endIndex = Math.min(page * ITEMS_PER_PAGE, data.total);
+  const endIndex = Math.min(page * ITEMS_PER_PAGE, totalModels);
 
   return (
     <div>
-      <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+      <div className="mb-6">
+        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
+      </div>
 
       {/* Desktop view */}
       <div className="hidden md:block">
-        <LeaderboardTable rankings={data.data} />
+        <LeaderboardTable
+          rankings={sortedAndPaginated}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSortChange}
+        />
       </div>
 
       {/* Mobile view */}
       <div className="md:hidden">
-        <LeaderboardCards rankings={data.data} />
+        <LeaderboardCards rankings={sortedAndPaginated} />
       </div>
 
       {/* Footer with pagination */}
       <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
         {/* Page info */}
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Showing {startIndex}–{endIndex} of {data.total} models
+          Showing {startIndex}–{endIndex} of {totalModels} models
         </div>
 
         {/* Pagination controls */}
