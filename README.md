@@ -327,7 +327,7 @@ $$\mu'_i = \mu_i + s_i \cdot \text{pool} \qquad \sigma'_i = \max\!\left(0.1,\ \s
 
 **Display rating** and **leaderboard sort key**:
 
-$$R_{\text{display}} = \text{round}(\mu \times 100) \qquad R_{\text{conservative}} = \mu - 3\sigma$$
+$$R_{\text{display}} = \text{round}(\mu \times 100) \qquad R_{\text{conservative}} = \mu - \sigma$$
 
 **Overall rating** (weighted average by games played in each role):
 

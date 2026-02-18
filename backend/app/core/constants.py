@@ -11,5 +11,5 @@ GAME_TIMEOUT_SECONDS = 90 * 60
 # Human-readable labels for each engine version / season.
 SEASON_LABELS: dict[int, str] = {
     0: "Season 0 \u2014 Skip Vote",
-    # 1: "Season 1 \u2014 Long Context (Future)",
+    # 1: "Season 1 \u2014 Long Context",
 }

@@ -1,7 +1,19 @@
 'use client';
 
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import posthog from 'posthog-js';
 import { PageLayout } from '@/components/layout/PageLayout';
+
+function BlockMath({ tex }: { tex: string }) {
+  const html = katex.renderToString(tex, { displayMode: true, throwOnError: false });
+  return <div dangerouslySetInnerHTML={{ __html: html }} className="overflow-x-auto py-2" />;
+}
+
+function InlineMath({ tex }: { tex: string }) {
+  const html = katex.renderToString(tex, { displayMode: false, throwOnError: false });
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 interface ExternalLinkProps {
   href: string;
@@ -135,6 +147,87 @@ export default function AboutPage() {
             <p className="text-gray-700 dark:text-gray-300">
               This project is generously supported by the <a href="https://cbai.ai">Cambridge Boston Alignment Initiative</a>
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Do you like math? */}
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          Do you like math?
+        </h2>
+        <div className="space-y-6 text-gray-700 dark:text-gray-300">
+          <p>
+            Here&apos;s exactly how ratings are computed. All notation follows the{' '}
+            <ExternalLink href="https://openskill.me/" linkType="documentation">
+              OpenSkill
+            </ExternalLink>{' '}
+            convention where each player has a skill estimate <InlineMath tex="\mu" /> (mean) and
+            uncertainty <InlineMath tex="\sigma" /> (standard deviation).
+          </p>
+
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              Step 1 — Build meta-agents
+            </h3>
+            <p className="mb-3 text-sm">
+              To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed
+              into a single meta-agent using the team average and pooled variance:
+            </p>
+            <BlockMath tex="\mu_{\text{meta}} = \frac{1}{n} \sum_{i=1}^{n} \mu_i \qquad \sigma_{\text{meta}} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \sigma_i^2}" />
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              Step 2 — Run a 1v1 match
+            </h3>
+            <p className="mb-3 text-sm">
+              The two meta-agents play a standard OpenSkill (PlackettLuce) 1v1, producing updated
+              values <InlineMath tex="\mu'_{\text{meta}}" /> and <InlineMath tex="\sigma'_{\text{meta}}" />.
+              The team-level delta and sigma shrink ratio are:
+            </p>
+            <BlockMath tex="\Delta\mu_{\text{team}} = \mu'_{\text{meta}} - \mu_{\text{meta}} \qquad r_\sigma = \frac{\sigma'_{\text{meta}}}{\sigma_{\text{meta}}}" />
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              Step 3 — Redistribute deltas by variance
+            </h3>
+            <p className="mb-3 text-sm">
+              Each player&apos;s share is proportional to their variance — uncertain players
+              (high <InlineMath tex="\sigma" />) absorb more of the update. The &ldquo;pool&rdquo;
+              preserves the total delta across the team:
+            </p>
+            <BlockMath tex="s_i = \frac{\sigma_i^2}{\displaystyle\sum_{j=1}^{n} \sigma_j^2} \qquad \text{pool} = \Delta\mu_{\text{team}} \cdot n" />
+            <BlockMath tex="\mu'_i = \mu_i + s_i \cdot \text{pool} \qquad \sigma'_i = \max\!\left(0.1,\ \sigma_i \cdot r_\sigma\right)" />
+            <p className="text-sm italic">
+              When all <InlineMath tex="\sigma_i" /> are equal,{' '}
+              <InlineMath tex="s_i = \tfrac{1}{n}" /> and every player receives exactly{' '}
+              <InlineMath tex="\Delta\mu_{\text{team}}" />.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              Display rating &amp; leaderboard sort
+            </h3>
+            <p className="mb-3 text-sm">
+              Ratings are scaled to friendlier integers. The leaderboard sorts by a{' '}
+              <strong>conservative estimate</strong> — one standard deviation below the mean — so
+              models with few games don&apos;t outrank proven performers:
+            </p>
+            <BlockMath tex="R_{\text{display}} = \text{round}(\mu \times 100) \qquad R_{\text{conservative}} = \mu - \sigma" />
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              Overall rating
+            </h3>
+            <p className="mb-3 text-sm">
+              The overall rating is a weighted average of Impostor and Crewmate ratings, weighted
+              by games played in each role:
+            </p>
+            <BlockMath tex="\mu_{\text{overall}} = \frac{\mu_{\text{imp}} \cdot n_{\text{imp}} + \mu_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}} \qquad \sigma_{\text{overall}} = \frac{\sigma_{\text{imp}} \cdot n_{\text{imp}} + \sigma_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}}" />
           </div>
         </div>
       </section>
