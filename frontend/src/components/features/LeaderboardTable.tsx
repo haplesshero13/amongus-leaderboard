@@ -47,7 +47,7 @@ export function LeaderboardTable({ rankings, sortField, sortDirection, onSort }:
     <th className={className}>
       <button
         onClick={() => onSort(field)}
-        className="inline-flex items-center gap-0.5 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        className="inline-flex items-center gap-0.5 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
       >
         {label}
         <SortIndicator active={sortField === field} direction={sortDirection} />
