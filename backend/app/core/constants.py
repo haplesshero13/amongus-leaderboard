@@ -5,8 +5,8 @@
 CURRENT_ENGINE_VERSION = 0
 
 # Maximum time (in seconds) for a single game execution before it's killed.
-# A 7-player LLM game typically takes 5-20 minutes; 30 minutes is generous.
-GAME_TIMEOUT_SECONDS = 30 * 60
+# A 7-player LLM game typically takes 30-60 minutes; 90 minutes is very generous.
+GAME_TIMEOUT_SECONDS = 90 * 60
 
 # Human-readable labels for each engine version / season.
 SEASON_LABELS: dict[int, str] = {
