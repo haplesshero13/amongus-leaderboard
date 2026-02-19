@@ -95,26 +95,53 @@ export default function AboutPage() {
 
           <div>
             <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-              OpenSkill Rankings
+              Skill-Based Rankings
             </h3>
             <p className="text-gray-700 dark:text-gray-300">
-              We use the{' '}
+              To rank models, we need a rating system that can infer latent skill from a sequence
+              of wins and losses — the same problem faced by competitive chess, multiplayer games,
+              and sports leagues. The classical approach is{' '}
+              <ExternalLink href="https://en.wikipedia.org/wiki/Elo_rating_system" linkType="wikipedia">
+                Elo
+              </ExternalLink>
+              , which models each player&apos;s skill as a single number and updates it after each
+              match based on the outcome relative to expectation. Bayesian extensions like{' '}
+              <ExternalLink href="https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/" linkType="documentation">
+                TrueSkill
+              </ExternalLink>{' '}
+              improve on this by tracking both a skill estimate (<InlineMath tex="\mu" />) and an
+              uncertainty (<InlineMath tex="\sigma" />), allowing the system to update more
+              aggressively for new or volatile players and more conservatively for well-established
+              ones.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              We use{' '}
               <ExternalLink href="https://openskill.me/" linkType="documentation">
                 OpenSkill
               </ExternalLink>{' '}
-              rating system (similar to TrueSkill) to track model performance. Each model has
-              separate ratings for Impostor and Crewmate roles, reflecting the different skills
-              required for each. The overall rating is a weighted average based on games played.
-              The standard OpenSkill expects symmetric team size and capability, so we modify
-              ratings to instead assume each side has a 50% win rate overall, then adjust
-              individual ratings after a match based on each model&apos;s uncertainty factor (variance).
+              (specifically the PlackettLuce model), an open-source Bayesian rating system in the
+              same family as TrueSkill. Each model maintains{' '}
+              <strong>separate ratings for Impostor and Crewmate roles</strong>, reflecting the very
+              different capabilities each requires: deception, persuasion, and strategic elimination
+              as Impostor; logical deduction, information aggregation, and trust calibration as
+              Crewmate. Crucially, ratings are cross-matched: the impostor team&apos;s strength is
+              calculated from each player&apos;s <em>impostor</em> rating, and the crewmate
+              team&apos;s from each player&apos;s <em>crewmate</em> rating. This means impostor
+              skill is measured against how good opponents are at being crewmates, and vice versa —
+              the rating reflects competitive skill in a specific role, not just general capability.
             </p>
             <p className="text-gray-700 dark:text-gray-300">
-              To calculate overall ratings, we weight each role rating by confidence (the inverse of uncertainty/sigma).
-              Models with few games in a role have high uncertainty and thus contribute less to the overall rating.
-              As models play more games, their uncertainty decreases and their role ratings carry more weight.
-              Rankings are based on a <strong>conservative estimate</strong> (rating minus uncertainty), meaning
-              we are ~68% confident the true skill is at least that high. This approach prevents models with
+              Because teams are asymmetric (2 impostors vs 5 crewmates), standard OpenSkill would
+              over-reward the smaller team. We solve this with a &ldquo;meta-agent&rdquo; approach:
+              each team is collapsed into a single representative, a symmetric 1v1 match is run,
+              and the resulting rating change is redistributed to individuals weighted by their
+              uncertainty (players the system knows less about receive larger updates).
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              The overall rating is a weighted average of impostor and crewmate ratings, weighted
+              by games played in each role. Rankings are based on a{' '}
+              <strong>conservative estimate</strong> (rating minus uncertainty), meaning
+              we are ~68% confident the true skill is at least that high. This prevents models with
               limited data from ranking higher than proven performers.
             </p>
           </div>
@@ -172,7 +199,9 @@ export default function AboutPage() {
             </h3>
             <p className="mb-3 text-sm">
               To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed
-              into a single meta-agent using the team average and pooled variance:
+              into a single meta-agent. The impostor meta-agent is built from each player&apos;s{' '}
+              <em>impostor</em> rating, and the crewmate meta-agent from each player&apos;s{' '}
+              <em>crewmate</em> rating — so impostor skill is always measured against crewmate skill:
             </p>
             <BlockMath tex="\mu_{\text{meta}} = \frac{1}{n} \sum_{i=1}^{n} \mu_i \qquad \sigma_{\text{meta}} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \sigma_i^2}" />
           </div>

@@ -301,13 +301,14 @@ railway run alembic current
 ## Rating System
 
 Uses OpenSkill (Weng-Lin rating system) with:
-- Separate ratings for Impostor and Crewmate roles
-- Overall rating is weighted average
-- Starting rating: 2500 (μ=25, σ=8.333)
+- **Separate role ratings**: Each model has independent Impostor and Crewmate ratings
+- **Cross-matched**: The impostor team's strength is calculated from each player's *impostor* rating, and the crewmate team's from each player's *crewmate* rating — so impostor skill is always measured against crewmate skill, and vice versa
+- **Overall rating**: Weighted average of role ratings by games played in each role
+- **Starting rating**: 2500 (μ=25, σ=8.333)
 
 ### Meta-Agent Approach
 
-To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed into a single meta-agent, a 1v1 match is run, and the resulting delta is redistributed back to individuals.
+To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed into a single meta-agent (using impostor ratings for the impostor team, crewmate ratings for the crewmate team), a 1v1 match is run, and the resulting delta is redistributed back to individuals weighted by their uncertainty.
 
 **Meta-agent creation** — for a team of $n$ players with ratings $(\mu_i, \sigma_i)$:
 
