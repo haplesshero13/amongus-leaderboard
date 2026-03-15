@@ -19,8 +19,14 @@ vi.mock('@/lib/hooks/useGames', () => ({
   useGames: vi.fn(),
 }));
 
+vi.mock('@/lib/api/leaderboard', () => ({
+  fetchSeasons: vi.fn(),
+  fetchLeaderboard: vi.fn(),
+}));
+
 import { useRankings } from '@/lib/hooks/useRankings';
 import { useGames } from '@/lib/hooks/useGames';
+import { fetchSeasons } from '@/lib/api/leaderboard';
 
 // Import the page component after mocking
 import Home from '@/app/page';
@@ -28,6 +34,8 @@ import Home from '@/app/page';
 describe('StatsBar games count', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no seasons (SeasonSelector stays hidden, no auto-select fires)
+    vi.mocked(fetchSeasons).mockResolvedValue([]);
   });
 
   it('displays exact count of completed games from API', async () => {
@@ -176,6 +184,39 @@ describe('StatsBar games count', () => {
       expect(matches.length).toBeGreaterThanOrEqual(1);
       // First one should be in the stats bar with cyan color
       expect(matches[0].className).toContain('text-cyan-600');
+    });
+  });
+
+  it('displays the season label above the stats cards', async () => {
+    // Return two seasons so SeasonSelector triggers onSeasonChange with label
+    vi.mocked(fetchSeasons).mockResolvedValue([
+      { version: 1, label: 'Season 1 — Long Context', game_count: 42 },
+      { version: 0, label: 'Season 0 — Skip Vote', game_count: 10 },
+    ]);
+
+    vi.mocked(useRankings).mockReturnValue({
+      data: { data: [], total: 0, page: 1, per_page: 100, total_pages: 0 },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+
+    vi.mocked(useGames).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<Home />);
+
+    // SeasonSelector fires onSeasonChange → Home sets selectedSeasonLabel → StatsBar renders label
+    await waitFor(() => {
+      // The label should appear as a <p> section heading above the stat cards
+      const labels = screen.getAllByText('Season 1 — Long Context');
+      const headingEl = labels.find((el) => el.tagName === 'P');
+      expect(headingEl).not.toBeUndefined();
+      expect(headingEl?.className).toContain('uppercase');
     });
   });
 });

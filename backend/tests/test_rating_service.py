@@ -217,6 +217,34 @@ class TestBuildRankingsFromRatings:
         rankings = build_rankings_from_ratings([], {})
         assert rankings == []
 
+    def test_excludes_models_with_zero_games(self):
+        """Models that have played zero games in the season must not appear in rankings."""
+        active = Model(
+            id="active-uuid",
+            model_id="active-model",
+            model_name="Active Model",
+            provider="Test",
+            openrouter_id="test/active",
+            avatar_color="#00FF00",
+        )
+        idle = Model(
+            id="idle-uuid",
+            model_id="idle-model",
+            model_name="Idle Model",
+            provider="Test",
+            openrouter_id="test/idle",
+            avatar_color="#FF0000",
+        )
+        ratings_map = {
+            active.id: ModelRating(model_id=active.id, impostor_games=2, impostor_wins=1),
+            idle.id: ModelRating(model_id=idle.id),  # 0 games
+        }
+
+        rankings = build_rankings_from_ratings([active, idle], ratings_map)
+
+        assert len(rankings) == 1
+        assert rankings[0]["model_id"] == "active-model"
+
     def test_ranks_by_overall_rating_descending(self, sample_models):
         """Models should be ranked by overall rating, highest first."""
         ratings_map = {

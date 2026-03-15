@@ -6,7 +6,7 @@ import { fetchSeasons } from '../../lib/api/leaderboard';
 
 interface SeasonSelectorProps {
   selectedVersion: number | null;
-  onSeasonChange: (version: number | null) => void;
+  onSeasonChange: (version: number | null, label: string | null) => void;
 }
 
 export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelectorProps) {
@@ -22,7 +22,7 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
         // Auto-select the latest season on initial mount so the stats bar
         // and leaderboard are scoped to the current season from the start.
         if (sorted.length > 0) {
-          onSeasonChange(sorted[0].version);
+          onSeasonChange(sorted[0].version, sorted[0].label);
         }
       })
       .catch(() => {
@@ -44,7 +44,7 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
         return (
           <button
             key={season.version}
-            onClick={() => onSeasonChange(season.version)}
+            onClick={() => onSeasonChange(season.version, season.label)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors
               ${isSelected
                 ? 'bg-indigo-600 text-white shadow-sm'

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Leaderboard } from '../components/features/Leaderboard';
 import { useRankings } from '../lib/hooks/useRankings';
 import { useGames } from '../lib/hooks/useGames';
 import { getConservativeRating } from '../types/leaderboard';
 
-function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
+function StatsBar({ selectedSeason, seasonLabel }: { selectedSeason: number | null; seasonLabel: string | null }) {
   const { data, isLoading } = useRankings(1, 100, selectedSeason);
   const { data: games, isLoading: gamesLoading } = useGames(
     'completed',
@@ -33,43 +33,50 @@ function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
   const formatNumber = (n: number) => n.toLocaleString();
 
   return (
-    <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {isLoading ? '...' : formatNumber(data?.total ?? 0)}
+    <div className="mb-8">
+      {seasonLabel && (
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+          {seasonLabel}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {isLoading ? '...' : formatNumber(data?.total ?? 0)}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
-      </div>
-      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {gamesLoading ? '...' : formatNumber(games.length)}
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {gamesLoading ? '...' : formatNumber(games.length)}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
-      </div>
-      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-xl font-bold text-red-600 dark:text-red-400 truncate">
-          {isLoading ? '...' : (topImpostor?.model_name ?? '—')}
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+          <div className="text-xl font-bold text-red-600 dark:text-red-400 truncate">
+            {isLoading ? '...' : (topImpostor?.model_name ?? '—')}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Top Impostor{' '}
+            {topImpostor && !isLoading && (
+              <span className="font-medium">
+                ({getConservativeRating(topImpostor.impostor_rating, topImpostor.impostor_sigma)})
+              </span>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Top Impostor{' '}
-          {topImpostor && !isLoading && (
-            <span className="font-medium">
-              ({getConservativeRating(topImpostor.impostor_rating, topImpostor.impostor_sigma)})
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400 truncate">
-          {isLoading ? '...' : (topCrewmate?.model_name ?? '—')}
-        </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Top Crewmate{' '}
-          {topCrewmate && !isLoading && (
-            <span className="font-medium">
-              ({getConservativeRating(topCrewmate.crewmate_rating, topCrewmate.crewmate_sigma)})
-            </span>
-          )}
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
+          <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400 truncate">
+            {isLoading ? '...' : (topCrewmate?.model_name ?? '—')}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Top Crewmate{' '}
+            {topCrewmate && !isLoading && (
+              <span className="font-medium">
+                ({getConservativeRating(topCrewmate.crewmate_rating, topCrewmate.crewmate_sigma)})
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -78,6 +85,12 @@ function StatsBar({ selectedSeason }: { selectedSeason: number | null }) {
 
 export default function Home() {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [selectedSeasonLabel, setSelectedSeasonLabel] = useState<string | null>(null);
+
+  const handleSeasonChange = useCallback((version: number | null, label: string | null) => {
+    setSelectedSeason(version);
+    setSelectedSeasonLabel(label);
+  }, []);
 
   return (
     <PageLayout activePage="/">
@@ -96,12 +109,12 @@ export default function Home() {
       </div>
 
       {/* Stats banner */}
-      <StatsBar selectedSeason={selectedSeason} />
+      <StatsBar selectedSeason={selectedSeason} seasonLabel={selectedSeasonLabel} />
 
       {/* Leaderboard */}
       <Leaderboard
         selectedSeason={selectedSeason}
-        onSeasonChange={setSelectedSeason}
+        onSeasonChange={handleSeasonChange}
       />
     </PageLayout>
   );
