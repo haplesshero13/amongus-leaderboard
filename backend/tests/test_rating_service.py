@@ -248,7 +248,14 @@ class TestBuildRankingsFromRatings:
             openrouter_id="test/model",
             avatar_color="#FF0000",
         )
-        ratings_map = {model.id: ModelRating(model_id=model.id)}
+        # Give the model at least one game so it is not filtered out
+        ratings_map = {
+            model.id: ModelRating(
+                model_id=model.id,
+                impostor_games=1,
+                impostor_wins=1,
+            )
+        }
 
         rankings = build_rankings_from_ratings([model], ratings_map)
 

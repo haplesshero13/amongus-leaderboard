@@ -17,13 +17,19 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
     fetchSeasons()
       .then((data) => {
         // Sort descending so current season is first
-        setSeasons(data.sort((a, b) => b.version - a.version));
+        const sorted = data.sort((a, b) => b.version - a.version);
+        setSeasons(sorted);
+        // Auto-select the latest season on initial mount so the stats bar
+        // and leaderboard are scoped to the current season from the start.
+        if (sorted.length > 0) {
+          onSeasonChange(sorted[0].version);
+        }
       })
       .catch(() => {
         // Silently fail — selector just won't show
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [onSeasonChange]);
 
   if (isLoading || seasons.length <= 1) {
     return null;

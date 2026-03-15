@@ -188,6 +188,9 @@ def build_rankings_from_ratings(
             }
         )
 
+    # Exclude models that haven't played any games in this season
+    rankings = [r for r in rankings if r["games"] > 0]
+
     rankings.sort(key=lambda x: x["conservative"], reverse=True)
 
     result = []

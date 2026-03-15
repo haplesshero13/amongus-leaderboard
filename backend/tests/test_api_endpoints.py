@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.constants import CURRENT_ENGINE_VERSION
 from app.core.database import Base, get_db
 from app.api.deps import require_api_key
 from app.main import app
@@ -133,6 +134,39 @@ def seven_models(db_session):
     return models
 
 
+@pytest.fixture
+def seven_models_with_game(db_session, seven_models):
+    """Create 7 models that have each played one completed Season 1 game.
+
+    This satisfies the leaderboard filter that hides models with 0 games
+    in the requested season.
+    """
+    game = Game(
+        status=GameStatus.COMPLETED,
+        winner=1,  # Impostors win
+        winner_reason="Test win",
+        engine_version=CURRENT_ENGINE_VERSION,
+    )
+    db_session.add(game)
+    db_session.flush()
+
+    colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink"]
+    for i, model in enumerate(seven_models):
+        role = PlayerRole.IMPOSTOR if i < 2 else PlayerRole.CREWMATE
+        participant = GameParticipant(
+            game_id=game.id,
+            model_id=model.id,
+            player_number=i + 1,
+            player_color=colors[i],
+            role=role,
+            won=(i < 2),  # Impostors won
+        )
+        db_session.add(participant)
+
+    db_session.commit()
+    return seven_models
+
+
 class TestHealthEndpoint:
     """Tests for the health check endpoint."""
 
@@ -157,19 +191,40 @@ class TestLeaderboardEndpoint:
         assert data["page"] == 1
         assert data["total_pages"] == 0
 
-    def test_leaderboard_with_models(self, client, sample_model):
-        """Should return models ranked by rating."""
+    def test_leaderboard_hides_models_with_no_games(self, client, sample_model):
+        """Models with 0 games played in the season should be hidden."""
         response = client.get("/api/leaderboard")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 1
-        assert len(data["data"]) == 1
-        assert data["data"][0]["model_id"] == "claude-opus-4"
-        assert data["data"][0]["model_name"] == "Claude Opus 4"
-        assert data["data"][0]["overall_rating"] == 2500  # Default mu * 100
+        # sample_model has played no games, so it must not appear
+        assert data["total"] == 0
+        assert data["data"] == []
 
-    def test_leaderboard_pagination(self, client, seven_models):
+    def test_leaderboard_hides_models_without_season_games(self, client, db_session, seven_models_with_game):
+        """Models registered but with 0 games in the requested season must be hidden."""
+        # Add an 8th model that never plays
+        extra = Model(
+            model_id="never-played",
+            model_name="Never Played",
+            provider="Test",
+            openrouter_id="test/never-played",
+            avatar_color="#000000",
+        )
+        db_session.add(extra)
+        db_session.flush()
+        db_session.add(ModelRating(model_id=extra.id))
+        db_session.commit()
+
+        response = client.get("/api/leaderboard")
+        assert response.status_code == 200
+        data = response.json()
+        # The 7 models that played should appear; the idle one should not
+        assert data["total"] == 7
+        model_ids = [m["model_id"] for m in data["data"]]
+        assert "never-played" not in model_ids
+
+    def test_leaderboard_pagination(self, client, seven_models_with_game):
         """Should paginate results correctly."""
         response = client.get("/api/leaderboard?page=1&per_page=3")
 
@@ -181,7 +236,7 @@ class TestLeaderboardEndpoint:
         assert data["per_page"] == 3
         assert data["total_pages"] == 3
 
-    def test_leaderboard_second_page(self, client, seven_models):
+    def test_leaderboard_second_page(self, client, seven_models_with_game):
         """Should return correct items on second page."""
         response = client.get("/api/leaderboard?page=2&per_page=3")
 
@@ -195,10 +250,11 @@ class TestLeaderboardEndpoint:
         response = client.get("/api/leaderboard?page=0")
         assert response.status_code == 422  # Validation error
 
-    def test_leaderboard_response_schema(self, client, sample_model):
+    def test_leaderboard_response_schema(self, client, seven_models_with_game):
         """Should include all required fields in response."""
         response = client.get("/api/leaderboard")
         data = response.json()
+        assert len(data["data"]) > 0, "Expected at least one model with games"
         model_data = data["data"][0]
 
         required_fields = [
