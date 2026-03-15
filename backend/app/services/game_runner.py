@@ -66,18 +66,58 @@ class ModelMismatchError(Exception):
         super().__init__(" | ".join(msg_parts))
 
 
+def _transform_long_context_log(entry: dict) -> dict:
+    """Transform a LongContextAgent log entry to the frontend-expected format.
+
+    LongContextAgent writes flat entries with top-level player/thinking/action.
+    The frontend expects nested player objects and interaction.response structures.
+    """
+    return {
+        "game_index": entry.get("game_index"),
+        "step": entry.get("step"),
+        "timestamp": entry.get("timestamp"),
+        "player": {
+            "name": entry.get("player", ""),
+            "identity": entry.get("identity", ""),
+            "model": entry.get("model", ""),
+            "location": "",
+        },
+        "interaction": {
+            "response": {
+                "Action": entry.get("action", ""),
+                "Thinking Process": entry.get("thinking", ""),
+            },
+        },
+    }
+
+
 def read_agent_logs(experiment_dir: str) -> list:
     """
     Read agent logs from the experiment directory.
 
-    The amongagents package writes logs in JSONL format (one JSON object per line)
-    to agent-logs-compact.json.
+    Supports both the LongContextAgent format (agent-logs.jsonl) and the
+    legacy LLMAgent format (agent-logs-compact.json). LongContextAgent logs
+    are transformed to the frontend-expected structure.
     """
-    # Prefer the compact JSONL format
-    agent_logs_path = Path(experiment_dir) / "agent-logs-compact.json"
+    exp = Path(experiment_dir)
+
+    # LongContextAgent writes to agent-logs.jsonl
+    long_ctx_path = exp / "agent-logs.jsonl"
+    if long_ctx_path.exists():
+        logs = []
+        with open(long_ctx_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    entry = json.loads(line)
+                    logs.append(_transform_long_context_log(entry))
+        return logs
+
+    # Legacy: compact JSONL format
+    agent_logs_path = exp / "agent-logs-compact.json"
     if not agent_logs_path.exists():
         # Fall back to the pretty-printed version
-        agent_logs_path = Path(experiment_dir) / "agent-logs.json"
+        agent_logs_path = exp / "agent-logs.json"
         if not agent_logs_path.exists():
             return []
 
@@ -96,17 +136,33 @@ async def poll_logs_to_stream(game_id: str, experiment_dir: str, stop_event: asy
     This runs concurrently with the game execution, checking for new log
     entries every 1.5 seconds and pushing them to connected SSE clients.
 
+    Supports both LongContextAgent (agent-logs.jsonl) and legacy
+    (agent-logs-compact.json) log formats.
+
     Args:
         game_id: The game ID to stream logs for
         experiment_dir: Path to the experiment directory containing logs
         stop_event: Event to signal when to stop polling
     """
-    log_path = Path(experiment_dir) / "agent-logs-compact.json"
+    exp = Path(experiment_dir)
+    # Try LongContextAgent path first, fall back to legacy
+    long_ctx_path = exp / "agent-logs.jsonl"
+    legacy_path = exp / "agent-logs-compact.json"
+    log_path = None
+    is_long_context = False
     lines_read = 0
 
     while not stop_event.is_set():
         try:
-            if log_path.exists():
+            # Resolve which log file to use (once it appears)
+            if log_path is None:
+                if long_ctx_path.exists():
+                    log_path = long_ctx_path
+                    is_long_context = True
+                elif legacy_path.exists():
+                    log_path = legacy_path
+
+            if log_path is not None and log_path.exists():
                 with open(log_path) as f:
                     all_lines = f.readlines()
 
@@ -116,6 +172,8 @@ async def poll_logs_to_stream(game_id: str, experiment_dir: str, stop_event: asy
                     if line:
                         try:
                             entry = json.loads(line)
+                            if is_long_context:
+                                entry = _transform_long_context_log(entry)
                             live_logs.push_log(game_id, entry)
                         except json.JSONDecodeError:
                             # Incomplete line, will retry next poll
@@ -176,11 +234,18 @@ def validate_agent_logs(agent_logs: list) -> None:
     Validate that all agent log entries have non-empty responses.
 
     Raises EmptyResponseError if any model returned an empty response.
+    Works with both LongContextAgent (transformed) and legacy log formats.
     """
     for log in agent_logs:
         interaction = log.get("interaction", {})
         response = interaction.get("response")
         full_response = interaction.get("full_response")
+
+        # For transformed LongContextAgent logs, check the Action field
+        if isinstance(response, dict):
+            action = response.get("Action") or response.get("action")
+            if action:
+                continue  # Has a valid action
 
         # Check if response is empty (empty string, None, or empty dict)
         response_empty = response is None or response == "" or response == {}
@@ -597,11 +662,11 @@ async def execute_amongagents_game(
     os.environ["EXPERIMENT_PATH"] = experiment_dir
     os.environ["OPENROUTER_API_KEY"] = openrouter_api_key
 
-    # Set up the agent configuration for all LLM players
+    # Set up the agent configuration for all LongContext players
     # "unique" mode pops models from lists sequentially: each model is used exactly once
     agent_config = {
-        "Impostor": "LLM",
-        "Crewmate": "LLM",
+        "Impostor": "LongContext",
+        "Crewmate": "LongContext",
         "CREWMATE_LLM_CHOICES": list(openrouter_ids[2:]),  # Crewmates
         "IMPOSTOR_LLM_CHOICES": list(openrouter_ids[:2]),  # Impostors
         "assignment_mode": "unique",
