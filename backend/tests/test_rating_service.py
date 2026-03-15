@@ -5,7 +5,7 @@ from app.services.rating_service import (
     update_ratings_for_game,
     scale_rating_for_display,
     get_or_create_rating,
-    get_model_rankings,
+    build_rankings_from_ratings,
 )
 
 
@@ -209,58 +209,48 @@ class TestUpdateRatingsForGame:
                 assert p.model.ratings.impostor_games == 0
 
 
-class TestGetModelRankings:
-    """Tests for getting model rankings."""
+class TestBuildRankingsFromRatings:
+    """Tests for the build_rankings_from_ratings utility."""
 
-    def test_returns_empty_list_when_no_models(self, db_session):
+    def test_returns_empty_list_when_no_models(self):
         """Should return empty list when no models exist."""
-        rankings = get_model_rankings(db_session)
+        rankings = build_rankings_from_ratings([], {})
         assert rankings == []
 
-    def test_ranks_by_overall_rating_descending(self, db_session, sample_models):
+    def test_ranks_by_overall_rating_descending(self, sample_models):
         """Models should be ranked by overall rating, highest first."""
-        # Set different ratings for each model
-        for i, model in enumerate(sample_models):
-            rating = ModelRating(
+        ratings_map = {
+            model.id: ModelRating(
                 model_id=model.id,
-                impostor_mu=25.0 + i,  # Increasing ratings
+                impostor_mu=25.0 + i,
                 crewmate_mu=25.0 + i,
                 impostor_games=1,
                 crewmate_games=1,
             )
-            db_session.add(rating)
-            model.ratings = rating
+            for i, model in enumerate(sample_models)
+        }
 
-        db_session.flush()
+        rankings = build_rankings_from_ratings(sample_models, ratings_map)
 
-        rankings = get_model_rankings(db_session)
-
-        # Should be sorted descending by overall rating
         for i in range(len(rankings) - 1):
             assert rankings[i]["overall_rating"] >= rankings[i + 1]["overall_rating"]
 
-        # First model should have rank 1
         assert rankings[0]["current_rank"] == 1
         assert rankings[-1]["current_rank"] == len(sample_models)
 
-    def test_includes_all_required_fields(self, db_session):
+    def test_includes_all_required_fields(self):
         """Rankings should include all fields needed by frontend."""
         model = Model(
+            id="test-uuid",
             model_id="test-model",
             model_name="Test Model",
             provider="Test",
             openrouter_id="test/model",
             avatar_color="#FF0000",
         )
-        db_session.add(model)
-        db_session.flush()
+        ratings_map = {model.id: ModelRating(model_id=model.id)}
 
-        rating = ModelRating(model_id=model.id)
-        db_session.add(rating)
-        model.ratings = rating
-        db_session.flush()
-
-        rankings = get_model_rankings(db_session)
+        rankings = build_rankings_from_ratings([model], ratings_map)
 
         assert len(rankings) == 1
         r = rankings[0]
@@ -288,28 +278,24 @@ class TestGetModelRankings:
         for field in required_fields:
             assert field in r, f"Missing field: {field}"
 
-    def test_win_rate_calculation(self, db_session, sample_models):
+    def test_win_rate_calculation(self, sample_models):
         """Win rates should be calculated correctly as percentages."""
         model = sample_models[0]
-        # Set high mu values to ensure this model ranks first
-        rating = ModelRating(
-            model_id=model.id,
-            impostor_mu=50.0,  # Very high rating to be first
-            crewmate_mu=50.0,
-            impostor_games=10,
-            impostor_wins=7,
-            crewmate_games=20,
-            crewmate_wins=12,
-        )
-        db_session.add(rating)
-        model.ratings = rating
-        db_session.flush()
+        ratings_map = {
+            model.id: ModelRating(
+                model_id=model.id,
+                impostor_mu=50.0,
+                crewmate_mu=50.0,
+                impostor_games=10,
+                impostor_wins=7,
+                crewmate_games=20,
+                crewmate_wins=12,
+            )
+        }
 
-        rankings = get_model_rankings(db_session)
-        # Find our specific model in rankings
+        rankings = build_rankings_from_ratings(sample_models, ratings_map)
         r = next(r for r in rankings if r["model_id"] == model.model_id)
 
-        # Check win rates
         assert r["impostor_win_rate"] == 70.0  # 7/10 = 70%
         assert r["crewmate_win_rate"] == 60.0  # 12/20 = 60%
         # Overall: 19 wins / 30 games = 63.33...%

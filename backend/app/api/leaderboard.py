@@ -6,7 +6,7 @@ from app.api.schemas import LeaderboardResponse, ModelRankingResponse, SeasonRes
 from app.core.constants import CURRENT_ENGINE_VERSION, SEASON_LABELS
 from app.core.database import get_db
 from app.models import Game, GameStatus
-from app.services.rating_service import get_historical_rankings, get_model_rankings
+from app.services.rating_service import get_historical_rankings
 
 router = APIRouter(tags=["leaderboard"])
 
@@ -25,10 +25,8 @@ async def get_leaderboard(
     When engine_version is None, returns current season rankings.
     When engine_version is specified, replays that season's games in memory.
     """
-    if engine_version is None or engine_version == CURRENT_ENGINE_VERSION:
-        all_rankings = get_model_rankings(db)
-    else:
-        all_rankings = get_historical_rankings(db, engine_version)
+    target_version = CURRENT_ENGINE_VERSION if engine_version is None else engine_version
+    all_rankings = get_historical_rankings(db, target_version)
 
     total = len(all_rankings)
     total_pages = (total + per_page - 1) // per_page if total > 0 else 0

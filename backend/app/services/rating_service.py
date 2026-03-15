@@ -156,7 +156,7 @@ def scale_rating_for_display(mu: float) -> int:
     return round(mu * 100)
 
 
-def _build_rankings_from_ratings(
+def build_rankings_from_ratings(
     models: list[Model], ratings_map: dict[str, ModelRating]
 ) -> list[dict]:
     """
@@ -221,20 +221,6 @@ def _build_rankings_from_ratings(
         )
 
     return result
-
-
-def get_model_rankings(db: Session) -> list[dict]:
-    """
-    Get all models with their current persisted ratings, ranked by overall rating.
-
-    Returns a list of dicts ready for the leaderboard API response.
-    """
-    models = db.query(Model).all()
-    ratings_map = {}
-    for model in models:
-        if model.ratings is not None:
-            ratings_map[model.id] = model.ratings
-    return _build_rankings_from_ratings(models, ratings_map)
 
 
 def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
@@ -335,4 +321,4 @@ def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
             if not impostors_won:
                 rating.crewmate_wins += 1
 
-    return _build_rankings_from_ratings(models, temp_ratings)
+    return build_rankings_from_ratings(models, temp_ratings)
