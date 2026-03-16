@@ -19,6 +19,7 @@ solution for symmetric team-level deltas.
 import math
 
 from openskill.models import PlackettLuce
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import Model, ModelRating, Game, GameParticipant, PlayerRole
@@ -226,15 +227,30 @@ def build_rankings_from_ratings(
     return result
 
 
+# Cache: (engine_version, latest_ended_at) -> rankings list
+# Past seasons never change so they cache forever.
+# Current season auto-invalidates when a new game completes (new ended_at).
+_rankings_cache: dict[tuple, list[dict]] = {}
+
+
 def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
     """
-    Compute rankings for a past season by replaying its games in memory.
+    Compute rankings for a season by replaying its games in memory.
 
-    Creates temporary ModelRating objects (NOT added to the DB session),
-    replays all completed games for the given engine_version chronologically,
-    and returns rankings sorted by conservative_rating.
+    Results are cached by (engine_version, latest game ended_at). Past seasons
+    cache forever; the current season invalidates automatically when a new game
+    completes (its ended_at advances the cache key).
     """
     from app.models import Game, GameStatus
+
+    latest = (
+        db.query(func.max(Game.ended_at))
+        .filter(Game.status == GameStatus.COMPLETED, Game.engine_version == engine_version)
+        .scalar()
+    )
+    cache_key = (engine_version, latest)
+    if cache_key in _rankings_cache:
+        return _rankings_cache[cache_key]
 
     models = db.query(Model).all()
 
@@ -324,4 +340,6 @@ def get_historical_rankings(db: Session, engine_version: int) -> list[dict]:
             if not impostors_won:
                 rating.crewmate_wins += 1
 
-    return build_rankings_from_ratings(models, temp_ratings)
+    result = build_rankings_from_ratings(models, temp_ratings)
+    _rankings_cache[cache_key] = result
+    return result

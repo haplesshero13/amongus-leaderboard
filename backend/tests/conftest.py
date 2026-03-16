@@ -12,6 +12,15 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models import Model, Game, GameParticipant, PlayerRole, GameStatus
+import app.services.rating_service as rating_service
+
+
+@pytest.fixture(autouse=True)
+def clear_rankings_cache():
+    """Clear the rankings cache before each test to prevent cross-test pollution."""
+    rating_service._rankings_cache.clear()
+    yield
+    rating_service._rankings_cache.clear()
 
 
 @pytest.fixture
