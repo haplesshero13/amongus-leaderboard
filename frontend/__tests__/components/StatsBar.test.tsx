@@ -28,7 +28,7 @@ import { useRankings } from '@/lib/hooks/useRankings';
 import { useSeasons } from '@/lib/hooks/useSeasons';
 
 // Import the page component after mocking
-import Home from '@/app/page';
+import LeaderboardPage from '@/app/leaderboard/page';
 
 describe('StatsBar games count', () => {
   beforeEach(() => {
@@ -68,7 +68,7 @@ describe('StatsBar games count', () => {
       refetch: vi.fn().mockResolvedValue(undefined),
     });
 
-    render(<Home />);
+    render(<LeaderboardPage />);
 
     // The "Games Played" stat should show 5 (season game_count)
     // NOT 25 (sum of games_played across models: 10+8+7=25)
@@ -101,7 +101,7 @@ describe('StatsBar games count', () => {
       refetch: vi.fn().mockResolvedValue(undefined),
     });
 
-    render(<Home />);
+    render(<LeaderboardPage />);
 
     await waitFor(() => {
       const gamesPlayedCard = screen.getByText(/Games Played/).closest('div')?.parentElement;
@@ -140,7 +140,7 @@ describe('StatsBar games count', () => {
       refetch: vi.fn().mockResolvedValue(undefined),
     });
 
-    render(<Home />);
+    render(<LeaderboardPage />);
 
     // GPT-5 has highest impostor rating (2800) - appears in stats bar AND leaderboard
     await waitFor(() => {
@@ -181,7 +181,7 @@ describe('StatsBar games count', () => {
       refetch: vi.fn().mockResolvedValue(undefined),
     });
 
-    render(<Home />);
+    render(<LeaderboardPage />);
 
     // Claude 4 has highest crewmate rating (2700) - appears in stats bar AND leaderboard
     await waitFor(() => {
@@ -212,7 +212,7 @@ describe('StatsBar games count', () => {
       refetch: vi.fn().mockResolvedValue(undefined),
     });
 
-    render(<Home />);
+    render(<LeaderboardPage />);
 
     // Stat labels should include the season suffix "S1"
     await waitFor(() => {
