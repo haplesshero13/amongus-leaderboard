@@ -94,6 +94,7 @@ Behavior:
    - **Header**: Site title ("LM Deception Arena") links to `/`. Nav links: **Leaderboard** (`/leaderboard`), **View Games** (`/games`), **About** (`/about`). No separate "Home" nav link — the site title/logo is the home link (standard web pattern).
    - **Footer**: Update the "Leaderboard" link from `/` to `/leaderboard`. Other footer links ("Games", "About") remain unchanged.
 4. Update `activePage` logic for the new routes. The chart home page does not highlight any nav link (only the site title is the link to `/`).
+5. Fix the game detail page (`frontend/src/app/games/[id]/page.tsx`) — it has a custom header that shows "Game Log" as the `<h1>` instead of "LM Deception Arena". The site title in the header must always be "LM Deception Arena" on every page. Page-specific titles like "Game Log" and the LIVE badge belong in the content area, not the header. This page also has hardcoded nav links that need updating (`/` → `/leaderboard` for the Leaderboard link). Refactor this page to use `PageLayout` so the header is consistent everywhere.
 
 ### Nav Structure
 
