@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import createPlotlyComponent from 'react-plotly.js/factory';
 // @ts-expect-error — plotly.js-basic-dist-min has no type declarations
 import Plotly from 'plotly.js-basic-dist-min';
@@ -9,11 +10,33 @@ const Plot = createPlotlyComponent(Plotly);
 
 const MAX_CHART_MODELS = 15;
 
+function isPortraitViewport() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.innerWidth < window.innerHeight;
+}
+
 interface RatingChartProps {
   models: ModelRanking[];
 }
 
 export function RatingChart({ models }: RatingChartProps) {
+  const [useVerticalLegend, setUseVerticalLegend] = useState(isPortraitViewport);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setUseVerticalLegend(isPortraitViewport());
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   const chartModels = models.slice(0, MAX_CHART_MODELS);
   const modelNames = chartModels.map((m) => m.model_name);
 
@@ -121,14 +144,19 @@ export function RatingChart({ models }: RatingChartProps) {
       zeroline: false,
     },
     legend: {
-      orientation: 'h' as const,
-      yanchor: 'bottom' as const,
-      y: 1.02,
-      xanchor: 'center' as const,
-      x: 0.5,
+      orientation: useVerticalLegend ? ('v' as const) : ('h' as const),
+      yanchor: useVerticalLegend ? ('top' as const) : ('bottom' as const),
+      y: useVerticalLegend ? 1.14 : 1.02,
+      xanchor: useVerticalLegend ? ('left' as const) : ('center' as const),
+      x: useVerticalLegend ? 0 : 0.5,
       font: { color: '#94a3b8' },
     },
-    margin: { l: 60, r: 20, t: 40, b: 80 },
+    margin: {
+      l: 60,
+      r: 20,
+      t: useVerticalLegend ? 110 : 40,
+      b: 80,
+    },
     hoverlabel: {
       bgcolor: '#1e293b',
       bordercolor: '#475569',
