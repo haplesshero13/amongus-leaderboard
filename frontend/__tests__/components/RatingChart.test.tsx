@@ -14,6 +14,18 @@ type PlotProps = {
     margin: {
       l: number;
     };
+    xaxis: {
+      tickfont: {
+        color: string;
+        size: number;
+      };
+    };
+    yaxis: {
+      tickfont: {
+        color: string;
+        size: number;
+      };
+    };
   };
   style: {
     height: string;
@@ -106,9 +118,25 @@ function setViewport(width: number, height: number) {
   });
 }
 
+function mockMatchMedia(matches = false) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches,
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  });
+}
+
 describe('RatingChart', () => {
   beforeEach(() => {
     latestPlotProps = null;
+    mockMatchMedia(false);
   });
 
   it('uses vertical bars in wider viewports', () => {
@@ -119,6 +147,20 @@ describe('RatingChart', () => {
     expect(screen.getByTestId('rating-chart-plot')).toBeDefined();
     expect(latestPlotProps?.data[0].orientation).toBe('v');
     expect(latestPlotProps?.layout.bargap).toBeGreaterThan(0.22);
+  });
+
+  it('uses stronger category label contrast in light mode', () => {
+    setViewport(1200, 800);
+
+    render(<RatingChart models={mockRankings} />);
+
+    expect(latestPlotProps?.layout.xaxis.tickfont.color).toBe('#235685');
+    expect(latestPlotProps?.layout.xaxis.tickfont.size).toBe(12);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stacked' }));
+
+    expect(latestPlotProps?.layout.yaxis.tickfont.color).toBe('#235685');
+    expect(latestPlotProps?.layout.yaxis.tickfont.size).toBe(12);
   });
 
   it('switches to horizontal bars in narrower viewports', () => {

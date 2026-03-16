@@ -1,8 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import posthog from 'posthog-js';
+import {
+  applyThemeMode,
+  getSystemThemeMode,
+  hasManualThemeModeOverride,
+  resolveThemeMode,
+  type ThemeMode,
+} from '../../lib/theme/themeMode';
 
 interface PageLayoutProps {
   activePage: string;
@@ -20,6 +27,27 @@ const widthClasses = {
   '6xl': 'max-w-6xl',
 };
 
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path strokeLinecap="round" d="M12 2.5v2.25M12 19.25v2.25M4.93 4.93l1.6 1.6M17.47 17.47l1.6 1.6M2.5 12h2.25M19.25 12h2.25M4.93 19.07l1.6-1.6M17.47 6.53l1.6-1.6" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 14.2A8.5 8.5 0 1 1 9.8 3a7 7 0 1 0 11.2 11.2Z"
+      />
+    </svg>
+  );
+}
+
 export function PageLayout({
   activePage,
   children,
@@ -28,6 +56,7 @@ export function PageLayout({
 }: PageLayoutProps) {
   const containerClass = `mx-auto ${widthClasses[maxWidth]} px-4 sm:px-6 lg:px-8`;
   const headerClass = `mx-auto max-w-6xl px-4 sm:px-6 lg:px-8`;
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
   const navLinks = [
     { href: '/leaderboard', label: 'Leaderboard' },
@@ -62,6 +91,37 @@ export function PageLayout({
     });
   };
 
+  useEffect(() => {
+    setThemeMode(resolveThemeMode());
+
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+      if (hasManualThemeModeOverride()) {
+        return;
+      }
+
+      const nextTheme = getSystemThemeMode();
+      applyThemeMode(nextTheme, 'system');
+      setThemeMode(nextTheme);
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, []);
+
+  const toggleThemeMode = () => {
+    const nextTheme = themeMode === 'dark' ? 'light' : 'dark';
+    applyThemeMode(nextTheme);
+    setThemeMode(nextTheme);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       {/* Header */}
@@ -78,7 +138,16 @@ export function PageLayout({
                 </h1>
               </div>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={toggleThemeMode}
+                aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-100"
+              >
+                {themeMode === 'dark' ? <SunIcon /> : <MoonIcon />}
+              </button>
               {navLinks.map((link) => {
                 const isActive = activePage === link.href;
                 const baseClass = "px-4 py-2 rounded-lg text-sm transition-colors";

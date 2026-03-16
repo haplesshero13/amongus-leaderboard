@@ -6,6 +6,7 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-basic-dist-min';
 import type { ModelRanking } from '../../types/leaderboard';
 import { amongUsPalette } from '../../lib/theme/amongUsPalette';
+import { resolveThemeMode } from '../../lib/theme/themeMode';
 
 const Plot = createPlotlyComponent(Plotly);
 
@@ -42,6 +43,14 @@ const SORT_DIRECTION_LABELS: Record<ChartSortDirection, string> = {
   desc: 'Desc',
 };
 
+function usesDarkTheme() {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  return resolveThemeMode() === 'dark';
+}
+
 function isNarrowViewport() {
   if (typeof window === 'undefined') {
     return false;
@@ -71,6 +80,7 @@ export function RatingChart({ models }: RatingChartProps) {
   const [plotOrientationMode, setPlotOrientationMode] = useState<PlotOrientationMode>('auto');
   const [useHorizontalPlot, setUseHorizontalPlot] = useState(isNarrowViewport);
   const [plotWidth, setPlotWidth] = useState(getInitialPlotWidth);
+  const [prefersDarkMode, setPrefersDarkMode] = useState(usesDarkTheme);
   const [sortField, setSortField] = useState<ChartSortField>('overall');
   const [sortDirection, setSortDirection] = useState<ChartSortDirection>('desc');
 
@@ -84,6 +94,26 @@ export function RatingChart({ models }: RatingChartProps) {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const root = document.documentElement;
+    const handleThemeChange = () => {
+      setPrefersDarkMode(root.classList.contains('dark'));
+    };
+
+    handleThemeChange();
+
+    const observer = new MutationObserver(handleThemeChange);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
     };
   }, []);
 
@@ -112,6 +142,25 @@ export function RatingChart({ models }: RatingChartProps) {
 
   const isHorizontalPlot = plotOrientationMode === 'horizontal' ||
     (plotOrientationMode === 'auto' && useHorizontalPlot);
+  const plotThemeColors = useMemo(() => {
+    if (prefersDarkMode) {
+      return {
+        axisTitle: '#cbd5e1',
+        categoryTick: '#e2e8f0',
+        font: '#94a3b8',
+        legend: '#cbd5e1',
+        valueTick: '#94a3b8',
+      };
+    }
+
+    return {
+      axisTitle: '#475569',
+      categoryTick: amongUsPalette.ui.darkBlue,
+      font: '#64748b',
+      legend: '#475569',
+      valueTick: '#64748b',
+    };
+  }, [prefersDarkMode]);
 
   const maxChartModels = isHorizontalPlot ? COMPACT_MAX_CHART_MODELS : DEFAULT_MAX_CHART_MODELS;
   const sortedModels = useMemo(() => {
@@ -267,19 +316,25 @@ export function RatingChart({ models }: RatingChartProps) {
     bargap: isHorizontalPlot ? DEFAULT_BARGAP : wideModeBargap,
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
-    font: { color: '#94a3b8' },
+    font: { color: plotThemeColors.font },
     xaxis: {
       title: isHorizontalPlot
-        ? { text: 'Rating (mu × 100)', font: { color: '#64748b', size: 12 } }
+        ? { text: 'Rating (mu × 100)', font: { color: plotThemeColors.axisTitle, size: 12 } }
         : undefined,
-      tickfont: { color: '#cbd5e1', size: 11 },
+      tickfont: {
+        color: isHorizontalPlot ? plotThemeColors.valueTick : plotThemeColors.categoryTick,
+        size: isHorizontalPlot ? 11 : 12,
+      },
       gridcolor: 'rgba(51,65,85,0.5)',
     },
     yaxis: {
       title: !isHorizontalPlot
-        ? { text: 'Rating (mu × 100)', font: { color: '#64748b', size: 12 } }
+        ? { text: 'Rating (mu × 100)', font: { color: plotThemeColors.axisTitle, size: 12 } }
         : undefined,
-      tickfont: { color: '#94a3b8' },
+      tickfont: {
+        color: isHorizontalPlot ? plotThemeColors.categoryTick : plotThemeColors.valueTick,
+        size: isHorizontalPlot ? 12 : 11,
+      },
       gridcolor: 'rgba(51,65,85,0.3)',
       zeroline: false,
       automargin: true,
@@ -291,7 +346,7 @@ export function RatingChart({ models }: RatingChartProps) {
       y: 1.02,
       xanchor: 'center' as const,
       x: 0.5,
-      font: { color: '#94a3b8' },
+      font: { color: plotThemeColors.legend },
     },
     margin: {
       l: isHorizontalPlot ? COMPACT_MARGIN_LEFT : CHART_MARGIN_LEFT,

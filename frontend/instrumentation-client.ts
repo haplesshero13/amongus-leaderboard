@@ -2,16 +2,14 @@ import posthog from "posthog-js";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
 const hostname = typeof window !== "undefined" ? window.location.hostname : "";
-const shouldDisablePostHog =
-  LOCAL_HOSTS.has(hostname) ||
-  !process.env.NEXT_PUBLIC_POSTHOG_KEY ||
-  !process.env.NEXT_PUBLIC_POSTHOG_HOST;
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-if (shouldDisablePostHog) {
+if (LOCAL_HOSTS.has(hostname) || !posthogKey || !posthogHost) {
   posthog.opt_out_capturing();
 } else {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  posthog.init(posthogKey, {
+    api_host: posthogHost,
     ui_host: "https://us.posthog.com",
     // Include the defaults option as required by PostHog
     defaults: "2025-11-30",
