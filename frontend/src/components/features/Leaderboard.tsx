@@ -1,29 +1,27 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
 import { useRankings } from '../../lib/hooks/useRankings';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { LeaderboardTable } from './LeaderboardTable';
 import { LeaderboardCards } from './LeaderboardCards';
-import { SeasonSelector } from './SeasonSelector';
 import type { SortField, SortDirection, ModelRanking } from '../../types/leaderboard';
 import { getConservativeRating } from '../../types/leaderboard';
 
 const ITEMS_PER_PAGE = 20;
 
 interface LeaderboardProps {
-  selectedSeason: number | null;
-  onSeasonChange: (version: number | null, label: string | null) => void;
+  selectedSeason: number;
 }
 
-export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps) {
+export function Leaderboard({ selectedSeason }: LeaderboardProps) {
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('overall_rating');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const { data, isLoading, error, refetch } = useRankings(1, 100, selectedSeason);
-  const previousSeasonRef = useRef<number | null>(selectedSeason);
+  const previousSeasonRef = useRef<number>(selectedSeason);
 
   useEffect(() => {
     if (previousSeasonRef.current !== selectedSeason) {
@@ -35,6 +33,10 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
     }
   }, [selectedSeason]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [selectedSeason]);
+
   const handlePageChange = (newPage: number) => {
     posthog.capture('leaderboard_page_changed', {
       from_page: page,
@@ -44,11 +46,6 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
     });
     setPage(newPage);
   };
-
-  const handleSeasonChange = useCallback((version: number | null, label: string | null) => {
-    onSeasonChange(version, label);
-    setPage(1);
-  }, [onSeasonChange]);
 
   const handleSortChange = (field: SortField) => {
     const newDirection = field === sortField && sortDirection === 'desc' ? 'asc' : 'desc';
@@ -110,7 +107,6 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
   if (isLoading && !data) {
     return (
       <div>
-        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
         <LoadingSpinner />
       </div>
     );
@@ -119,7 +115,6 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
   if (error) {
     return (
       <div>
-        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
         <ErrorMessage error={error} onRetry={refetch} />
       </div>
     );
@@ -128,7 +123,6 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
   if (!data || data.data.length === 0) {
     return (
       <div>
-        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
         <div className="flex items-center justify-center p-8 text-gray-500 dark:text-gray-400">
           No rankings available yet for this season
         </div>
@@ -142,10 +136,6 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
 
   return (
     <div>
-      <div className="mb-6">
-        <SeasonSelector selectedVersion={selectedSeason} onSeasonChange={handleSeasonChange} />
-      </div>
-
       {/* Desktop view */}
       <div className="hidden md:block">
         <LeaderboardTable
