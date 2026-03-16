@@ -136,10 +136,10 @@ def seven_models(db_session):
 
 @pytest.fixture
 def seven_models_with_game(db_session, seven_models):
-    """Create 7 models that have each played one completed Season 1 game.
+    """Create 7 models that have each played one completed game in the current season.
 
     This satisfies the leaderboard filter that hides models with 0 games
-    in the requested season.
+    in the current season.
     """
     game = Game(
         status=GameStatus.COMPLETED,
