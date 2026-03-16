@@ -201,7 +201,9 @@ class TestLeaderboardEndpoint:
         assert data["total"] == 0
         assert data["data"] == []
 
-    def test_leaderboard_hides_models_without_season_games(self, client, db_session, seven_models_with_game):
+    def test_leaderboard_hides_models_without_season_games(
+        self, client, db_session, seven_models_with_game
+    ):
         """Models registered but with 0 games in the requested season must be hidden."""
         # Add an 8th model that never plays
         extra = Model(

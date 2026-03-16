@@ -17,7 +17,7 @@ describe('useSeasons', () => {
   it('auto-selects the latest season on mount', async () => {
     vi.mocked(fetchSeasons).mockResolvedValue([
       { version: 1, label: 'Season 1 — Long Context', game_count: 42 },
-      { version: 0, label: 'Season 0 — Skip Vote', game_count: 10 },
+      { version: 0, label: 'Season 0 — Summary Mode', game_count: 10 },
     ]);
     const { result } = renderHook(() => useSeasons());
     expect(result.current.isLoading).toBe(true);
@@ -31,13 +31,13 @@ describe('useSeasons', () => {
   it('allows changing the selected season', async () => {
     vi.mocked(fetchSeasons).mockResolvedValue([
       { version: 1, label: 'Season 1 — Long Context', game_count: 42 },
-      { version: 0, label: 'Season 0 — Skip Vote', game_count: 10 },
+      { version: 0, label: 'Season 0 — Summary Mode', game_count: 10 },
     ]);
     const { result } = renderHook(() => useSeasons());
     await waitFor(() => { expect(result.current.isLoading).toBe(false); });
     act(() => { result.current.setSelectedSeason(0); });
     expect(result.current.selectedSeason).toBe(0);
-    expect(result.current.selectedSeasonLabel).toBe('Season 0 — Skip Vote');
+    expect(result.current.selectedSeasonLabel).toBe('Season 0 — Summary Mode');
     expect(result.current.selectedSeasonGameCount).toBe(10);
   });
 

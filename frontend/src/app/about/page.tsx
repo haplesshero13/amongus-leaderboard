@@ -4,6 +4,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import posthog from 'posthog-js';
 import { PageLayout } from '@/components/layout/PageLayout';
+import { useSeasons } from '@/lib/hooks/useSeasons';
 
 function BlockMath({ tex }: { tex: string }) {
   const html = katex.renderToString(tex, { displayMode: true, throwOnError: false });
@@ -44,7 +45,15 @@ function ExternalLink({ href, children, className = "text-blue-600 hover:underli
   );
 }
 
+function formatSeasonCount(gameCount: number | undefined, fallback: string) {
+  return gameCount != null ? gameCount.toLocaleString() : fallback;
+}
+
 export default function AboutPage() {
+  const { seasons } = useSeasons();
+  const season0 = seasons.find((season) => season.version === 0);
+  const season1 = seasons.find((season) => season.version === 1);
+
   return (
     <PageLayout activePage="/about" maxWidth="4xl">
       {/* What is this project */}
@@ -60,6 +69,15 @@ export default function AboutPage() {
             text-only version of the popular social deduction game <em>Among Us</em>.
           </p>
           <p>
+            The original paper,{' '}
+            <ExternalLink href="https://arxiv.org/abs/2504.04072" linkType="paper">
+              Among Us: A Sandbox for Measuring and Detecting Agentic Deception
+            </ExternalLink>{' '}
+            by Satvik Golechha and Adria Garriga-Alonso (2025), introduced the text-only environment
+            this project builds on. LM Deception Arena keeps that basic setup, while turning it into
+            a live benchmark with public logs, many distinct models, and season-specific ratings.
+          </p>
+          <p>
             The goal is to help the AI safety and research community better understand how modern
             language models behave in adversarial, multi-agent contexts. By studying how LLMs lie,
             detect lies, persuade, and collaborate, we gain insights into emergent capabilities that
@@ -73,8 +91,69 @@ export default function AboutPage() {
             >
               Golechha & Garriga-Alonso&apos;s &quot;Among Us: A Sandbox&quot;
             </ExternalLink>{' '}
-            research, with our extension for running games with many distinct models,
-            rather than a single model per role.
+            research, with our extension for running games with many distinct models, rather than a
+            single model per role. Human-AI games are a future direction for the broader project,
+            but they are not part of this leaderboard yet.
+          </p>
+        </div>
+      </section>
+
+      {/* Seasons */}
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          Seasons &amp; Changelog
+        </h2>
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <p>
+            Seasons are versioned benchmark snapshots. When the prompting regime or game setup
+            changes enough to affect comparability, we start a new season instead of blending all
+            results into one rating pool.
+          </p>
+          <p>
+            The big shift so far is from a summary-prompt baseline to a long-context benchmark.
+            Season 0 is the launch-era baseline; Season 1 is the active long-context follow-up.
+          </p>
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              {season0?.label ?? 'Season 0 — Summary Mode'}{' '}
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                ({formatSeasonCount(season0?.game_count, 'about 250')} games)
+              </span>
+            </h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Our launch baseline. This season is closest to the summary-style prompting setup used
+              in the original paper and gives us the large historical base layer for the leaderboard.
+            </p>
+            <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+              We have already run{' '}
+              <strong>{formatSeasonCount(season0?.game_count, '250')}</strong> completed games here.
+              Going forward, we do not expect to add many new models or many new games to this
+              older season.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+              {season1?.label ?? 'Season 1 — Long Context'}{' '}
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                ({formatSeasonCount(season1?.game_count, 'about 100')} games)
+              </span>
+            </h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Our current long-context season. Instead of leaning as heavily on compressed
+              summaries, this season is designed to let models carry much more of the conversation
+              forward across a full game.
+            </p>
+            <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+              We have run{' '}
+              <strong>{formatSeasonCount(season1?.game_count, '100')}</strong> completed games here
+              so far, and this is where new models and most new games will land.
+            </p>
+          </div>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            <strong>Going forward:</strong> once a season is no longer current, we treat it as
+            mostly frozen so ratings stay apples-to-apples within that ruleset. We may occasionally
+            run a small number of older-season checks, but we do not plan to keep backfilling Season
+            0 in any major way.
           </p>
         </div>
       </section>
@@ -288,113 +367,42 @@ export default function AboutPage() {
       {/* References */}
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-          References & Further Reading
+          Lineage &amp; Further Reading
         </h2>
-        <p className="mb-6 text-gray-700 dark:text-gray-300">
-          This project exists within a growing body of research on LLM behavior in social deduction
-          games. The key papers in this space:
-        </p>
-
-        <div className="space-y-6">
-          {/* Primary paper - the one we use */}
-          <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400">
-              Our Foundation
-            </div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+        <div className="space-y-6 text-gray-700 dark:text-gray-300">
+          <p>
+            The most direct lineage is{' '}
+            <ExternalLink href="https://arxiv.org/abs/2504.04072" linkType="paper">
               Among Us: A Sandbox for Measuring and Detecting Agentic Deception
-            </h3>
-            <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
-              Satvik Golechha, Adria Garriga-Alonso (2025)
-            </p>
-            <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-              The primary research this project is built on. Introduces a text-based Among Us
-              environment for studying deceptive behavior in LLM agents. We directly use and{' '}
-              <ExternalLink href="https://github.com/haplesshero13/AmongLLMs" linkType="github">
-                extend
+            </ExternalLink>{' '}
+            by Satvik Golechha and Adria Garriga-Alonso (2025). That paper introduced the text-only
+            benchmark environment this project builds on, and its{' '}
+            <ExternalLink href="https://github.com/7vik/AmongUs" linkType="github">
+              original codebase
+            </ExternalLink>{' '}
+            remains the clearest starting point for understanding the setup. Our public leaderboard
+            extends that work through our own{' '}
+            <ExternalLink href="https://github.com/haplesshero13/AmongLLMs" linkType="github">
+              fork
+            </ExternalLink>{' '}
+            and surrounding infrastructure.
+          </p>
+
+          <div className="border-t border-gray-200 pt-6 dark:border-gray-800">
+            <p>
+              Other relevant work includes{' '}
+              <ExternalLink href="https://arxiv.org/abs/2407.16521" linkType="paper">
+                AMONGAGENTS: Evaluating Large Language Models in the Interactive Text-Based Social
+                Deduction Game
               </ExternalLink>{' '}
-              their open-source implementation.
+              by Yizhou Chi, Lingjun Mao, and Zineng Tang (2024), which studies deception, action
+              planning, and collaboration in another text-based <em>Among Us</em> environment, plus{' '}
+              <ExternalLink href="https://arxiv.org/abs/2502.20426" linkType="paper">
+                Among Them: A Game-Based Framework for Assessing Persuasion Capabilities of LLMs
+              </ExternalLink>{' '}
+              (2025), which focuses more specifically on persuasion strategies in social deduction
+              play.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <ExternalLink
-                href="https://arxiv.org/abs/2504.04072"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="paper"
-              >
-                arXiv Paper
-              </ExternalLink>
-              <ExternalLink
-                href="https://github.com/7vik/AmongUs"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="github"
-              >
-                Original Code
-              </ExternalLink>
-              <ExternalLink
-                href="https://github.com/haplesshero13/AmongLLMs"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="github"
-              >
-                Our Fork
-              </ExternalLink>
-            </div>
-          </div>
-
-          {/* AMONGAGENTS */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-              AMONGAGENTS: Evaluating Large Language Models in the Interactive Text-Based Social
-              Deduction Game
-            </h3>
-            <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
-              Yizhou Chi, Lingjun Mao, Zineng Tang (2024)
-            </p>
-            <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-              Another text-based Among Us environment focusing on action planning, deception, and
-              task collaboration. Analyzes how LLMs with different personalities perform and whether
-              they truly comprehend strategic gameplay.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <ExternalLink
-                href="https://arxiv.org/abs/2407.16521"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="paper"
-              >
-                arXiv Paper
-              </ExternalLink>
-              <ExternalLink
-                href="https://github.com/cyzus/among-agents"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="github"
-              >
-                GitHub
-              </ExternalLink>
-            </div>
-          </div>
-
-          {/* Among Them */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-              Among Them: A Game-Based Framework for Assessing Persuasion Capabilities of LLMs
-            </h3>
-            <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
-              Idziejczak, Korzavatykh, Stawicki, et al. (2025)
-            </p>
-            <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
-              Focuses specifically on persuasion techniques. Quantifies 25 persuasion strategies
-              from social psychology and rhetoric, analyzing which techniques LLMs employ most
-              effectively. Found that larger models don&apos;t necessarily have a persuasion
-              advantage.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <ExternalLink
-                href="https://arxiv.org/abs/2502.20426"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline dark:text-blue-400"
-                linkType="paper"
-              >
-                arXiv Paper
-              </ExternalLink>
-            </div>
           </div>
         </div>
       </section>

@@ -196,7 +196,7 @@ describe('StatsBar games count', () => {
     vi.mocked(useSeasons).mockReturnValue({
       seasons: [
         { version: 1, label: 'Season 1 — Long Context', game_count: 42 },
-        { version: 0, label: 'Season 0 — Skip Vote', game_count: 10 },
+        { version: 0, label: 'Season 0 — Summary Mode', game_count: 10 },
       ],
       selectedSeason: 1,
       selectedSeasonLabel: 'Season 1 — Long Context',
