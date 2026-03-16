@@ -2,6 +2,7 @@ import Link from 'next/link';
 import posthog from 'posthog-js';
 import { ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
+import { leaderboardColorClasses } from '../../lib/theme/amongUsPalette';
 
 interface LeaderboardCardsProps {
   rankings: ModelRanking[];
@@ -59,33 +60,33 @@ export function LeaderboardCards({ rankings }: LeaderboardCardsProps) {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-800">
-                <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              <div className={`rounded-lg p-2 ${leaderboardColorClasses.overallCard}`}>
+                <div className={`text-lg font-bold ${leaderboardColorClasses.overallValue}`}>
                   {getConservativeRating(model.overall_rating, model.overall_sigma)}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className={`text-xs ${leaderboardColorClasses.overallDetail}`}>
                   Avg: {model.overall_rating} ±{model.overall_sigma}
                 </div>
               </div>
-              <div className="rounded-lg bg-red-50 p-2 dark:bg-red-900/20">
-                <div className="text-lg font-bold text-red-600 dark:text-red-400">
+              <div className={`rounded-lg p-2 ${leaderboardColorClasses.impostorCard}`}>
+                <div className={`text-lg font-bold ${leaderboardColorClasses.impostorValue}`}>
                   {getConservativeRating(model.impostor_rating, model.impostor_sigma)}
                 </div>
-                <div className="text-xs text-red-600/70 dark:text-red-400/70">
+                <div className={`text-xs ${leaderboardColorClasses.impostorDetail}`}>
                   Avg: {model.impostor_rating} ±{model.impostor_sigma}
                 </div>
-                <div className="text-xs text-red-600/70 dark:text-red-400/70">
+                <div className={`text-xs ${leaderboardColorClasses.impostorDetail}`}>
                   {model.impostor_wins}W-{model.impostor_games - model.impostor_wins}L
                 </div>
               </div>
-              <div className="rounded-lg bg-cyan-50 p-2 dark:bg-cyan-900/20">
-                <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
+              <div className={`rounded-lg p-2 ${leaderboardColorClasses.crewmateCard}`}>
+                <div className={`text-lg font-bold ${leaderboardColorClasses.crewmateValue}`}>
                   {getConservativeRating(model.crewmate_rating, model.crewmate_sigma)}
                 </div>
-                <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">
+                <div className={`text-xs ${leaderboardColorClasses.crewmateDetail}`}>
                   Avg: {model.crewmate_rating} ±{model.crewmate_sigma}
                 </div>
-                <div className="text-xs text-cyan-600/70 dark:text-cyan-400/70">
+                <div className={`text-xs ${leaderboardColorClasses.crewmateDetail}`}>
                   {model.crewmate_wins}W-{model.crewmate_games - model.crewmate_wins}L
                 </div>
               </div>

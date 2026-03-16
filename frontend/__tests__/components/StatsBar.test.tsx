@@ -147,7 +147,7 @@ describe('StatsBar games count', () => {
       const matches = screen.getAllByText('GPT-5');
       expect(matches.length).toBeGreaterThanOrEqual(1);
       // First one should be in the stats bar with red color
-      expect(matches[0].className).toContain('text-red-600');
+      expect(matches[0].className).toContain('text-[#F21717]');
     });
   });
 
@@ -187,8 +187,8 @@ describe('StatsBar games count', () => {
     await waitFor(() => {
       const matches = screen.getAllByText('Claude 4');
       expect(matches.length).toBeGreaterThanOrEqual(1);
-      // First one should be in the stats bar with cyan color
-      expect(matches[0].className).toContain('text-cyan-600');
+      // First one should be in the stats bar with the crewmate palette color
+      expect(matches[0].className).toContain('text-[#235685]');
     });
   });
 

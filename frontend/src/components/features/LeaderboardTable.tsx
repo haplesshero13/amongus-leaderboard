@@ -2,6 +2,7 @@ import { useRouter } from 'next/navigation';
 import posthog from 'posthog-js';
 import { ModelRanking, getConservativeRating, SortField, SortDirection } from '../../types/leaderboard';
 import { RankBadge } from '../ui/RankIndicator';
+import { leaderboardColorClasses } from '../../lib/theme/amongUsPalette';
 
 function WinRate({ rate, games }: { rate: number; games: number }) {
   if (games === 0) {
@@ -18,13 +19,13 @@ function SortIndicator({ active, direction }: { active: boolean; direction: Sort
   return (
     <span className="ml-1 inline-flex flex-col leading-[0]">
       <svg
-        className={`h-2 w-2 transition-colors ${active && direction === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-300 dark:text-gray-600'}`}
+        className={`h-2 w-2 transition-colors ${active && direction === 'asc' ? leaderboardColorClasses.uiAccent : 'text-gray-300 dark:text-gray-600'}`}
         viewBox="0 0 8 5" fill="currentColor"
       >
         <path d="M4 0L8 5H0L4 0Z" />
       </svg>
       <svg
-        className={`h-2 w-2 transition-colors ${active && direction === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-300 dark:text-gray-600'}`}
+        className={`h-2 w-2 transition-colors ${active && direction === 'desc' ? leaderboardColorClasses.uiAccent : 'text-gray-300 dark:text-gray-600'}`}
         viewBox="0 0 8 5" fill="currentColor"
       >
         <path d="M4 5L0 0H8L4 5Z" />
@@ -119,36 +120,36 @@ export function LeaderboardTable({ rankings, sortField, sortDirection, onSort }:
                 </td>
                 <td className="px-4 py-4 text-center">
                   <div className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    <span className={`text-lg font-bold ${leaderboardColorClasses.overallValue}`}>
                       {getConservativeRating(model.overall_rating, model.overall_sigma)}
                     </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className={`text-xs ${leaderboardColorClasses.overallDetail}`}>
                       Avg: {model.overall_rating} ±{model.overall_sigma}
                     </span>
                   </div>
                 </td>
                 <td className="hidden px-4 py-4 text-center lg:table-cell">
                   <div className="flex flex-col items-center">
-                    <span className="font-semibold text-red-600 dark:text-red-400">
+                    <span className={`font-semibold ${leaderboardColorClasses.impostorValue}`}>
                       {getConservativeRating(model.impostor_rating, model.impostor_sigma)}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className={`text-xs ${leaderboardColorClasses.impostorDetail}`}>
                       Avg: {model.impostor_rating} ±{model.impostor_sigma}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className={`text-xs ${leaderboardColorClasses.impostorDetail}`}>
                       {model.impostor_wins}W-{model.impostor_games - model.impostor_wins}L
                     </span>
                   </div>
                 </td>
                 <td className="hidden px-4 py-4 text-center lg:table-cell">
                   <div className="flex flex-col items-center">
-                    <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+                    <span className={`font-semibold ${leaderboardColorClasses.crewmateValue}`}>
                       {getConservativeRating(model.crewmate_rating, model.crewmate_sigma)}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className={`text-xs ${leaderboardColorClasses.crewmateDetail}`}>
                       Avg: {model.crewmate_rating} ±{model.crewmate_sigma}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className={`text-xs ${leaderboardColorClasses.crewmateDetail}`}>
                       {model.crewmate_wins}W-{model.crewmate_games - model.crewmate_wins}L
                     </span>
                   </div>

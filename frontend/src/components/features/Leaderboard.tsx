@@ -9,6 +9,7 @@ import { LeaderboardTable } from './LeaderboardTable';
 import { LeaderboardCards } from './LeaderboardCards';
 import type { SortField, SortDirection, ModelRanking } from '../../types/leaderboard';
 import { getConservativeRating } from '../../types/leaderboard';
+import { leaderboardColorClasses } from '../../lib/theme/amongUsPalette';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -201,7 +202,7 @@ export function Leaderboard({ selectedSeason }: LeaderboardProps) {
                     disabled={isLoading}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors
                       ${page === pageNum
-                        ? 'bg-indigo-600 text-white'
+                        ? leaderboardColorClasses.uiActive
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                       }
                       disabled:cursor-not-allowed`}

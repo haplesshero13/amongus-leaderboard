@@ -3,12 +3,9 @@
 import dynamic from 'next/dynamic';
 import { PageLayout } from '../components/layout/PageLayout';
 import { SeasonSelector } from '../components/features/SeasonSelector';
+import { StatsBar } from '../components/features/StatsBar';
 import { useSeasons } from '../lib/hooks/useSeasons';
 import { useRankings } from '../lib/hooks/useRankings';
-
-function getSeasonSuffix(selectedSeason: number): string {
-  return `S${selectedSeason}`;
-}
 
 const RatingChart = dynamic(
   () => import('../components/features/RatingChart').then((mod) => ({ default: mod.RatingChart })),
@@ -17,9 +14,9 @@ const RatingChart = dynamic(
 
 export default function Home() {
   const { seasons, selectedSeason, isLoading, setSelectedSeason, selectedSeasonGameCount } = useSeasons();
-  const { data } = useRankings(1, 100, selectedSeason);
+  const { data, isLoading: isRankingsLoading } = useRankings(1, 100, selectedSeason);
 
-  if (isLoading) {
+  if (isLoading || (isRankingsLoading && !data)) {
     return (
       <PageLayout activePage="/">
         <div className="flex items-center justify-center p-12">
@@ -29,7 +26,6 @@ export default function Home() {
     );
   }
 
-  const suffix = getSeasonSuffix(selectedSeason);
   const models = data?.data ?? [];
 
   return (
@@ -41,17 +37,12 @@ export default function Home() {
         onSeasonChange={setSelectedSeason}
       />
 
-      {/* Games played stat */}
-      <div className="mb-6">
-        <div className="inline-block rounded-xl bg-white px-5 py-3 shadow-sm dark:bg-gray-900">
-          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {selectedSeasonGameCount.toLocaleString()}
-          </span>
-          <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">
-            Games Played — {suffix}
-          </span>
-        </div>
-      </div>
+      <StatsBar
+        selectedSeason={selectedSeason}
+        seasonGameCount={selectedSeasonGameCount}
+        models={models}
+        isLoading={isRankingsLoading && !data}
+      />
 
       {/* Rating chart */}
       <RatingChart models={models} />

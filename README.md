@@ -130,28 +130,114 @@ curl -X POST "$API_URL/api/ratings/recalculate" \
 
 ## Local Development
 
-### Backend
+### Quick start
+
+Run the app locally in three terminals so you can verify UI changes before pushing.
+
+```bash
+# Terminal 1: optional local S3-compatible storage for logs
+docker compose -f docker-compose.dev.yml up -d
+
+# Terminal 2: backend API
+cd backend
+cp .env.example .env
+uv sync --dev
+uv run uvicorn app.main:app --reload
+
+# Terminal 3: frontend
+cd frontend
+bun install
+bun run dev
+```
+
+Open:
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
+- MinIO console: `http://localhost:9001`
+
+### Backend notes
+
+The backend reads settings from `backend/.env`.
 
 ```bash
 cd backend
-uv venv && source .venv/bin/activate
-uv pip install -e ".[dev]"
-
-# Set environment variables
 cp .env.example .env
-# Edit .env with your credentials
 
-# Run development server
-uvicorn app.main:app --reload
+# Fast local default: SQLite file in backend/leaderboard.db
+# DATABASE_URL=sqlite:///./leaderboard.db
+
+# Optional: use local Postgres instead for a production-like setup
+# DATABASE_URL=postgresql://user:password@localhost/amongus_leaderboard
 ```
 
-### Frontend
+Recommended backend commands:
+
+```bash
+cd backend
+uv sync --dev
+uv run uvicorn app.main:app --reload
+uv run pytest -v
+uv run ruff format .
+uv run ruff check --fix .
+```
+
+### Frontend notes
 
 ```bash
 cd frontend
 bun install
 bun run dev
 ```
+
+Set `frontend/.env.local`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Useful frontend commands:
+
+```bash
+cd frontend
+bun run type-check
+bun run lint
+bun run test
+bun run build
+```
+
+### Local database tips
+
+For quick UI and API iteration, SQLite is fine:
+- Default DB file: `backend/leaderboard.db`
+- The app will create tables on startup if they do not exist.
+- To reset local data, stop the backend and delete `backend/leaderboard.db`, then restart.
+
+For production-like local development, use Postgres:
+- Set `DATABASE_URL` in `backend/.env` to your local Postgres database.
+- Run migrations manually with Alembic instead of relying on app startup:
+
+```bash
+cd backend
+uv run alembic upgrade head
+```
+
+Helpful DB workflows:
+
+```bash
+# Seed the registered model list
+cd backend
+uv run python scripts/seed_models.py
+
+# Rebuild ratings from completed games already in the DB
+curl -X POST http://localhost:8000/api/ratings/recalculate \
+  -H "X-API-Key: $OPENROUTER_API_KEY"
+```
+
+If you want a fully local log-storage setup:
+- `docker compose -f docker-compose.dev.yml up -d` starts MinIO.
+- Keep the default MinIO values from `backend/.env.example`.
+- You only need `OPENROUTER_API_KEY` when actually running games.
 
 ## Environment Variables
 

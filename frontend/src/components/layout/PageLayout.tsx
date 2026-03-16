@@ -70,7 +70,7 @@ export function PageLayout({
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg">
-                &#x1F47E;
+                ඞ
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">

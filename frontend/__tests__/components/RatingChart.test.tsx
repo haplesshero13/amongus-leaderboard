@@ -1,16 +1,22 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RatingChart } from '@/components/features/RatingChart';
 import type { ModelRanking } from '@/types/leaderboard';
 
 type PlotProps = {
+  data: Array<{
+    orientation: string;
+    x: string[] | number[];
+    y: string[] | number[];
+  }>;
   layout: {
-    legend: {
-      orientation: string;
-    };
+    bargap: number;
     margin: {
-      t: number;
+      l: number;
     };
+  };
+  style: {
+    height: string;
   };
 };
 
@@ -54,6 +60,39 @@ const mockRankings: ModelRanking[] = [
   },
 ];
 
+const manyMockRankings: ModelRanking[] = Array.from({ length: 40 }, (_, index) => ({
+  ...mockRankings[0],
+  model_id: `model-${index + 1}`,
+  model_name: `Model ${index + 1}`,
+}));
+
+const sortableMockRankings: ModelRanking[] = [
+  {
+    ...mockRankings[0],
+    model_id: 'overall-best',
+    model_name: 'Overall Best',
+    overall_rating: 2800,
+    impostor_rating: 2300,
+    crewmate_rating: 2400,
+  },
+  {
+    ...mockRankings[0],
+    model_id: 'impostor-best',
+    model_name: 'Impostor Best',
+    overall_rating: 2500,
+    impostor_rating: 2900,
+    crewmate_rating: 2200,
+  },
+  {
+    ...mockRankings[0],
+    model_id: 'crewmate-best',
+    model_name: 'Crewmate Best',
+    overall_rating: 2400,
+    impostor_rating: 2100,
+    crewmate_rating: 3000,
+  },
+];
+
 function setViewport(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -72,16 +111,17 @@ describe('RatingChart', () => {
     latestPlotProps = null;
   });
 
-  it('uses a horizontal legend in wider viewports', () => {
+  it('uses vertical bars in wider viewports', () => {
     setViewport(1200, 800);
 
     render(<RatingChart models={mockRankings} />);
 
     expect(screen.getByTestId('rating-chart-plot')).toBeDefined();
-    expect(latestPlotProps?.layout.legend.orientation).toBe('h');
+    expect(latestPlotProps?.data[0].orientation).toBe('v');
+    expect(latestPlotProps?.layout.bargap).toBeGreaterThan(0.22);
   });
 
-  it('switches to a vertical legend in portrait viewports', () => {
+  it('switches to horizontal bars in narrower viewports', () => {
     setViewport(1200, 800);
 
     render(<RatingChart models={mockRankings} />);
@@ -91,7 +131,46 @@ describe('RatingChart', () => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    expect(latestPlotProps?.layout.legend.orientation).toBe('v');
-    expect(latestPlotProps?.layout.margin.t).toBe(110);
+    expect(latestPlotProps?.data[0].orientation).toBe('h');
+    expect(latestPlotProps?.layout.margin.l).toBe(120);
+  });
+
+  it('lets the manual plot toggle override the automatic layout', () => {
+    setViewport(1200, 800);
+
+    render(<RatingChart models={mockRankings} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stacked' }));
+    expect(latestPlotProps?.data[0].orientation).toBe('h');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wide' }));
+    expect(latestPlotProps?.data[0].orientation).toBe('v');
+  });
+
+  it('shows more models with a taller chart in compact mode', () => {
+    setViewport(700, 1000);
+
+    render(<RatingChart models={manyMockRankings} />);
+
+    expect(latestPlotProps?.data[0].orientation).toBe('h');
+    expect(latestPlotProps?.data[0].y).toHaveLength(30);
+    expect(latestPlotProps?.style.height).toBe('1360px');
+  });
+
+  it('sorts models by the selected role and order', () => {
+    setViewport(1200, 800);
+
+    render(<RatingChart models={sortableMockRankings} />);
+
+    expect(latestPlotProps?.data[0].x[0]).toBe('Overall Best');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Impostor' }));
+    expect(latestPlotProps?.data[0].x[0]).toBe('Impostor Best');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Asc' }));
+    expect(latestPlotProps?.data[0].x[0]).toBe('Crewmate Best');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crewmate' }));
+    expect(latestPlotProps?.data[0].x[0]).toBe('Impostor Best');
   });
 });
