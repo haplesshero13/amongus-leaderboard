@@ -30,9 +30,9 @@ export function PageLayout({
   const headerClass = `mx-auto max-w-6xl px-4 sm:px-6 lg:px-8`;
 
   const navLinks = [
-    { href: '/about', label: 'About' },
+    { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/games', label: 'View Games' },
-    { href: '/', label: 'Leaderboard' },
+    { href: '/about', label: 'About' },
   ];
 
   const handleNavClick = (href: string, label: string) => {
@@ -161,8 +161,8 @@ export function PageLayout({
             {/* Links */}
             <div className="flex justify-center gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
               <Link
-                href="/"
-                onClick={() => handleFooterNavClick('/', 'Leaderboard')}
+                href="/leaderboard"
+                onClick={() => handleFooterNavClick('/leaderboard', 'Leaderboard')}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 Leaderboard
