@@ -14,22 +14,34 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     fetchSeasons()
       .then((data) => {
+        if (!isMounted) return;
         // Sort descending so current season is first
         const sorted = data.sort((a, b) => b.version - a.version);
         setSeasons(sorted);
         // Auto-select the latest season on initial mount so the stats bar
         // and leaderboard are scoped to the current season from the start.
-        if (sorted.length > 0) {
+        // Only auto-select when there is no explicit selection yet.
+        if (sorted.length > 0 && selectedVersion === null) {
           onSeasonChange(sorted[0].version, sorted[0].label);
         }
       })
       .catch(() => {
         // Silently fail — selector just won't show
       })
-      .finally(() => setIsLoading(false));
-  }, [onSeasonChange]);
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (isLoading || seasons.length <= 1) {
     return null;
