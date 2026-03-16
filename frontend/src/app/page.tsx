@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { PageLayout } from '../components/layout/PageLayout';
 import { SeasonSelector } from '../components/features/SeasonSelector';
 import { StatsBar } from '../components/features/StatsBar';
+import { LoadingOverlay, LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useSeasons } from '../lib/hooks/useSeasons';
 import { useRankings } from '../lib/hooks/useRankings';
 
@@ -14,14 +15,17 @@ const RatingChart = dynamic(
 
 export default function Home() {
   const { seasons, selectedSeason, isLoading, setSelectedSeason, selectedSeasonGameCount } = useSeasons();
-  const { data, isLoading: isRankingsLoading } = useRankings(1, 100, selectedSeason);
+  const { data, isLoading: isRankingsLoading } = useRankings(1, 100, selectedSeason, {
+    enabled: selectedSeason != null,
+  });
 
-  if (isLoading || (isRankingsLoading && !data)) {
+  if (isLoading || selectedSeason == null || (isRankingsLoading && !data)) {
     return (
       <PageLayout activePage="/">
-        <div className="flex items-center justify-center p-12">
-          <div className="animate-pulse text-gray-500 dark:text-gray-400">Loading...</div>
-        </div>
+        <LoadingSpinner
+          fullPage
+          showText={false}
+        />
       </PageLayout>
     );
   }
@@ -37,15 +41,19 @@ export default function Home() {
         onSeasonChange={setSelectedSeason}
       />
 
-      <StatsBar
-        selectedSeason={selectedSeason}
-        seasonGameCount={selectedSeasonGameCount}
-        models={models}
-        isLoading={isRankingsLoading && !data}
-      />
+      <div className="relative">
+        {isRankingsLoading && data && <LoadingOverlay label="Loading season" />}
 
-      {/* Rating chart */}
-      <RatingChart models={models} />
+        <StatsBar
+          selectedSeason={selectedSeason}
+          seasonGameCount={selectedSeasonGameCount}
+          models={models}
+          isLoading={isRankingsLoading && !data}
+        />
+
+        {/* Rating chart */}
+        <RatingChart models={models} />
+      </div>
     </PageLayout>
   );
 }

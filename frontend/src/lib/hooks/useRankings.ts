@@ -11,16 +11,26 @@ interface UseRankingsResult {
   refetch: () => Promise<void>;
 }
 
+interface UseRankingsOptions {
+  enabled?: boolean;
+}
+
 export function useRankings(
   page: number = 1,
   perPage: number = 20,
-  engineVersion?: number | null
+  engineVersion?: number | null,
+  options: UseRankingsOptions = {}
 ): UseRankingsResult {
+  const { enabled = true } = options;
   const [data, setData] = useState<LeaderboardResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!enabled) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -32,11 +42,16 @@ export function useRankings(
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage, engineVersion]);
+  }, [enabled, page, perPage, engineVersion]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
+
     fetchData();
-  }, [fetchData]);
+  }, [enabled, fetchData]);
 
   return { data, isLoading, error, refetch: fetchData };
 }

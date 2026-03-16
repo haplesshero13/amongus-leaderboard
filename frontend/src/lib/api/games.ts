@@ -1,4 +1,5 @@
 import { Game, GameLogsResponse } from '../../types/game';
+import { runWithInFlightDedup } from './inFlightRequestCache';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -23,15 +24,19 @@ export async function fetchGames(
     params.set('engine_version', engineVersion.toString());
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/games?${params}`, {
-    next: { revalidate: 30 },
+  const url = `${API_BASE_URL}/api/games?${params}`;
+
+  return runWithInFlightDedup(url, async () => {
+    const response = await fetch(url, {
+      next: { revalidate: 30 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch games: ${response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch games: ${response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function fetchGame(gameId: string): Promise<Game> {

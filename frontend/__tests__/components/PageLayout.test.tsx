@@ -7,11 +7,20 @@ const { capture } = vi.hoisted(() => ({
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: React.ComponentProps<'a'>) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.ComponentProps<'a'> & { prefetch?: boolean }) => {
+    const { prefetch, ...anchorProps } = props;
+    void prefetch;
+
+    return (
+      <a href={href} {...anchorProps}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock('posthog-js', () => ({

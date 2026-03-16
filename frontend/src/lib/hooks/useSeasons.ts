@@ -6,7 +6,7 @@ import { fetchSeasons } from '../api/leaderboard';
 
 interface UseSeasonsReturn {
   seasons: Season[];
-  selectedSeason: number;
+  selectedSeason: number | null;
   selectedSeasonLabel: string | null;
   selectedSeasonGameCount: number;
   isLoading: boolean;
@@ -15,7 +15,7 @@ interface UseSeasonsReturn {
 
 export function useSeasons(): UseSeasonsReturn {
   const [seasons, setSeasons] = useState<Season[]>([]);
-  const [selectedSeason, setSelectedSeasonState] = useState<number>(0);
+  const [selectedSeason, setSelectedSeasonState] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

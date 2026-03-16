@@ -128,7 +128,11 @@ export function PageLayout({
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
         <div className={`${headerClass} py-6`}>
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+            <Link
+              href="/"
+              prefetch={false}
+              className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+            >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg">
                 ඞ
               </div>
@@ -157,6 +161,7 @@ export function PageLayout({
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={false}
                     onClick={() => handleNavClick(link.href, link.label)}
                     className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
                   >
@@ -231,6 +236,7 @@ export function PageLayout({
             <div className="flex justify-center gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
               <Link
                 href="/leaderboard"
+                prefetch={false}
                 onClick={() => handleFooterNavClick('/leaderboard', 'Leaderboard')}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
@@ -238,6 +244,7 @@ export function PageLayout({
               </Link>
               <Link
                 href="/games"
+                prefetch={false}
                 onClick={() => handleFooterNavClick('/games', 'Games')}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
@@ -245,6 +252,7 @@ export function PageLayout({
               </Link>
               <Link
                 href="/about"
+                prefetch={false}
                 onClick={() => handleFooterNavClick('/about', 'About')}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >

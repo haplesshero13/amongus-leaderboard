@@ -2,12 +2,16 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
-import { useRankings } from '../../lib/hooks/useRankings';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { LeaderboardTable } from './LeaderboardTable';
 import { LeaderboardCards } from './LeaderboardCards';
-import type { SortField, SortDirection, ModelRanking } from '../../types/leaderboard';
+import type {
+  LeaderboardResponse,
+  SortField,
+  SortDirection,
+  ModelRanking,
+} from '../../types/leaderboard';
 import { getConservativeRating } from '../../types/leaderboard';
 import { leaderboardColorClasses } from '../../lib/theme/amongUsPalette';
 
@@ -15,13 +19,22 @@ const ITEMS_PER_PAGE = 20;
 
 interface LeaderboardProps {
   selectedSeason: number;
+  data: LeaderboardResponse | null;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
 }
 
-export function Leaderboard({ selectedSeason }: LeaderboardProps) {
+export function Leaderboard({
+  selectedSeason,
+  data,
+  isLoading,
+  error,
+  refetch,
+}: LeaderboardProps) {
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('overall_rating');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const { data, isLoading, error, refetch } = useRankings(1, 100, selectedSeason);
   const previousSeasonRef = useRef<number>(selectedSeason);
 
   useEffect(() => {

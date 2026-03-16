@@ -1,4 +1,5 @@
 import { LeaderboardResponse, Season } from '../../types/leaderboard';
+import { runWithInFlightDedup } from './inFlightRequestCache';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -16,15 +17,17 @@ export async function fetchLeaderboard(
     url += `&engine_version=${engineVersion}`;
   }
 
-  const response = await fetch(url, {
-    next: { revalidate: 60 },
+  return runWithInFlightDedup(url, async () => {
+    const response = await fetch(url, {
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch leaderboard: ${response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch leaderboard: ${response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function fetchSeasons(): Promise<Season[]> {
@@ -32,13 +35,17 @@ export async function fetchSeasons(): Promise<Season[]> {
     throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/seasons`, {
-    next: { revalidate: 60 },
+  const url = `${API_BASE_URL}/api/seasons`;
+
+  return runWithInFlightDedup(url, async () => {
+    const response = await fetch(url, {
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch seasons: ${response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch seasons: ${response.statusText}`);
-  }
-
-  return response.json();
 }
