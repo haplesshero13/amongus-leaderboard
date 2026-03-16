@@ -6,7 +6,7 @@ import { fetchSeasons } from '../../lib/api/leaderboard';
 
 interface SeasonSelectorProps {
   selectedVersion: number | null;
-  onSeasonChange: (version: number | null) => void;
+  onSeasonChange: (version: number | null, label: string | null) => void;
 }
 
 export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelectorProps) {
@@ -14,15 +14,33 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     fetchSeasons()
       .then((data) => {
+        if (!isMounted) return;
         // Sort descending so current season is first
-        setSeasons(data.sort((a, b) => b.version - a.version));
+        const sorted = data.sort((a, b) => b.version - a.version);
+        setSeasons(sorted);
+        // Auto-select the latest season on initial mount so the stats bar
+        // and leaderboard are scoped to the current season from the start.
+        // Only auto-select when there is no explicit selection yet.
+        if (sorted.length > 0 && selectedVersion === null) {
+          onSeasonChange(sorted[0].version, sorted[0].label);
+        }
       })
       .catch(() => {
         // Silently fail — selector just won't show
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (isLoading || seasons.length <= 1) {
@@ -38,7 +56,7 @@ export function SeasonSelector({ selectedVersion, onSeasonChange }: SeasonSelect
         return (
           <button
             key={season.version}
-            onClick={() => onSeasonChange(season.version)}
+            onClick={() => onSeasonChange(season.version, season.label)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors
               ${isSelected
                 ? 'bg-indigo-600 text-white shadow-sm'

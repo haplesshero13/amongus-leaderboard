@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
 import { useRankings } from '../../lib/hooks/useRankings';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
@@ -15,7 +15,7 @@ const ITEMS_PER_PAGE = 20;
 
 interface LeaderboardProps {
   selectedSeason: number | null;
-  onSeasonChange: (version: number | null) => void;
+  onSeasonChange: (version: number | null, label: string | null) => void;
 }
 
 export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps) {
@@ -23,6 +23,17 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
   const [sortField, setSortField] = useState<SortField>('overall_rating');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const { data, isLoading, error, refetch } = useRankings(1, 100, selectedSeason);
+  const previousSeasonRef = useRef<number | null>(selectedSeason);
+
+  useEffect(() => {
+    if (previousSeasonRef.current !== selectedSeason) {
+      posthog.capture('season_changed', {
+        from_season: previousSeasonRef.current,
+        to_season: selectedSeason,
+      });
+      previousSeasonRef.current = selectedSeason;
+    }
+  }, [selectedSeason]);
 
   const handlePageChange = (newPage: number) => {
     posthog.capture('leaderboard_page_changed', {
@@ -34,14 +45,10 @@ export function Leaderboard({ selectedSeason, onSeasonChange }: LeaderboardProps
     setPage(newPage);
   };
 
-  const handleSeasonChange = (version: number | null) => {
-    posthog.capture('season_changed', {
-      from_season: selectedSeason,
-      to_season: version,
-    });
-    onSeasonChange(version);
+  const handleSeasonChange = useCallback((version: number | null, label: string | null) => {
+    onSeasonChange(version, label);
     setPage(1);
-  };
+  }, [onSeasonChange]);
 
   const handleSortChange = (field: SortField) => {
     const newDirection = field === sortField && sortDirection === 'desc' ? 'asc' : 'desc';
