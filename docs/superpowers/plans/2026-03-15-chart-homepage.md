@@ -281,13 +281,22 @@ interface LeaderboardProps {
 }
 ```
 
-Remove the `onSeasonChange` prop. Remove `handleSeasonChange` callback. Remove all `<SeasonSelector .../>` usages from the JSX (there are 4 instances: loading state, error state, empty state, and main render).
+Specific changes:
+- Remove the `onSeasonChange` prop from the interface
+- Remove `handleSeasonChange` callback (lines 48-51)
+- Remove `import { SeasonSelector } from './SeasonSelector'` (line 10)
+- Remove all `<SeasonSelector .../>` usages from the JSX (4 instances: loading state, error state, empty state, and main render)
+- Update `useRankings` call: change `selectedSeason` parameter from `number | null` to `number`
+- Update the `previousSeasonRef` type from `useRef<number | null>` to `useRef<number>`
+- **Add a `useEffect` to reset pagination when season changes** (needed because `handleSeasonChange` used to call `setPage(1)`):
 
-Update `useRankings` call: change `selectedSeason` parameter from `number | null` to `number`.
+```typescript
+  useEffect(() => {
+    setPage(1);
+  }, [selectedSeason]);
+```
 
-Update the `previousSeasonRef` type from `useRef<number | null>` to `useRef<number>`.
-
-Update the `totalModels` reference that currently uses `data?.total` — replace with `sorted.length` (already the case in the `useMemo` at line 101).
+Place this after the existing `useEffect` that tracks `previousSeasonRef` for PostHog.
 
 - [ ] **Step 2: Run type-check**
 
@@ -539,9 +548,9 @@ In `frontend/src/components/layout/PageLayout.tsx`, update the `navLinks` array 
 
 ```typescript
   const navLinks = [
-    { href: '/about', label: 'About' },
-    { href: '/games', label: 'View Games' },
     { href: '/leaderboard', label: 'Leaderboard' },
+    { href: '/games', label: 'View Games' },
+    { href: '/about', label: 'About' },
   ];
 ```
 
@@ -1062,7 +1071,7 @@ const RatingChart = dynamic(
 
 export default function Home() {
   const { seasons, selectedSeason, isLoading, setSelectedSeason, selectedSeasonGameCount } = useSeasons();
-  const { data } = useRankings(1, 100, isLoading ? undefined : selectedSeason);
+  const { data } = useRankings(1, 100, selectedSeason);
 
   if (isLoading) {
     return (
@@ -1108,7 +1117,7 @@ export default function Home() {
 Key implementation details:
 - `RatingChart` is dynamically imported with `ssr: false` (Plotly needs `window`)
 - Shows loading skeleton while Plotly loads
-- `useRankings` is called with `undefined` engineVersion while seasons are loading to avoid premature API calls
+- `useSeasons` loading gate prevents rendering the chart until a valid season is selected — `useRankings` only receives a real season number
 - Single stat line shows game count with season suffix
 - No about blurb (lives on `/leaderboard` now)
 
@@ -1161,7 +1170,7 @@ Expected: All PASS (no backend changes)
 - [ ] **Step 3: Final commit if any formatting/lint fixes were needed**
 
 ```bash
-cd frontend && git add -A && git commit -m "chore: lint and format fixes"
+cd frontend && git add src/ && git commit -m "chore: lint and format fixes"
 ```
 
 Only run this if the lint/format step required changes.
