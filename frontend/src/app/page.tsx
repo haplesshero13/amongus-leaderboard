@@ -1,56 +1,53 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Leaderboard } from '../components/features/Leaderboard';
+import { SeasonSelector } from '../components/features/SeasonSelector';
+import { useSeasons } from '../lib/hooks/useSeasons';
 import { useRankings } from '../lib/hooks/useRankings';
-import { useGames } from '../lib/hooks/useGames';
 import { getConservativeRating } from '../types/leaderboard';
 
-function StatsBar({ selectedSeason, seasonLabel }: { selectedSeason: number | null; seasonLabel: string | null }) {
+function getSeasonSuffix(selectedSeason: number): string {
+  return `S${selectedSeason}`;
+}
+
+function StatsBar({ selectedSeason, seasonGameCount }: { selectedSeason: number; seasonGameCount: number }) {
   const { data, isLoading } = useRankings(1, 100, selectedSeason);
-  const { data: games, isLoading: gamesLoading } = useGames(
-    'completed',
-    1000,
-    undefined,
-    selectedSeason
-  );
 
   const models = data?.data ?? [];
-  const topImpostor = models.length > 0
-    ? models.reduce((best, m) =>
+  const modelsWithImpostorGames = models.filter((m) => m.impostor_games > 0);
+  const modelsWithCrewmateGames = models.filter((m) => m.crewmate_games > 0);
+
+  const topImpostor = modelsWithImpostorGames.length > 0
+    ? modelsWithImpostorGames.reduce((best, m) =>
       getConservativeRating(m.impostor_rating, m.impostor_sigma) >
         getConservativeRating(best.impostor_rating, best.impostor_sigma) ? m : best
     )
     : undefined;
-  const topCrewmate = models.length > 0
-    ? models.reduce((best, m) =>
+  const topCrewmate = modelsWithCrewmateGames.length > 0
+    ? modelsWithCrewmateGames.reduce((best, m) =>
       getConservativeRating(m.crewmate_rating, m.crewmate_sigma) >
         getConservativeRating(best.crewmate_rating, best.crewmate_sigma) ? m : best
     )
     : undefined;
 
+  const suffix = getSeasonSuffix(selectedSeason);
   const formatNumber = (n: number) => n.toLocaleString();
 
   return (
     <div className="mb-8">
-      {seasonLabel && (
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-          {seasonLabel}
-        </p>
-      )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {isLoading ? '...' : formatNumber(data?.total ?? 0)}
+            {isLoading ? '...' : formatNumber(models.length)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Models Ranked — {suffix}</div>
         </div>
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {gamesLoading ? '...' : formatNumber(games.length)}
+            {formatNumber(seasonGameCount)}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Games Played</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Games Played — {suffix}</div>
         </div>
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
           <div className="text-xl font-bold text-red-600 dark:text-red-400 truncate">
@@ -63,6 +60,7 @@ function StatsBar({ selectedSeason, seasonLabel }: { selectedSeason: number | nu
                 ({getConservativeRating(topImpostor.impostor_rating, topImpostor.impostor_sigma)})
               </span>
             )}
+            {' '}— {suffix}
           </div>
         </div>
         <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
@@ -76,6 +74,7 @@ function StatsBar({ selectedSeason, seasonLabel }: { selectedSeason: number | nu
                 ({getConservativeRating(topCrewmate.crewmate_rating, topCrewmate.crewmate_sigma)})
               </span>
             )}
+            {' '}— {suffix}
           </div>
         </div>
       </div>
@@ -84,13 +83,17 @@ function StatsBar({ selectedSeason, seasonLabel }: { selectedSeason: number | nu
 }
 
 export default function Home() {
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [selectedSeasonLabel, setSelectedSeasonLabel] = useState<string | null>(null);
+  const { seasons, selectedSeason, isLoading, setSelectedSeason, selectedSeasonGameCount } = useSeasons();
 
-  const handleSeasonChange = useCallback((version: number | null, label: string | null) => {
-    setSelectedSeason(version);
-    setSelectedSeasonLabel(label);
-  }, []);
+  if (isLoading) {
+    return (
+      <PageLayout activePage="/">
+        <div className="flex items-center justify-center p-12">
+          <div className="animate-pulse text-gray-500 dark:text-gray-400">Loading...</div>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout activePage="/">
@@ -108,14 +111,18 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Season selector */}
+      <SeasonSelector
+        seasons={seasons}
+        selectedVersion={selectedSeason}
+        onSeasonChange={setSelectedSeason}
+      />
+
       {/* Stats banner */}
-      <StatsBar selectedSeason={selectedSeason} seasonLabel={selectedSeasonLabel} />
+      <StatsBar selectedSeason={selectedSeason} seasonGameCount={selectedSeasonGameCount} />
 
       {/* Leaderboard */}
-      <Leaderboard
-        selectedSeason={selectedSeason}
-        onSeasonChange={handleSeasonChange}
-      />
+      <Leaderboard selectedSeason={selectedSeason} />
     </PageLayout>
   );
 }
