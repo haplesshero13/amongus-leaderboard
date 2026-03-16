@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Markdown from 'react-markdown';
 import { Virtuoso } from 'react-virtuoso';
 import posthog from 'posthog-js';
 import { useGame, useGameLogs } from '@/lib/hooks/useGames';
 import { useGameStream } from '@/lib/hooks/useGameStream';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary, EliminationEvent, DisplayItem } from '@/types/game';
@@ -732,61 +732,26 @@ export default function GameDetailPage() {
   const isLive = isRunningGame && streamStatus === 'connected';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg">
-                &#x1F47E;
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
-                    Game Log
-                  </h1>
-                  {isLive && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                      LIVE
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
-                  {gameId}
-                </p>
-              </div>
-            </Link>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/about"
-                className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-              >
-                About
-              </Link>
-              <Link
-                href="/games"
-                className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                View Games
-              </Link>
-              <Link
-                href="/"
-                className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-              >
-                Leaderboard
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+    <PageLayout activePage="/games" maxWidth="4xl" showFooter={false}>
+      {/* Game Log title + LIVE badge */}
+      <div className="mb-6 flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Game Log
+        </h2>
+        {isLive && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            LIVE
+          </span>
+        )}
+        <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+          {gameId}
+        </p>
+      </div>
 
-      {/* Content */}
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         {isInitialLoading && <LoadingSpinner />}
 
         {error && (
@@ -1051,7 +1016,6 @@ export default function GameDetailPage() {
             )}
           </>
         )}
-      </main>
-    </div>
+    </PageLayout>
   );
 }
