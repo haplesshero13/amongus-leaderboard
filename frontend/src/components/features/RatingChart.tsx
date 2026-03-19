@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import createPlotlyComponent from 'react-plotly.js/factory';
 // @ts-expect-error — plotly.js-basic-dist-min has no type declarations
 import Plotly from 'plotly.js-basic-dist-min';
-import type { ModelRanking } from '../../types/leaderboard';
+import { type ModelRanking, getConservativeRating } from '../../types/leaderboard';
 import { amongUsPalette } from '../../lib/theme/amongUsPalette';
 import { resolveThemeMode } from '../../lib/theme/themeMode';
 
@@ -167,11 +167,11 @@ export function RatingChart({ models }: RatingChartProps) {
     const getSortValue = (model: ModelRanking) => {
       switch (sortField) {
         case 'impostor':
-          return model.impostor_rating;
+          return getConservativeRating(model.impostor_rating, model.impostor_sigma);
         case 'crewmate':
-          return model.crewmate_rating;
+          return getConservativeRating(model.crewmate_rating, model.crewmate_sigma);
         default:
-          return model.overall_rating;
+          return getConservativeRating(model.overall_rating, model.overall_sigma);
       }
     };
 
@@ -212,40 +212,50 @@ export function RatingChart({ models }: RatingChartProps) {
     errorColor: string,
     ratings: number[],
     sigmas: number[]
-  ) => ({
-    name,
-    x: isHorizontalPlot ? ratings : modelNames,
-    y: isHorizontalPlot ? modelNames : ratings,
-    orientation: isHorizontalPlot ? ('h' as const) : ('v' as const),
-    error_x: isHorizontalPlot
-      ? {
-        type: 'data' as const,
-        array: sigmas,
-        visible: true,
-        color: errorColor,
-        thickness: 1.5,
-      }
-      : undefined,
-    error_y: !isHorizontalPlot
-      ? {
-        type: 'data' as const,
-        array: sigmas,
-        visible: true,
-        color: errorColor,
-        thickness: 1.5,
-      }
-      : undefined,
-    marker: {
-      color,
-      line: {
-        color: lineColor,
-        width: 1.25,
+  ) => {
+    const conservative = ratings.map((r, i) => Math.round(r - sigmas[i]));
+    const roundedSigmas = sigmas.map((s) => Math.round(s));
+    return {
+      name,
+      x: isHorizontalPlot ? conservative : modelNames,
+      y: isHorizontalPlot ? modelNames : conservative,
+      orientation: isHorizontalPlot ? ('h' as const) : ('v' as const),
+      error_x: isHorizontalPlot
+        ? {
+            type: 'data' as const,
+            array: roundedSigmas,
+            arrayminus: new Array(ratings.length).fill(0),
+            symmetric: false,
+            visible: true,
+            color: errorColor,
+            thickness: 1,
+            width: 3,
+          }
+        : undefined,
+      error_y: !isHorizontalPlot
+        ? {
+            type: 'data' as const,
+            array: roundedSigmas,
+            arrayminus: new Array(ratings.length).fill(0),
+            symmetric: false,
+            visible: true,
+            color: errorColor,
+            thickness: 1,
+            width: 3,
+          }
+        : undefined,
+      marker: {
+        color,
+        line: {
+          color: lineColor,
+          width: 1.25,
+        },
       },
-    },
-    type: 'bar' as const,
-    hovertext: chartModels.map((m) => makeHoverText(m, name)),
-    hoverinfo: 'text' as const,
-  });
+      type: 'bar' as const,
+      hovertext: chartModels.map((m) => makeHoverText(m, name)),
+      hoverinfo: 'text' as const,
+    };
+  };
 
   const makeHoverText = (
     model: ModelRanking,
@@ -319,7 +329,7 @@ export function RatingChart({ models }: RatingChartProps) {
     font: { color: plotThemeColors.font },
     xaxis: {
       title: isHorizontalPlot
-        ? { text: 'Rating (mu × 100)', font: { color: plotThemeColors.axisTitle, size: 12 } }
+        ? { text: 'Conservative Rating (μ − σ)', font: { color: plotThemeColors.axisTitle, size: 12 } }
         : undefined,
       tickfont: {
         color: isHorizontalPlot ? plotThemeColors.valueTick : plotThemeColors.categoryTick,
@@ -329,7 +339,7 @@ export function RatingChart({ models }: RatingChartProps) {
     },
     yaxis: {
       title: !isHorizontalPlot
-        ? { text: 'Rating (mu × 100)', font: { color: plotThemeColors.axisTitle, size: 12 } }
+        ? { text: 'Conservative Rating (μ − σ)', font: { color: plotThemeColors.axisTitle, size: 12 } }
         : undefined,
       tickfont: {
         color: isHorizontalPlot ? plotThemeColors.categoryTick : plotThemeColors.valueTick,
