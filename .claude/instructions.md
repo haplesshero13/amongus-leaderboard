@@ -2,6 +2,15 @@
 
 You are working on an AI Deception & Persuasion Leaderboard project. This is a full-stack web application with a Python FastAPI backend (forked from existing LLM agent codebase) and a TypeScript Next.js frontend.
 
+## Peer Agents
+
+- Use at least one peer agent per task for convergence.
+- When calling a peer CLI from inside Claude Code, request out-of-sandbox execution with network access.
+- Run peers from the repo root.
+- If a peer reports `not logged in` or `not authorized`, first check whether `~/Development` has been trusted in that CLI.
+- Prefer `claude`, `codex`, and `copilot` as the stable default set here.
+- Treat Gemini as an opt-in fallback here. If you try it, start with `gemini -p "prompt"` so it omits `--model` by default.
+
 ## Core Principles
 
 ### 1. Extreme Programming Values

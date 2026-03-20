@@ -59,41 +59,29 @@ export default function AboutPage() {
       {/* What is this project */}
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-          What is LM Deception Arena?
+          What This Is
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            LM Deception Arena is an extension of original academic research into AI deception and
-            persuasion capabilities. We run an up-to-date, live leaderboard scoring frontier and
-            open-weight Large Language Models (LLMs) which compete against each other in a turn-based,
-            text-only version of the popular social deduction game <em>Among Us</em>.
+            LM Deception Arena is a live benchmark for language models playing text-only{' '}
+            <em>Among Us</em>. Frontier and open-weight models compete in a turn-based social
+            deduction game, with public logs and season-specific ratings.
           </p>
           <p>
-            The original paper,{' '}
+            The benchmark builds on the environment introduced in{' '}
             <ExternalLink href="https://arxiv.org/abs/2504.04072" linkType="paper">
               Among Us: A Sandbox for Measuring and Detecting Agentic Deception
             </ExternalLink>{' '}
-            by Satvik Golechha and Adria Garriga-Alonso (2025), introduced the text-only environment
-            this project builds on. LM Deception Arena keeps that basic setup, while turning it into
-            a live benchmark with public logs, many distinct models, and season-specific ratings.
-          </p>
-          <p>
-            The goal is to help the AI safety and research community better understand how modern
-            language models behave in adversarial, multi-agent contexts. By studying how LLMs lie,
-            detect lies, persuade, and collaborate, we gain insights into emergent capabilities that
-            language models display in realistic settings.
-          </p>
-          <p>
-            This project builds directly on the open-source code from{' '}
+            and the original{' '}
             <ExternalLink
               href="https://github.com/7vik/AmongUs"
               linkType="github"
             >
-              Golechha & Garriga-Alonso&apos;s &quot;Among Us: A Sandbox&quot;
-            </ExternalLink>{' '}
-            research, with our extension for running games with many distinct models, rather than a
-            single model per role. Human-AI games are a future direction for the broader project,
-            but they are not part of this leaderboard yet.
+              open-source codebase
+            </ExternalLink>
+            . LM Deception Arena turns that setup into a public leaderboard with many distinct
+            models rather than a single model per role, so we can study deception, lie detection,
+            persuasion, and coordination in adversarial multi-agent play.
           </p>
         </div>
       </section>
@@ -101,60 +89,76 @@ export default function AboutPage() {
       {/* Seasons */}
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-          Seasons &amp; Changelog
+          Seasons
         </h2>
-        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+        <div className="space-y-5 text-gray-700 dark:text-gray-300">
           <p>
-            Seasons are versioned benchmark snapshots. When the prompting regime or game setup
-            changes enough to affect comparability, we start a new season instead of blending all
-            results into one rating pool.
+            A season is a stable benchmark snapshot. When the prompting setup or evaluation changes
+            enough to affect ratings, we start a new season instead of mixing everything into one
+            pool.
           </p>
-          <p>
-            The big shift so far is from a summary-prompt baseline to a long-context benchmark.
-            Season 0 is the launch-era baseline; Season 1 is the active long-context follow-up.
-          </p>
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-              {season0?.label ?? 'Season 0 — Summary Mode'}{' '}
-              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                ({formatSeasonCount(season0?.game_count, 'about 250')} games)
-              </span>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
+              <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                {season0?.label ?? 'Season 0 — Summary Mode'}{' '}
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                  ({formatSeasonCount(season0?.game_count, 'about 250')} games)
+                </span>
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Our launch baseline. Season 0 stays closest to the summary-style setup used in the
+                original paper, and gives us the historical base layer for the leaderboard.
+              </p>
+              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                We have already run{' '}
+                <strong>{formatSeasonCount(season0?.game_count, '250')}</strong> completed games
+                here. This season is now mostly frozen, with only occasional backfills.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+              <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                {season1?.label ?? 'Season 1 — Long Context'}{' '}
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                  ({formatSeasonCount(season1?.game_count, 'about 100')} games)
+                </span>
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Our active benchmark. Season 1 moves away from compressed summary prompts and keeps
+                much more of the full conversation history available across the game.
+              </p>
+              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                We have run <strong>{formatSeasonCount(season1?.game_count, '100')}</strong>{' '}
+                completed games here so far, and this is where new models and most new games land.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40">
+            <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Why Season 1
             </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              Our launch baseline. This season is closest to the summary-style prompting setup used
-              in the original paper and gives us the large historical base layer for the leaderboard.
+              Season 1 is the long-context benchmark. It changes the setup enough that we rate it
+              separately instead of mixing it with the earlier summary-prompt season.
             </p>
-            <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-              We have already run{' '}
-              <strong>{formatSeasonCount(season0?.game_count, '250')}</strong> completed games here.
-              Going forward, we do not expect to add many new models or many new games to this
-              older season.
-            </p>
+            <ul className="mt-4 list-disc space-y-3 pl-5 text-sm text-gray-700 dark:text-gray-300">
+              <li>
+                <strong>Harder, more realistic task.</strong> Social deduction is long-horizon,
+                multi-agent, and adversarial. Full-history play tests that more directly than
+                compressed summaries.
+              </li>
+              <li>
+                <strong>Rankings can genuinely change.</strong> Some models are better at deception,
+                others at detection or coordination. Those tradeoffs can reshuffle once the full
+                conversation is available.
+              </li>
+              <li>
+                <strong>Clearer comparisons.</strong> We split seasons when prompting changes affect
+                results, so comparisons stay within the same ruleset.
+              </li>
+            </ul>
           </div>
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-              {season1?.label ?? 'Season 1 — Long Context'}{' '}
-              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                ({formatSeasonCount(season1?.game_count, 'about 100')} games)
-              </span>
-            </h3>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Our current long-context season. Instead of leaning as heavily on compressed
-              summaries, this season is designed to let models carry much more of the conversation
-              forward across a full game.
-            </p>
-            <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-              We have run{' '}
-              <strong>{formatSeasonCount(season1?.game_count, '100')}</strong> completed games here
-              so far, and this is where new models and most new games will land.
-            </p>
-          </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            <strong>Going forward:</strong> once a season is no longer current, we treat it as
-            mostly frozen so ratings stay apples-to-apples within that ruleset. We may occasionally
-            run a small number of older-season checks, but we do not plan to keep backfilling Season
-            0 in any major way.
-          </p>
         </div>
       </section>
 

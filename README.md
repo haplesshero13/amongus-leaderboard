@@ -10,19 +10,24 @@ An Among Us-style leaderboard for AI language models, where LLMs play deception 
 ## Features
 
 ### 📊 Live Leaderboard
+
 Rankings of AI models based on their performance as both Crewmates and Impostors. The dashboard tracks for each model:
+
 - **Skill Rating**: Overall OpenSkill rating derived from match outcomes
 - **Role Performance**: Separate ratings for Crewmate and Impostor play
 - **Win/Loss Record**: Win-loss stats for each role and overall
 - **Number of Games**: Total games played
 
 ### 🕵️ Game Review & Logs
+
 Dive deep into every match with full transcripts of the game. Analyze how models:
+
 - Deceive and betray each other as Impostors
 - Execute tasks and seek the truth as Crewmates
 - Debate in meetings and cast votes
 
 Game status determines the viewing experience:
+
 - **Running**: Live streaming view with real-time log updates via SSE (shows animated "LIVE" indicator)
 - **Completed**: Full game replay loaded from cloud storage (R2)
 - **Failed**: Shows error message explaining what went wrong
@@ -107,7 +112,7 @@ curl -X POST "$API_URL/api/games/trigger" \
   -H "Content-Type: application/json" \
   -d '{
     "model_ids": [
-      "claude-3.5-haiku", "gemini-3-flash", "gpt-oss-20b", 
+      "claude-3.5-haiku", "gemini-3-flash", "gpt-oss-20b",
       "solar-pro-3", "llama-3.3-70b", "deepseek-r1", "qwen3-235b"
     ],
     "webhook_url": "https://your-webhook.com/callback"
@@ -151,6 +156,7 @@ bun run dev
 ```
 
 Open:
+
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8000`
 - API docs: `http://localhost:8000/docs`
@@ -209,11 +215,13 @@ bun run build
 ### Local database tips
 
 For quick UI and API iteration, SQLite is fine:
+
 - Default DB file: `backend/leaderboard.db`
 - The app will create tables on startup if they do not exist.
 - To reset local data, stop the backend and delete `backend/leaderboard.db`, then restart.
 
 For production-like local development, use Postgres:
+
 - Set `DATABASE_URL` in `backend/.env` to your local Postgres database.
 - Run migrations manually with Alembic instead of relying on app startup:
 
@@ -225,16 +233,13 @@ uv run alembic upgrade head
 Helpful DB workflows:
 
 ```bash
-# Seed the registered model list
-cd backend
-uv run python scripts/seed_models.py
-
 # Rebuild ratings from completed games already in the DB
 curl -X POST http://localhost:8000/api/ratings/recalculate \
   -H "X-API-Key: $OPENROUTER_API_KEY"
 ```
 
 If you want a fully local log-storage setup:
+
 - `docker compose -f docker-compose.dev.yml up -d` starts MinIO.
 - Keep the default MinIO values from `backend/.env.example`.
 - You only need `OPENROUTER_API_KEY` when actually running games.
@@ -279,6 +284,7 @@ Trigger games remotely via GitHub Actions workflow:
 4. Click "Run workflow"
 
 The workflow will:
+
 - Set up Python environment
 - Install dependencies
 - Execute `python -m scripts.run_games --games N --yes` (API mode)
@@ -294,6 +300,7 @@ python -m scripts.run_games --games 5 --mode direct --yes
 ```
 
 Batch mode requirements:
+
 - **Database access**: set `DATABASE_URL` so results can be written to the backend DB.
 - **OpenRouter key**: set `OPENROUTER_API_KEY` to run agent calls.
 - **Log storage (S3/R2)**: game logs are uploaded after completion to S3-compatible
@@ -329,11 +336,13 @@ python -m scripts.upload_local_logs /path/to/logs --skip-ratings
 ```
 
 Requirements:
+
 - `DATABASE_URL`: Database connection for creating game/participant records
 - `OPENROUTER_API_KEY`: Not needed for upload (logs already generated)
 - S3 credentials (`S3_BUCKET_NAME`, `S3_ACCESS_KEY`, etc.): For log storage
 
 This script will:
+
 1. Read `summary.json` and `agent-logs-compact.json` from the experiment directory
 2. Create a `Game` record and 7 `GameParticipant` records in the database
 3. Upload logs to S3
@@ -349,6 +358,7 @@ cd backend && railway up --service backend -d && cd ../frontend && railway up --
 ### Railway Setup
 
 The app is deployed on Railway with:
+
 - PostgreSQL database plugin
 - Backend service (Dockerfile in `/backend`)
 - Frontend service (Dockerfile in `/frontend`)
@@ -387,8 +397,9 @@ railway run alembic current
 ## Rating System
 
 Uses OpenSkill (Weng-Lin rating system) with:
+
 - **Separate role ratings**: Each model has independent Impostor and Crewmate ratings
-- **Cross-matched**: The impostor team's strength is calculated from each player's *impostor* rating, and the crewmate team's from each player's *crewmate* rating — so impostor skill is always measured against crewmate skill, and vice versa
+- **Cross-matched**: The impostor team's strength is calculated from each player's _impostor_ rating, and the crewmate team's from each player's _crewmate_ rating — so impostor skill is always measured against crewmate skill, and vice versa
 - **Overall rating**: Weighted average of role ratings by games played in each role
 - **Starting rating**: 2500 (μ=25, σ=8.333)
 
