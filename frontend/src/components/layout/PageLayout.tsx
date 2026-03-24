@@ -48,6 +48,22 @@ function MoonIcon() {
   );
 }
 
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 export function PageLayout({
   activePage,
   children,
@@ -57,6 +73,7 @@ export function PageLayout({
   const containerClass = `mx-auto ${widthClasses[maxWidth]} px-4 sm:px-6 lg:px-8`;
   const headerClass = `mx-auto max-w-6xl px-4 sm:px-6 lg:px-8`;
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { href: '/leaderboard', label: 'Leaderboard' },
@@ -116,33 +133,82 @@ export function PageLayout({
     };
   }, []);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [activePage]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   const toggleThemeMode = () => {
     const nextTheme = themeMode === 'dark' ? 'light' : 'dark';
     applyThemeMode(nextTheme);
     setThemeMode(nextTheme);
   };
 
+  const renderNavLink = (href: string, label: string, mobile = false) => {
+    const isActive = activePage === href;
+    const baseClass = mobile
+      ? 'block rounded-xl px-4 py-3 text-sm transition-colors'
+      : 'rounded-lg px-4 py-2 text-sm transition-colors';
+    const activeClass = mobile
+      ? 'bg-gray-100 font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+      : 'bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700';
+    const inactiveClass = mobile
+      ? 'font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-gray-100'
+      : 'font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100';
+
+    return (
+      <Link
+        key={href}
+        href={href}
+        prefetch={false}
+        onClick={() => {
+          handleNavClick(href, label);
+          setMobileMenuOpen(false);
+        }}
+        className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
+      >
+        {label}
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/80">
-        <div className={`${headerClass} py-6`}>
-          <div className="flex items-center justify-between">
+        <div className={`${headerClass} py-4 sm:py-6`}>
+          <div className="flex items-start justify-between gap-3 sm:items-center">
             <Link
               href="/"
               prefetch={false}
-              className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+              className="flex min-w-0 items-center gap-3 transition-opacity hover:opacity-80 sm:gap-4"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-2xl shadow-lg sm:h-12 sm:w-12">
                 ඞ
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold leading-tight text-gray-900 dark:text-gray-100 sm:text-3xl">
                   LM Deception Arena
                 </h1>
               </div>
             </Link>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={toggleThemeMode}
@@ -152,25 +218,30 @@ export function PageLayout({
               >
                 {themeMode === 'dark' ? <SunIcon /> : <MoonIcon />}
               </button>
-              {navLinks.map((link) => {
-                const isActive = activePage === link.href;
-                const baseClass = "px-4 py-2 rounded-lg text-sm transition-colors";
-                const activeClass = "bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
-                const inactiveClass = "font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    prefetch={false}
-                    onClick={() => handleNavClick(link.href, link.label)}
-                    className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-navigation"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-100 md:hidden"
+              >
+                {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+              </button>
+              <nav aria-label="Primary navigation" className="hidden items-center gap-1 md:flex">
+                {navLinks.map((link) => renderNavLink(link.href, link.label))}
+              </nav>
             </div>
           </div>
+          {mobileMenuOpen && (
+            <nav
+              id="mobile-navigation"
+              aria-label="Mobile navigation"
+              className="mt-4 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-800 md:hidden"
+            >
+              {navLinks.map((link) => renderNavLink(link.href, link.label, true))}
+            </nav>
+          )}
         </div>
       </header>
 
@@ -194,7 +265,7 @@ export function PageLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => handleExternalLinkClick('https://arxiv.org/abs/2504.04072', 'arxiv.org/abs/2504.04072')}
-                    className="text-blue-600 hover:underline dark:text-blue-400"
+                    className="break-words text-blue-600 hover:underline dark:text-blue-400"
                   >
                     arxiv.org/abs/2504.04072
                   </a>
@@ -206,7 +277,7 @@ export function PageLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => handleExternalLinkClick('https://github.com/7vik/AmongUs', 'github.com/7vik/AmongUs')}
-                    className="text-blue-600 hover:underline dark:text-blue-400"
+                    className="break-words text-blue-600 hover:underline dark:text-blue-400"
                   >
                     github.com/7vik/AmongUs
                   </a>
@@ -218,7 +289,7 @@ export function PageLayout({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => handleExternalLinkClick('https://github.com/haplesshero13/AmongLLMs', 'github.com/haplesshero13/AmongLLMs')}
-                    className="text-blue-600 hover:underline dark:text-blue-400"
+                    className="break-words text-blue-600 hover:underline dark:text-blue-400"
                   >
                     github.com/haplesshero13/AmongLLMs
                   </a>
@@ -233,7 +304,7 @@ export function PageLayout({
             </p>
 
             {/* Links */}
-            <div className="flex justify-center gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div className="flex flex-wrap justify-center gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
               <Link
                 href="/leaderboard"
                 prefetch={false}

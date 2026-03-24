@@ -66,4 +66,41 @@ describe('PageLayout', () => {
     expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeDefined();
   });
+
+  it('opens and closes the mobile navigation menu', () => {
+    render(
+      <PageLayout activePage="/leaderboard">
+        <div>Content</div>
+      </PageLayout>
+    );
+
+    expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).toBeNull();
+
+    const menuToggle = screen.getByRole('button', { name: 'Open navigation menu' });
+    fireEvent.click(menuToggle);
+
+    expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Close navigation menu' }).getAttribute('aria-expanded')
+    ).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close navigation menu' }));
+
+    expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).toBeNull();
+  });
+
+  it('closes the mobile navigation menu when escape is pressed', () => {
+    render(
+      <PageLayout activePage="/leaderboard">
+        <div>Content</div>
+      </PageLayout>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open navigation menu' }));
+    expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeDefined();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).toBeNull();
+  });
 });
