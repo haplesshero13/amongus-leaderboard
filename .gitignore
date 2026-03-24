@@ -78,3 +78,9 @@ htmlcov/
 # Temporary admin scripts and testing data
 /scripts
 /test-logs
+
+# trio
+PLAN.md
+HANDOFF.md
+REVIEW.md
+.trio/

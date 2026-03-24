@@ -406,6 +406,20 @@ function EliminationCard({ event }: { event: EliminationEvent }) {
             </div>
           )}
 
+          {/* Killer identity for kills */}
+          {!isEjection && event.killerPlayerNumber != null && event.killerColor && (
+            <div className="text-sm text-white/70 mb-1">
+              Killed by{' '}
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-lg text-white text-xs font-semibold"
+                style={{ backgroundColor: PLAYER_COLORS[event.killerColor.toLowerCase()] || '#808080' }}
+              >
+                {event.killerColor.toUpperCase()}
+              </span>
+              {' '}Player {event.killerPlayerNumber}
+            </div>
+          )}
+
           {/* Location for kills */}
           {!isEjection && event.location && (
             <div className="text-sm text-white/70">
