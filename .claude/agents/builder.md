@@ -4,7 +4,7 @@ description: >
   Use to implement one chunk at a time from PLAN.md. Works on code, writing,
   research, or any other generative task. Always hands off to reviewer when done
   with a chunk — never self-approves. Call this repeatedly, one chunk per call.
-model: sonnet
+model: haiku
 tools: [Read, Write, Edit, Bash, Grep, WebSearch]
 ---
 
