@@ -84,3 +84,8 @@ PLAN.md
 HANDOFF.md
 REVIEW.md
 .trio/
+
+# local agent/provider configs
+.claude/
+.codex/
+.opencode/

@@ -1,36 +1,74 @@
-# Agent Instructions
+# How to agent-trio
 
-## The rule
+## Principles
 
-For all non-trivial changes, follow this one rule.
+Always be kind to your ensemble; that also means not papering over hard truths.
 
-The generator is never the evaluator. Always two different agents, always different context windows.
+1. **More reasoning, less generating** — the right plans increase quality progressively; time spent reworking generated code is wasted tokens.
+2. **Validate everything** — even the best of us make mistakes and are optimistic; the only ground truth is the real thing.
+3. **Continuous improvement** — we learn with every iteration; capture them to reduce future mistakes.
+4. **Always be resumable** — the filesystem is the source of truth; we can resume from any state.
+5. **Autonomy, with friction** — verification and generation loops are autonomous; planning and reviewing require deliberation with another set of eyes.
 
-## How to start
+## The loop
 
-New goal → `@planner [your goal in natural language sentences]`
-Continue existing work → read PLAN.md and REVIEW.md, then `@builder`
+1. Human states a goal. Head instance writes `PLAN.md` and `.trio/criteria.md`.
+2. Human confirms the plans and criteria.
+3. Build — head instance if cheap, or delegate to a builder agent.
+4. Builder writes `HANDOFF.md`: what was done, what's unfinished.
+5. Reviewer evaluates in a **separate context** against `.trio/criteria.md`.
+   Writes `REVIEW.md`.
+6. Head instance updates `LEARNINGS.md` with any durable lesson that should
+   change future planning, building, review, or validation.
+7. Loop until APPROVED or ESCALATE.
 
-## Files that matter
+The reviewer always evaluates with fresh eyes. The head instance plans; it does not review its own work.
 
-| File         | Written by | Read by           |
-| ------------ | ---------- | ----------------- |
-| `PLAN.md`    | planner    | builder, reviewer |
-| `HANDOFF.md` | builder    | reviewer          |
-| `REVIEW.md`  | reviewer   | builder, human    |
+`README.md` anchors repo-wide goals. `PLAN.md` scopes the current task.
 
-## If you're unsure which agent to call
+## Artifacts
 
-- No PLAN.md yet → planner
-- PLAN.md exists, last REVIEW.md says APPROVED or doesn't exist → builder
-- HANDOFF.md is newer than REVIEW.md → reviewer
+| File                | Written by            | Read by           |
+| ------------------- | --------------------- | ----------------- |
+| `PLAN.md`           | head instance         | builder, reviewer |
+| `HANDOFF.md`        | builder               | reviewer          |
+| `REVIEW.md`         | reviewer              | builder, human    |
+| `LEARNINGS.md`      | head instance         | builder, reviewer |
+| `.trio/criteria.md` | human + head instance | reviewer only     |
+
+A good artifact lets a human answer: what happened, why it happened, what evidence exists, what remains uncertain, and what should happen next.
+
+`.trio/criteria.md` is a gitignored holdout — a living conversation between the human and head instance that encodes how the reviewer can "validate everything" against reality.
+
+`PLAN.md` contains: goal, constraints, done criteria, and any task chunking. This is the context for the current task.
+
+`LEARNINGS.md` keeps the current durable lessons close at hand (use source control to track its changes over time). The head agent owns this file, because the head owns long-range planning, context management, and agent coordination. Keep it human-readable, short, durable, and behavior-changing. Each learning should look like an understanding delta, not a diary entry:
+
+- What failed or was discovered
+- Why it matters
+- What changes next time
+- Where that change applies
+- Provenance or evidence
+
+Each entry should positively improve our collective continuous learning.
+
+## Routing
+
+When resuming, route based on file state:
+
+- Read `README.md` for overall goals
+- No PLAN.md → write one, update .trio/criteria.md, confirm with human
+- PLAN.md confirmed, no HANDOFF.md → build
+- HANDOFF.md newer than REVIEW.md → review
+- REVIEW.md says APPROVED → next task (or done)
 - REVIEW.md says ESCALATE → ask the human
 
-## What Not to Put Here
+A restart, `/clear`, or model switch is normal. The filesystem artifacts recover phase, open questions, and confidence state.
 
-- Actual workflow documentation → use README
-- Exhaustive commands → use README
-- Any instruction that would benefit both humans and agents → use README
-- Code style rules → use a linter
-- Framework conventions → the codebase demonstrates them
-- Specifics about files that could get out of date → just search the repo
+## What to put where
+
+- Workflow rules → AGENTS.md
+- Current durable lessons → LEARNINGS.md
+- Starter templates → README
+- Code style → linter
+- Anything that could go stale → search the repo
