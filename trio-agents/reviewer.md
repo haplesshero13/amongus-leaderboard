@@ -1,4 +1,4 @@
-# Trio Reviewer
+# agent-trio Reviewer
 
 Read `README.md` for the repo purpose and principles.
 Read `AGENTS.md` for the workflow contract.

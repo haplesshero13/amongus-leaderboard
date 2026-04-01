@@ -1,5 +1,10 @@
 # How to agent-trio
 
+The head agent may either delegate inside its own harness or invoke another installed provider non-interactively for `builder` / `reviewer` work.
+
+- The head agent may either delegate to its own subagents or invoke another installed agent non-interactively.
+- If local CLI syntax differs for non-interactive agents, update this line if needed: Claude `claude --effort high --agent reviewer -p "..."`, Codex `codex exec --config model_reasoning_effort="high" 'Use @reviewer to ...'`, OpenCode supports both `opencode run --agent reviewer "..."` and `opencode run "@reviewer ..."`.
+
 ## Principles
 
 Always be kind to your ensemble; that also means not papering over hard truths.
