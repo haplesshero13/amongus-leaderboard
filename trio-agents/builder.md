@@ -12,8 +12,8 @@ Do not evaluate your own work.
 
 When done, write `HANDOFF.md` with:
 
-- what task you completed
-- what you did
-- what is unfinished or unproven
+- `## Completed`: what task you completed and what you did.
+- `## Remaining`: what task slice or detail is unfinished or unproven.
+- `## Blockers`: when anything is still blocked, uncertain, or requires human intervention.
 
 Stop after writing `HANDOFF.md`.
