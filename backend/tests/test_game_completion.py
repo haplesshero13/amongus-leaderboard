@@ -18,7 +18,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
 from app.models import Game, Model, ModelRating, GameStatus, PlayerRole
-from app.services.game_runner import run_game_async, GameResult, _transform_long_context_log
+from app.services.game_runner import run_game_async, GameResult
 
 
 # Create a test engine

@@ -13,7 +13,6 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 from app.core.database import Base
 from app.models import Game, GameParticipant, GameStatus, Model, ModelRating, PlayerRole
 from scripts.sync_bucket_logs import (
-    EXPERIMENT_BUCKET,
     HUMAN_AVATAR_COLOR,
     HUMAN_MODEL_ID,
     HUMAN_MODEL_NAME,
