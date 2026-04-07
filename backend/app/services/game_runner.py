@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import random
+import re
 import tempfile
 import traceback
 from datetime import datetime, timezone
@@ -72,6 +73,14 @@ def _transform_long_context_log(entry: dict) -> dict:
     LongContextAgent writes flat entries with top-level player/thinking/action.
     The frontend expects nested player objects and interaction.response structures.
     """
+    location = ""
+    for msg in entry.get("messages", []):
+        if msg.get("role") == "user":
+            m = re.search(r"CURRENT LOCATION: (\S+)", msg.get("content", ""))
+            if m:
+                location = m.group(1)
+            break
+
     return {
         "game_index": entry.get("game_index"),
         "step": entry.get("step"),
@@ -80,7 +89,7 @@ def _transform_long_context_log(entry: dict) -> dict:
             "name": entry.get("player", ""),
             "identity": entry.get("identity", ""),
             "model": entry.get("model", ""),
-            "location": "",
+            "location": location,
         },
         "interaction": {
             "response": {

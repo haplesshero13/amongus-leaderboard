@@ -8,7 +8,7 @@ To customize models, update `model:` parameters in the agent definition files.
 
 Preferences: delegate to Gemini Flash builder and Claude reviewer — `@builder` and `@reviewer`. Never over-prompt; the agent and subagent definitions contain the prompts already. Use the subagent directly; or follow the examples below.
 
-- gemini -p "@builder You are the builder. Please build according to the current plan."
+- gemini --model gemini-3.1-pro-preview --yolo -p "@builder You are the builder. Please build according to the current plan."
 - claude --agent reviewer -p "You are the reviewer. Please review according to the current plan and holdout criteria."
 
 ## Principles

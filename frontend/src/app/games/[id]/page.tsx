@@ -10,7 +10,7 @@ import { useGameStream } from '@/lib/hooks/useGameStream';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { GameLogEntry, RawAgentLog, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary, EliminationEvent, DisplayItem } from '@/types/game';
+import { GameLogEntry, RawAgentLog, TurnLogEntry, WINNER_LABELS, PLAYER_COLORS, GameSummary, PlayerSummary, EliminationEvent, DisplayItem } from '@/types/game';
 import { extractEliminationEvents } from '@/lib/utils/eliminationEvents';
 
 /**
@@ -111,6 +111,117 @@ function parseAgentLogs(rawLogs: RawAgentLog[], summary?: GameSummary | null): G
       memory,
       raw_prompt: rawPrompt || undefined,
       full_response: interaction.full_response || undefined,
+    };
+  });
+}
+
+/**
+ * Build timeline from turn_log (primary) enriched with agent_logs (AI thinking data).
+ * Falls back to parseAgentLogs when turn_log is absent (older games, streaming).
+ */
+function parseGameTimeline(
+  turnLog: TurnLogEntry[],
+  agentLogs: RawAgentLog[],
+  summary?: GameSummary | null,
+): GameLogEntry[] {
+  // Build a lookup from agent_logs keyed by (step, playerNumber)
+  const agentLogMap = new Map<string, RawAgentLog>();
+  for (const log of agentLogs) {
+    const playerName = log.player?.name || '';
+    const playerNumMatch = playerName.match(/Player (\d+)/);
+    if (playerNumMatch) {
+      const key = `${log.step}-${playerNumMatch[1]}`;
+      // Only keep first occurrence per (step, player) to avoid overwrites
+      if (!agentLogMap.has(key)) {
+        agentLogMap.set(key, log);
+      }
+    }
+  }
+
+  return turnLog.map((entry) => {
+    // Parse "Player N: color" format
+    const playerStr = entry.player || '';
+    const playerNumMatch = playerStr.match(/Player (\d+)/);
+    const playerNumber = playerNumMatch ? parseInt(playerNumMatch[1]) : null;
+
+    let playerColor = 'gray';
+    if (playerStr.includes(':')) {
+      playerColor = playerStr.split(':')[1].trim();
+    }
+
+    // Look up model and identity from summary
+    let modelName = 'Human';
+    let playerRole = 'Unknown';
+    if (summary && playerNumber !== null) {
+      const summaryPlayer = summary[`Player ${playerNumber}`];
+      if (isPlayerSummary(summaryPlayer)) {
+        modelName = summaryPlayer.model;
+        playerRole = summaryPlayer.identity;
+      }
+    }
+
+    // Try to enrich with agent_log data (thinking, memory, timestamp)
+    let thinking: string | null = null;
+    let memory: string | null = null;
+    let timestamp = '';
+    let location = 'Unknown';
+    let rawPrompt: string | undefined;
+    let fullResponse: string | undefined;
+
+    if (playerNumber !== null) {
+      const agentLog = agentLogMap.get(`${entry.timestep}-${playerNumber}`);
+      if (agentLog) {
+        timestamp = agentLog.timestamp || '';
+        location = agentLog.player?.location || 'Unknown';
+        const response = agentLog.interaction?.response;
+        if (response && typeof response === 'object') {
+          const thinkingVal = response['Thinking Process'];
+          if (thinkingVal) {
+            if (typeof thinkingVal === 'string') {
+              thinking = thinkingVal;
+            } else if (typeof thinkingVal === 'object') {
+              const thought = thinkingVal.thought;
+              thinking = typeof thought === 'string' ? thought : JSON.stringify(thinkingVal);
+            }
+          }
+          const memoryVal = response['Condensed Memory'];
+          if (typeof memoryVal === 'string') {
+            memory = memoryVal;
+          } else if (memoryVal) {
+            memory = JSON.stringify(memoryVal);
+          }
+        }
+        const prompt = agentLog.interaction?.prompt;
+        rawPrompt = prompt?.['All Info'] || undefined;
+        fullResponse = agentLog.interaction?.full_response || undefined;
+        // Override model from agent_log if summary not available
+        if (agentLog.player?.model && modelName === 'Human') {
+          modelName = agentLog.player.model;
+        }
+        // Override identity from agent_log if summary not available
+        if (agentLog.player?.identity && playerRole === 'Unknown') {
+          playerRole = agentLog.player.identity;
+        }
+      }
+    }
+
+    // Ensure action is always a string
+    const action = typeof entry.action === 'string' ? entry.action : String(entry.action || '');
+
+    return {
+      step: entry.timestep,
+      timestamp,
+      player_name: playerStr,
+      player_color: playerColor,
+      player_role: playerRole,
+      model: modelName,
+      location,
+      action,
+      thinking,
+      memory,
+      phase: entry.phase || undefined,
+      raw_prompt: rawPrompt,
+      full_response: fullResponse,
     };
   });
 }
@@ -602,8 +713,15 @@ export default function GameDetailPage() {
   const isInitialLoading = !hasLoadedInitially && (gameLoading || (logsLoading && !isRunningGame));
   const error = gameError || (!isRunningGame && logsError);
 
-  // Parse raw logs into display entries
+  // Parse raw logs into display entries.
+  // When a completed game has turn_log in the summary, use it as the primary timeline
+  // so human player turns are included. Fall back to agent_logs for older games and
+  // for live streaming (where no summary is available yet).
   const parsedEntries = useMemo(() => {
+    const turnLog = effectiveSummary?.turn_log;
+    if (turnLog && turnLog.length > 0 && effectiveLogs) {
+      return parseGameTimeline(turnLog, effectiveLogs, effectiveSummary);
+    }
     if (!effectiveLogs) return [];
     return parseAgentLogs(effectiveLogs, effectiveSummary);
   }, [effectiveLogs, effectiveSummary]);
@@ -649,14 +767,16 @@ export default function GameDetailPage() {
           eliminationsInserted.add(lastStep);
         }
 
-        // Determine phase from the entry's action or raw_prompt
-        let phase = '';
-        if (entry.action?.includes('SPEAK')) {
-          phase = 'Meeting';
-        } else if (entry.action?.includes('VOTE')) {
-          phase = 'Voting';
-        } else if (entry.action?.includes('MOVE') || entry.action?.includes('TASK') || entry.action?.includes('KILL')) {
-          phase = 'Task';
+        // Determine phase: prefer explicit phase from turn_log, else infer from action
+        let phase = entry.phase || '';
+        if (!phase) {
+          if (entry.action?.includes('SPEAK')) {
+            phase = 'Meeting';
+          } else if (entry.action?.includes('VOTE')) {
+            phase = 'Voting';
+          } else if (entry.action?.includes('MOVE') || entry.action?.includes('TASK') || entry.action?.includes('KILL')) {
+            phase = 'Task';
+          }
         }
 
         items.push({ type: 'step-marker', step: entry.step, phase });

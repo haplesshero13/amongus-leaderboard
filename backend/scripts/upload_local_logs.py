@@ -118,7 +118,9 @@ def create_game_from_summary(db, game_id: str, summary: dict, agent_logs: list) 
             raise ValueError(f"Invalid identity '{identity}' for {player_key}")
         role = PlayerRole.IMPOSTOR if identity == "Impostor" else PlayerRole.CREWMATE
 
-        color = player_data.get("color", "Unknown")
+        color = player_data.get("color")
+        if not color:
+            raise ValueError(f"Missing 'color' for {player_key}")
 
         # Determine if this player won
         player_won = (role == PlayerRole.IMPOSTOR) == impostors_won
@@ -319,6 +321,9 @@ def main():
 
     finally:
         db.close()
+
+    if success_count < len(games_to_process) and not args.dry_run:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

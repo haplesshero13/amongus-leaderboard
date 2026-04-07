@@ -1,0 +1,5 @@
+# Allow trio workflow artifacts that are gitignored
+!PLAN.md
+!HANDOFF.md
+!REVIEW.md
+!.trio/

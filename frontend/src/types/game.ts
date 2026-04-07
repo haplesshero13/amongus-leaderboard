@@ -62,6 +62,7 @@ export interface GameLogEntry {
   action: string;
   thinking: string | null;
   memory: string | null;
+  phase?: string;
   // Full raw data for optional expansion
   raw_prompt?: string;
   full_response?: string;
@@ -115,8 +116,9 @@ export interface GameSummary {
   config: GameConfig;
   winner: number;
   winner_reason: string;
+  turn_log?: TurnLogEntry[];
   // Dynamic keys like "Player 1", "Player 2"
-  [key: string]: GameConfig | number | string | PlayerSummary | KillEvent[] | VoteRound[] | GameOutcome | GameIssues | null;
+  [key: string]: GameConfig | number | string | PlayerSummary | KillEvent[] | VoteRound[] | GameOutcome | GameIssues | TurnLogEntry[] | null | undefined;
 }
 
 export interface KillEvent {
@@ -175,6 +177,13 @@ export interface ModelIssues {
 export interface GameIssues {
   total_count: number;
   by_model: Record<string, ModelIssues>;
+}
+
+export interface TurnLogEntry {
+  timestep: number;
+  phase: string;
+  player: string;  // "Player N: color"
+  action: string;
 }
 
 export interface GameLogsResponse {

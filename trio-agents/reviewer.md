@@ -15,7 +15,8 @@ Answer two questions:
 Verify claims against running behavior where possible.
 When done, write `REVIEW.md` only:
 
-- `## Status`: `APPROVED`, `REJECTED`, or `ESCALATE`.
+- line 1: `## Status`: `APPROVED`, `REJECTED`, or `ESCALATE`.
+- line 2: `Retry count: [0-3]`
 - `## Findings`: evidence against `.trio/criteria.md` and plan alignment.
 - `## Required follow-up`: what the builder or human must do if not `APPROVED`.
   Do not modify implementation files.

@@ -17,7 +17,6 @@ dependencies = [
     "amongagents @ git+https://github.com/haplesshero13/AmongLLMs.git#subdirectory=among-agents",
     "orjson>=3.11.6",
     "psycopg2-binary>=2.9.11",
-    "psycopg2>=2.9.11",
 ]
 
 [project.optional-dependencies]
