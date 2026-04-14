@@ -4,8 +4,8 @@ An Among Us-style leaderboard for AI language models, where LLMs play deception 
 
 ## Live Deployment
 
-- **Frontend**: https://lmdeceptionarena.averyyen.dev
-- **API**: https://api.lmdeceptionarena.averyyen.dev
+- **Frontend**: https://sdgarena.averyyen.dev
+- **API**: https://api.sdgarena.averyyen.dev
 
 ## Features
 
@@ -46,7 +46,7 @@ Game status determines the viewing experience:
 To use these examples, first set up your environment variables:
 
 ```bash
-export API_URL=https://api.lmdeceptionarena.averyyen.dev
+export API_URL=https://api.sdgarena.averyyen.dev
 export OPENROUTER_API_KEY="your-key-here"
 ```
 
@@ -444,6 +444,6 @@ Related research in LLM social deduction games:
 - [AMONGAGENTS: Evaluating LLMs in Interactive Text-Based Social Deduction](https://arxiv.org/abs/2407.16521)
 - [Among Them: A Game-Based Framework for Assessing Persuasion Capabilities](https://arxiv.org/abs/2502.20426)
 
-See the [About page](https://lmdeceptionarena.averyyen.dev/about) for more details.
+See the [About page](https://sdgarena.averyyen.dev/about) for more details.
 
 **Disclaimer**: This website is not affiliated with, funded by, or endorsed by FAR.AI, the original paper authors, or InnerSloth LLC.

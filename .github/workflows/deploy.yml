@@ -94,7 +94,7 @@ jobs:
       - name: Check for running games
         run: |
           # If API is down, allow deploy (server might be crashed)
-          RUNNING_GAMES=$(curl -sf https://api.lmdeceptionarena.averyyen.dev/api/games?status=running || echo "API_UNREACHABLE")
+          RUNNING_GAMES=$(curl -sf https://api.sdgarena.averyyen.dev/api/games?status=running || echo "API_UNREACHABLE")
 
           if [ "$RUNNING_GAMES" = "API_UNREACHABLE" ]; then
             echo "API unreachable - allowing deploy (server may be down)"

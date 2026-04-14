@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "https://lmdeceptionarena.averyyen.dev",
+            "https://sdgarena.averyyen.dev",
             "http://localhost:3000",
         ],
         allow_credentials=True,

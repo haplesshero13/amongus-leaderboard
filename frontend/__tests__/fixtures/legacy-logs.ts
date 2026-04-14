@@ -2,7 +2,7 @@
 import { RawAgentLog } from '@/types/game';
 
 // A minimal representation of the legacy log format
-// based on https://api.lmdeceptionarena.averyyen.dev/api/games/230a61e5-5f01-4f93-9a78-b59c6b3ffcc2/logs
+// based on https://api.sdgarena.averyyen.dev/api/games/230a61e5-5f01-4f93-9a78-b59c6b3ffcc2/logs
 // Truncated to just include relevant parts for testing (kill/ejection)
 export const legacyLog: RawAgentLog[] = [
     {

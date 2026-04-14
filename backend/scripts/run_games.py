@@ -159,7 +159,7 @@ def main():
     )
     parser.add_argument(
         "--api-url",
-        default=os.environ.get("API_URL", "https://api.lmdeceptionarena.averyyen.dev"),
+        default=os.environ.get("API_URL", "https://api.sdgarena.averyyen.dev"),
         help="API base URL",
     )
     args = parser.parse_args()
