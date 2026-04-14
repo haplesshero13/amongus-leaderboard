@@ -1,0 +1,3 @@
+# .gitleaksignore
+# Ignore the dummy test-api-key-12345 in backend/tests/test_api_endpoints.py
+d1fede1c3995d320dbb5e48caadbb312cbc91135:backend/tests/test_api_endpoints.py:generic-api-key:25
