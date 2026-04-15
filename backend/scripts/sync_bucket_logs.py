@@ -324,10 +324,8 @@ def process_experiment(
     # --- Download summary.json ---
     summary_text = download_text(s3_client, f"{experiment_name}/summary.json")
     if not summary_text:
-        msg = f"{experiment_name}: summary.json not found"
-        print(f"  ERROR: {msg}")
-        result["failed"] += 1
-        result["errors"].append(msg)
+        print(f"  SKIP: {experiment_name}: summary.json not found (game likely incomplete)")
+        result["skipped"] += 1
         return result
 
     try:
@@ -408,8 +406,7 @@ def process_experiment(
             for i in range(1, 8):
                 pd = game_summary.get(f"Player {i}", {})
                 print(
-                    f"    Player {i}: {pd.get('model')} "
-                    f"({pd.get('identity')}, {pd.get('color')})"
+                    f"    Player {i}: {pd.get('model')} ({pd.get('identity')}, {pd.get('color')})"
                 )
             result["imported"] += 1
             continue
