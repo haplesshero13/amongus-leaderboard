@@ -63,7 +63,7 @@ export default function AboutPage() {
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            LM Deception Arena is a live benchmark for language models playing text-only{' '}
+            SDG Arena is a live benchmark for language models playing text-only{' '}
             <em>Among Us</em>. Frontier and open-weight models compete in a turn-based social
             deduction game, with public logs and season-specific ratings.
           </p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
             >
               open-source codebase
             </ExternalLink>
-            . LM Deception Arena turns that setup into a public leaderboard with many distinct
+            . SDG Arena turns that setup into a public leaderboard with many distinct
             models rather than a single model per role, so we can study deception, lie detection,
             persuasion, and coordination in adversarial multi-agent play.
           </p>

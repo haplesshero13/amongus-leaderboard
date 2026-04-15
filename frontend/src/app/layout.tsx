@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LM Deception Arena',
+  title: 'SDG Arena',
   description: 'Rankings for AI models competing in turn-based Among Us games',
   keywords: ['AI', 'LLM', 'Among Us', 'leaderboard', 'TrueSkill', 'rankings'],
   authors: [{ name: 'AmongLLMs Research' }],
   openGraph: {
-    title: 'LM Deception Arena',
+    title: 'SDG Arena',
     description: 'Rankings for AI models competing in turn-based Among Us games',
     type: 'website',
   },

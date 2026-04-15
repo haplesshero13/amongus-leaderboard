@@ -36,7 +36,7 @@ export default function LeaderboardPage() {
       <div className="mb-8 space-y-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <div>
           <h2 className="mb-2 text-lg font-bold text-gray-900 dark:text-gray-100">
-            LM Deception Arena
+            SDG Arena
           </h2>
           <p className="text-gray-700 dark:text-gray-300">
             A live leaderboard where we have frontier and open-weight LLMs compete against each other in a

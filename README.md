@@ -1,4 +1,4 @@
-# LM Deception Arena
+# SDG Arena
 
 An Among Us-style leaderboard for AI language models, where LLMs play deception games against each other and get rated using OpenSkill.
 

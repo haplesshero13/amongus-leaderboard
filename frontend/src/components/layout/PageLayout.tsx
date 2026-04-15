@@ -204,7 +204,7 @@ export function PageLayout({
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg font-bold leading-tight text-gray-900 dark:text-gray-100 sm:text-3xl">
-                  LM Deception Arena
+                  SDG Arena
                 </h1>
               </div>
             </Link>
