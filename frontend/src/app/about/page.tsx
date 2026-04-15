@@ -1,18 +1,29 @@
-'use client';
+"use client";
 
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
-import posthog from 'posthog-js';
-import { PageLayout } from '@/components/layout/PageLayout';
-import { useSeasons } from '@/lib/hooks/useSeasons';
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import posthog from "posthog-js";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { useSeasons } from "@/lib/hooks/useSeasons";
 
 function BlockMath({ tex }: { tex: string }) {
-  const html = katex.renderToString(tex, { displayMode: true, throwOnError: false });
-  return <div dangerouslySetInnerHTML={{ __html: html }} className="overflow-x-auto py-2" />;
+  const html = katex.renderToString(tex, {
+    displayMode: true,
+    throwOnError: false,
+  });
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      className="overflow-x-auto py-2"
+    />
+  );
 }
 
 function InlineMath({ tex }: { tex: string }) {
-  const html = katex.renderToString(tex, { displayMode: false, throwOnError: false });
+  const html = katex.renderToString(tex, {
+    displayMode: false,
+    throwOnError: false,
+  });
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -23,11 +34,16 @@ interface ExternalLinkProps {
   linkType?: string;
 }
 
-function ExternalLink({ href, children, className = "text-blue-600 hover:underline dark:text-blue-400", linkType = "external" }: ExternalLinkProps) {
+function ExternalLink({
+  href,
+  children,
+  className = "text-blue-600 hover:underline dark:text-blue-400",
+  linkType = "external",
+}: ExternalLinkProps) {
   const handleClick = () => {
-    posthog.capture('external_link_clicked', {
+    posthog.capture("external_link_clicked", {
       url: href,
-      link_text: typeof children === 'string' ? children : undefined,
+      link_text: typeof children === "string" ? children : undefined,
       link_type: linkType,
     });
   };
@@ -56,367 +72,364 @@ export default function AboutPage() {
 
   return (
     <PageLayout activePage="/about" maxWidth="4xl">
-      {/* What is this project */}
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-          What This Is
+          Overview
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            SDG Arena is a live benchmark for language models playing text-only{' '}
-            <em>Among Us</em>. Frontier and open-weight models compete in a turn-based social
-            deduction game, with public logs and season-specific ratings.
+            SDG Arena is a live benchmark for text-only <em>Among Us</em>.
+            Different AI models play the same game under the same rules, and we
+            publish the results, logs, and ratings in one place.
           </p>
           <p>
-            The benchmark builds on the environment introduced in{' '}
-            <ExternalLink href="https://arxiv.org/abs/2504.04072" linkType="paper">
-              Among Us: A Sandbox for Measuring and Detecting Agentic Deception
-            </ExternalLink>{' '}
-            and the original{' '}
-            <ExternalLink
-              href="https://github.com/7vik/AmongUs"
-              linkType="github"
-            >
-              open-source codebase
-            </ExternalLink>
-            . SDG Arena turns that setup into a public leaderboard with many distinct
-            models rather than a single model per role, so we can study deception, lie detection,
-            persuasion, and coordination in adversarial multi-agent play.
+            We use this setting because it tests more than short-answer
+            accuracy. Players have to keep track of a long conversation, handle
+            incomplete information, defend themselves, accuse others, and
+            coordinate votes across many turns.
+          </p>
+          <p>
+            The site has two goals. First, it tracks competitive results through
+            setting-specific ratings. Second, it supports closer analysis of how
+            players speak, reason, and vote in a social game where some players
+            are trying to mislead the rest.
+          </p>
+          <p>
+            All logs are made fully public for closer study and analysis.
+            Finally, we opened gameplay up to a limited pool of consenting human
+            players (aggregated under Human Brain 1.0) and rank the aggregate
+            efforts of humanity against several of the most popular LLMs.
           </p>
         </div>
       </section>
 
-      {/* Seasons */}
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          Why This Benchmark
+        </h2>
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <p>
+            Many AI benchmarks focus on short, tidy tasks where one model works
+            alone. Social deduction gaming is different. It is multi-turn,
+            adversarial, and messy by design.
+          </p>
+          <ul className="list-disc space-y-3 pl-5">
+            <li>
+              <strong>Long context is difficult.</strong> Players need to
+              remember earlier claims, track movement, update beliefs, and
+              notice contradictions.
+            </li>
+            <li>
+              <strong>Role differentiation.</strong> Playing Impostor and
+              playing Crewmate require different skills, so we rate them
+              separately.
+            </li>
+            <li>
+              <strong>Human-AI benchmarking.</strong> We want a benchmark where
+              AI models and people can be observed in the same environment,
+              under the same basic rules.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
           Seasons
         </h2>
         <div className="space-y-5 text-gray-700 dark:text-gray-300">
           <p>
-            A season is a stable benchmark snapshot. When the prompting setup or evaluation changes
-            enough to affect ratings, we start a new season instead of mixing everything into one
-            pool.
+            A season is a specific game and prompting setup. When the setup
+            changes, we indicated this with a new season instead of mixing those
+            games into the same pool. For instance, Season 1 features a limited
+            pool of humans consenting to be in our published long-context SDG
+            study.
           </p>
+          <p>
+            Season ratings are only comparable <strong>within</strong> a season.
+            Cross-season comparisons are the subject of our soon-to-be published
+            study under highly considered evaluation criteria; the skill ratings
+            only reflect a singular season of play.
+          </p>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
               <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-                {season0?.label ?? 'Season 0 — Summary Mode'}{' '}
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                  ({formatSeasonCount(season0?.game_count, 'about 250')} games)
-                </span>
+                Season 0 — Summary Mode
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Our launch baseline. Season 0 stays closest to the summary-style setup used in the
-                original paper, and gives us the historical base layer for the leaderboard.
-              </p>
-              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                We have already run{' '}
-                <strong>{formatSeasonCount(season0?.game_count, '250')}</strong> completed games
-                here. This season is now mostly frozen, with only occasional backfills.
+                Our baseline season. Models see a compressed game state rather
+                than the full running conversation. This is based on the
+                summary-style setup used in earlier work (see
+                <ExternalLink
+                  href="https://arxiv.org/abs/2504.04072"
+                  linkType="paper"
+                >
+                  Goleccha, et al
+                </ExternalLink>
+                ).
               </p>
             </div>
 
             <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/30">
               <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
-                {season1?.label ?? 'Season 1 — Long Context'}{' '}
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                  ({formatSeasonCount(season1?.game_count, 'about 100')} games)
-                </span>
+                Season 1 — Long Context
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Our active benchmark. Season 1 moves away from compressed summary prompts and keeps
-                much more of the full conversation history available across the game.
-              </p>
-              <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                We have run <strong>{formatSeasonCount(season1?.game_count, '100')}</strong>{' '}
-                completed games here so far, and this is where new models and most new games land.
+                The <em>Long Con</em> season (our major contribution). Models
+                keep much more of the full conversation history across the game
+                instead of relying on a compact summary.
               </p>
             </div>
           </div>
-
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40">
-            <h3 className="mb-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Why Season 1
-            </h3>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Season 1 is the long-context benchmark. It changes the setup enough that we rate it
-              separately instead of mixing it with the earlier summary-prompt season.
-            </p>
-            <ul className="mt-4 list-disc space-y-3 pl-5 text-sm text-gray-700 dark:text-gray-300">
-              <li>
-                <strong>Harder, more realistic task.</strong> Social deduction is long-horizon,
-                multi-agent, and adversarial. Full-history play tests that more directly than
-                compressed summaries.
-              </li>
-              <li>
-                <strong>Rankings can genuinely change.</strong> Some models are better at deception,
-                others at detection or coordination. Those tradeoffs can reshuffle once the full
-                conversation is available.
-              </li>
-              <li>
-                <strong>Clearer comparisons.</strong> We split seasons when prompting changes affect
-                results, so comparisons stay within the same ruleset.
-              </li>
-            </ul>
-          </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
-        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">How It Works</h2>
-        <div className="space-y-6">
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">The Game</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              Each match features 7 AI players: 2 Impostors and 5 Crewmates. Impostors must secretly
-              eliminate crewmates while avoiding detection. Crewmates must identify and vote out the
-              impostors before it&apos;s too late. All communication happens through natural
-              language, making this a pure test of social deception and deduction.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Full Game Logs</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              Every game is recorded with complete transcripts. You can dive into any match to see
-              exactly what each model was thinking, what actions it took, and how debates unfolded
-              during voting rounds. Running games stream logs in real-time, so you can view
-              in-progress games live.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Latest Models</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              We add new models as they become available through{' '}
-              <ExternalLink href="https://openrouter.ai/" linkType="service">
-                OpenRouter
-              </ExternalLink>
-              . This includes frontier models from OpenAI, Anthropic, Google, DeepSeek, and others,
-              including closed and open-weight models. Our goal is to provide comprehensive coverage
-              of the LLM landscape.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">Acknowledgements</h3>
-            <p className="text-gray-700 dark:text-gray-300">
-              This project is generously supported by the <a href="https://cbai.ai">Cambridge Boston Alignment Initiative</a>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Rankings */}
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
-          Rankings
+          How Games Are Run
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            Ranking models requires inferring latent skill from wins and losses — the same challenge
-            faced by competitive chess, sports leagues, and multiplayer games. Simply counting wins
-            doesn&apos;t account for opponent strength or sample size. We need a system that
-            can estimate true skill while tracking uncertainty.
+            Each standard match has 7 players: 2 Impostors and 5 Crewmates.
+            Impostors try to avoid detection while eliminating the crew.
+            Crewmates try to identify the impostors before they lose on kills or
+            time.
           </p>
+          <ul className="list-disc space-y-3 pl-5">
+            <li>
+              All players act through natural language plus structured game
+              actions such as moving, killing, reporting, speaking, and voting.
+            </li>
+            <li>
+              We store full game logs, including public actions and, when
+              available, internal reasoning text and condensed memory from the
+              model response.
+            </li>
+            <li>
+              Human-AI games use the same basic engine so that human and model
+              behavior can be read in the same frame, even though the human
+              sample is still small.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          How Ratings Work
+        </h2>
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <p>
+            We use an OpenSkill-based rating system to estimate player strength
+            from wins and losses. This is similar in spirit to Elo, but adapted
+            for team games and uncertainty.
+          </p>
+          <ul className="list-disc space-y-3 pl-5">
+            <li>
+              <strong>Each model has two ratings.</strong> One rating tracks
+              Impostor play and one tracks Crewmate play.
+            </li>
+            <li>
+              <strong>Teams are rated by role.</strong> The Impostor side is
+              built from each player&apos;s Impostor rating, and the Crewmate
+              side is built from each player&apos;s Crewmate rating.
+            </li>
+            <li>
+              <strong>Win/loss updates.</strong> Because the game is 2 versus 5,
+              we collapse each side into a temporary team-level player, run a
+              1v1 update, and then distribute that rating change back to the
+              individual players on the team.
+            </li>
+            <li>
+              <strong>Uncertainty.</strong> Newer or less-tested players move
+              more; established players move less.
+            </li>
+            <li>
+              <strong>The leaderboard sorts conservatively.</strong> We rank by
+              a lower-bound style score, <InlineMath tex="\mu - \sigma" />, so
+              models with very few games have a lower score floor.
+            </li>
+          </ul>
 
           <p>
-            <strong>Skill is characterized by two numbers.</strong> The classical{' '}
-            <ExternalLink href="https://en.wikipedia.org/wiki/Elo_rating_system" linkType="wikipedia">
-              Elo
-            </ExternalLink>{' '}
-            system represents skill as a single rating that updates after each match based on the
-            outcome relative to expectation. Beat a stronger opponent? Large increase. Lose to a
-            weaker one? Large decrease. Bayesian rating systems extend this by modeling skill as
-            a probability distribution with two parameters: a skill estimate (<InlineMath tex="\mu" />)
-            and uncertainty (<InlineMath tex="\sigma" />). This allows aggressive updates for new
-            or volatile players and conservative updates for established ones.
+            A model&apos;s overall rating is a summary of its two role ratings.
+            In the current implementation, the two role scores are combined
+            using confidence weights, so the role with the more reliable
+            estimate has more influence on the final number.
           </p>
 
-          <p>
-            We use{' '}
-            <ExternalLink href="https://openskill.me/" linkType="documentation">
-              OpenSkill
-            </ExternalLink>{' '}
-            (PlackettLuce model), an open-source implementation in the same family as Microsoft&apos;s{' '}
-            <ExternalLink href="https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/" linkType="documentation">
-              TrueSkill
-            </ExternalLink>
-            . Each model starts at a default rating of 2500 ± 833 and updates after every game.
-          </p>
+          <details className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+            <summary className="cursor-pointer text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Technical Notes &amp; Math
+            </summary>
 
-          <p>
-            <strong>Separate ratings for each role.</strong> Playing Impostor (deception, persuasion,
-            strategic elimination) requires fundamentally different capabilities than playing
-            Crewmate (lie detection, logical reasoning, coordination). Each model therefore maintains
-            distinct Impostor and Crewmate ratings. When calculating team strength, we use role-specific
-            ratings: the impostor team&apos;s strength comes from each player&apos;s <em>impostor</em> rating,
-            while the crewmate team&apos;s strength comes from <em>crewmate</em> ratings. Impostor
-            skill is measured against crewmate skill, and vice versa.
-          </p>
-
-          <p>
-            <strong>Overall rating is a weighted average.</strong> A model&apos;s overall rating
-            combines its Impostor and Crewmate scores, weighted by games played in each role.
-            A model with 20 impostor games and 5 crewmate games will have an overall rating much
-            closer to its impostor rating — the evidence is stronger there. This weighted average
-            reflects performance across both roles while accounting for experience distribution.
-          </p>
-
-          <p>
-            <strong>Asymmetric teams need special handling.</strong> Among Us features 2 Impostors
-            versus 5 Crewmates. Standard rating updates would unfairly penalize the larger team by
-            distributing losses across more players. We solve this with a meta-agent approach: each
-            team is collapsed into a single representative player (averaging <InlineMath tex="\mu" /> and{' '}
-            <InlineMath tex="\sigma" /> values), a symmetric 1v1 rating update is computed, then
-            the change is redistributed to individuals proportional to their uncertainty. Uncertain
-            players receive larger updates; established players receive smaller ones.
-          </p>
-
-          <p>
-            <strong>Leaderboard ranks by conservative estimate.</strong> The leaderboard sorts models
-            by <InlineMath tex="\mu - \sigma" /> rather than <InlineMath tex="\mu" /> alone. This
-            is a lower bound on skill — we are ~68% confident the true skill is at least this high.
-            This prevents models with limited data (high <InlineMath tex="\sigma" />) from ranking
-            above proven performers, even if their point estimate looks strong. A model that goes
-            3-0 in its first three games has high <InlineMath tex="\mu" /> but also high{' '}
-            <InlineMath tex="\sigma" />, and won&apos;t outrank a champion with 100 games of evidence.
-          </p>
-
-          <div className="mt-6">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Do you like math?
-            </h3>
-            <div className="space-y-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-              <p className="text-sm">
-                Here&apos;s exactly how ratings are computed. All notation follows the{' '}
-                <ExternalLink href="https://openskill.me/" linkType="documentation">
+            <div className="mt-4 space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              <p>
+                We use{" "}
+                <ExternalLink
+                  href="https://openskill.me/"
+                  linkType="documentation"
+                >
                   OpenSkill
-                </ExternalLink>{' '}
-                convention where each player has a skill estimate <InlineMath tex="\mu" /> (mean) and
-                uncertainty <InlineMath tex="\sigma" /> (standard deviation).
+                </ExternalLink>{" "}
+                with the PlackettLuce model. Each role starts at a default
+                display rating of 2500 with high uncertainty.
               </p>
 
               <div>
-                <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Step 1 — Build meta-agents
+                <p className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                  Step 1 — Build team-level meta-agents
                 </p>
                 <p className="mb-3 text-xs">
-                  To handle asymmetric team sizes (2 impostors vs 5 crewmates), each team is collapsed
-                  into a single meta-agent. The impostor meta-agent is built from each player&apos;s{' '}
-                  <em>impostor</em> rating, and the crewmate meta-agent from each player&apos;s{' '}
-                  <em>crewmate</em> rating — so impostor skill is always measured against crewmate skill:
+                  To handle the 2-versus-5 team split, each side is collapsed
+                  into one temporary player before the update:
                 </p>
                 <BlockMath tex="\mu_{\text{meta}} = \frac{1}{n} \sum_{i=1}^{n} \mu_i \qquad \sigma_{\text{meta}} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \sigma_i^2}" />
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Step 2 — Run a 1v1 match
+                <p className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                  Step 2 — Run a 1v1 team update
                 </p>
                 <p className="mb-3 text-xs">
-                  The two meta-agents play a standard OpenSkill (PlackettLuce) 1v1, producing updated
-                  values <InlineMath tex="\mu'_{\text{meta}}" /> and <InlineMath tex="\sigma'_{\text{meta}}" />.
-                  The team-level delta and sigma shrink ratio are:
+                  The two meta-agents play a standard OpenSkill update:
                 </p>
                 <BlockMath tex="\Delta\mu_{\text{team}} = \mu'_{\text{meta}} - \mu_{\text{meta}} \qquad r_\sigma = \frac{\sigma'_{\text{meta}}}{\sigma_{\text{meta}}}" />
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Step 3 — Redistribute deltas by variance
+                <p className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                  Step 3 — Redistribute the update to each player
                 </p>
                 <p className="mb-3 text-xs">
-                  Each player&apos;s share is proportional to their variance — uncertain players
-                  (high <InlineMath tex="\sigma" />) absorb more of the update. The &ldquo;pool&rdquo;
-                  preserves the total delta across the team:
+                  Players with higher uncertainty absorb more of the team-level
+                  update:
                 </p>
                 <BlockMath tex="s_i = \frac{\sigma_i^2}{\displaystyle\sum_{j=1}^{n} \sigma_j^2} \qquad \text{pool} = \Delta\mu_{\text{team}} \cdot n" />
                 <BlockMath tex="\mu'_i = \mu_i + s_i \cdot \text{pool} \qquad \sigma'_i = \max\!\left(0.1,\ \sigma_i \cdot r_\sigma\right)" />
-                <p className="text-xs italic">
-                  When all <InlineMath tex="\sigma_i" /> are equal,{' '}
-                  <InlineMath tex="s_i = \tfrac{1}{n}" /> and every player receives exactly{' '}
-                  <InlineMath tex="\Delta\mu_{\text{team}}" />.
-                </p>
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Display rating &amp; leaderboard sort
+                <p className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
+                  Overall rating and leaderboard sort
                 </p>
                 <p className="mb-3 text-xs">
-                  Ratings are scaled to friendlier integers. The leaderboard sorts by a{' '}
-                  <strong>conservative estimate</strong> — one standard deviation below the mean — so
-                  models with few games don&apos;t outrank proven performers:
+                  The site displays scaled ratings and sorts the leaderboard by
+                  a conservative estimate:
                 </p>
                 <BlockMath tex="R_{\text{display}} = \text{round}(\mu \times 100) \qquad R_{\text{conservative}} = \mu - \sigma" />
-              </div>
 
-              <div>
-                <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Overall rating
+                <p className="mb-3 mt-4 text-xs">
+                  The overall rating combines the two role ratings using
+                  confidence weights:
                 </p>
-                <p className="mb-3 text-xs">
-                  The overall rating is a weighted average of Impostor and Crewmate ratings, weighted
-                  by games played in each role:
-                </p>
-                <BlockMath tex="\mu_{\text{overall}} = \frac{\mu_{\text{imp}} \cdot n_{\text{imp}} + \mu_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}} \qquad \sigma_{\text{overall}} = \frac{\sigma_{\text{imp}} \cdot n_{\text{imp}} + \sigma_{\text{crew}} \cdot n_{\text{crew}}}{n_{\text{imp}} + n_{\text{crew}}}" />
+                <BlockMath tex="w_{\text{imp}} = \frac{1}{\sigma_{\text{imp}}} \qquad w_{\text{crew}} = \frac{1}{\sigma_{\text{crew}}}" />
+                <BlockMath tex="\mu_{\text{overall}} = \frac{w_{\text{imp}}\mu_{\text{imp}} + w_{\text{crew}}\mu_{\text{crew}}}{w_{\text{imp}} + w_{\text{crew}}}" />
+                <BlockMath tex="\sigma_{\text{overall}} = \frac{w_{\text{imp}}\sigma_{\text{imp}} + w_{\text{crew}}\sigma_{\text{crew}}}{w_{\text{imp}} + w_{\text{crew}}}" />
               </div>
             </div>
-          </div>
+          </details>
         </div>
       </section>
 
-      {/* References */}
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          How To Read The Results
+        </h2>
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <ul className="list-disc space-y-3 pl-5">
+            <li>
+              A higher rating means stronger performance in this game setting.
+            </li>
+            <li>
+              A model can be strong as an Impostor and weaker as a Crewmate, or
+              vice versa.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+          Limitations
+        </h2>
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
+          <ul className="list-disc space-y-3 pl-5">
+            <li>
+              Human data is still limited, and people get tired, bored, or
+              tilted.
+            </li>
+            <li>The current human baseline is an aggregate bucket.</li>
+            <li>This is one game, not proof of broad social intelligence.</li>
+            <li>
+              Modern models may use adaptive reasoning where they choose not to
+              output thinking tokens; we currently do not force those models to
+              output anything if they choose not to.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">
           Lineage &amp; Further Reading
         </h2>
-        <div className="space-y-6 text-gray-700 dark:text-gray-300">
+        <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            The most direct lineage is{' '}
-            <ExternalLink href="https://arxiv.org/abs/2504.04072" linkType="paper">
+            The benchmark builds most directly on{" "}
+            <ExternalLink
+              href="https://arxiv.org/abs/2504.04072"
+              linkType="paper"
+            >
               Among Us: A Sandbox for Measuring and Detecting Agentic Deception
-            </ExternalLink>{' '}
-            by Satvik Golechha and Adria Garriga-Alonso (2025). That paper introduced the text-only
-            benchmark environment this project builds on, and its{' '}
-            <ExternalLink href="https://github.com/7vik/AmongUs" linkType="github">
-              original codebase
-            </ExternalLink>{' '}
-            remains the clearest starting point for understanding the setup. Our public leaderboard
-            extends that work through our own{' '}
-            <ExternalLink href="https://github.com/haplesshero13/AmongLLMs" linkType="github">
-              fork
-            </ExternalLink>{' '}
-            and surrounding infrastructure.
+            </ExternalLink>{" "}
+            and its{" "}
+            <ExternalLink
+              href="https://github.com/7vik/AmongUs"
+              linkType="github"
+            >
+              open-source codebase
+            </ExternalLink>
+            . Our public leaderboard extends that environment with a live site,
+            season tracking, model coverage, public logs, and ongoing behavior
+            analysis.
           </p>
-
-          <div className="border-t border-gray-200 pt-6 dark:border-gray-800">
-            <p>
-              Other relevant work includes{' '}
-              <ExternalLink href="https://arxiv.org/abs/2407.16521" linkType="paper">
-                AMONGAGENTS: Evaluating Large Language Models in the Interactive Text-Based Social
-                Deduction Game
-              </ExternalLink>{' '}
-              by Yizhou Chi, Lingjun Mao, and Zineng Tang (2024), which studies deception, action
-              planning, and collaboration in another text-based <em>Among Us</em> environment, plus{' '}
-              <ExternalLink href="https://arxiv.org/abs/2502.20426" linkType="paper">
-                Among Them: A Game-Based Framework for Assessing Persuasion Capabilities of LLMs
-              </ExternalLink>{' '}
-              (2025), which focuses more specifically on persuasion strategies in social deduction
-              play.
-            </p>
-          </div>
+          <p>
+            Related work includes{" "}
+            <ExternalLink
+              href="https://arxiv.org/abs/2407.16521"
+              linkType="paper"
+            >
+              AMONGAGENTS
+            </ExternalLink>{" "}
+            and{" "}
+            <ExternalLink
+              href="https://arxiv.org/abs/2502.20426"
+              linkType="paper"
+            >
+              Among Them
+            </ExternalLink>
+            , which study social deduction, persuasion, and strategic play in
+            similar settings.
+          </p>
+          <p>
+            Infrastructure and API access for this project are generously
+            supported by the{" "}
+            <ExternalLink href="https://cbai.ai" linkType="sponsor">
+              Cambridge Boston Alignment Initiative
+            </ExternalLink>
+            .
+          </p>
         </div>
       </section>
 
-      {/* Disclaimer */}
       <section className="rounded-xl bg-gray-100 p-4 dark:bg-gray-800">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>Disclaimer:</strong> This website is not affiliated with, funded by, or endorsed
-          by FAR.AI, the original paper authors, OpenRouter, or InnerSloth LLC (creators of Among
-          Us). This is an independent research project.
+          <strong>Disclaimer:</strong> This website is not affiliated with,
+          funded by, or endorsed by FAR.AI, the original paper authors,
+          OpenRouter, or InnerSloth LLC. This is an independent research
+          project.
         </p>
       </section>
     </PageLayout>
