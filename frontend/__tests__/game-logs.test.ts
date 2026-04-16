@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 // Test the parseAgentLogs logic by importing and testing directly
 // Since it's not exported, we'll test via the types and expected behavior
 
-import { GameLogEntry, RawAgentLog, GameSummary } from '@/types/game';
+import { GameLogEntry, RawAgentLog, GameSummary, TurnLogEntry } from '@/types/game';
 
 // Replicate the parseAgentLogs function for testing
 // (In a real refactor, we'd extract this to a separate module)
@@ -74,6 +74,88 @@ function parseAgentLogs(rawLogs: RawAgentLog[], summary?: GameSummary | null): G
       full_response: interaction.full_response || undefined,
     };
   });
+}
+
+function parseGameTimeline(
+  turnLog: TurnLogEntry[],
+  agentLogs: RawAgentLog[],
+  summary?: GameSummary | null,
+): GameLogEntry[] {
+  const agentLogMap = new Map<string, RawAgentLog>();
+  for (const log of agentLogs) {
+    const playerName = log.player?.name || '';
+    const playerNumMatch = playerName.match(/Player (\d+)/);
+    if (playerNumMatch) {
+      const key = `${log.step}-${playerNumMatch[1]}`;
+      if (!agentLogMap.has(key)) {
+        agentLogMap.set(key, log);
+      }
+    }
+  }
+
+  return turnLog
+    .filter((entry) => /Player\s+\d+/i.test(entry.player || ''))
+    .map((entry) => {
+      const playerStr = entry.player || '';
+      const playerNumMatch = playerStr.match(/Player (\d+)/);
+      const playerNumber = playerNumMatch ? parseInt(playerNumMatch[1]) : null;
+
+      let playerColor = 'gray';
+      if (playerStr.includes(':')) {
+        playerColor = playerStr.split(':')[1].trim();
+      }
+
+      let modelName = 'Human';
+      let playerRole = 'Unknown';
+      if (summary && playerNumber !== null) {
+        const summaryPlayer = summary[`Player ${playerNumber}`];
+        if (summaryPlayer && typeof summaryPlayer === 'object' && 'model' in summaryPlayer && 'identity' in summaryPlayer) {
+          modelName = (summaryPlayer as { model: string }).model;
+          playerRole = (summaryPlayer as { identity: string }).identity;
+        }
+      }
+
+      let timestamp = '';
+      let location = 'Unknown';
+      let thinking: string | null = null;
+      let memory: string | null = null;
+
+      if (playerNumber !== null) {
+        const agentLog = agentLogMap.get(`${entry.timestep}-${playerNumber}`);
+        if (agentLog) {
+          timestamp = agentLog.timestamp || '';
+          location = agentLog.player?.location || 'Unknown';
+          const response = agentLog.interaction?.response;
+          if (response && typeof response === 'object') {
+            const thinkingVal = response['Thinking Process'];
+            if (typeof thinkingVal === 'string') {
+              thinking = thinkingVal;
+            } else if (thinkingVal && typeof thinkingVal === 'object' && 'thought' in thinkingVal) {
+              thinking = thinkingVal.thought || null;
+            }
+
+            const memoryVal = response['Condensed Memory'];
+            if (typeof memoryVal === 'string') {
+              memory = memoryVal;
+            }
+          }
+        }
+      }
+
+      return {
+        step: entry.timestep,
+        timestamp,
+        player_name: playerStr,
+        player_color: playerColor,
+        player_role: playerRole,
+        model: modelName,
+        location,
+        action: typeof entry.action === 'string' ? entry.action : String(entry.action || ''),
+        thinking,
+        memory,
+        phase: entry.phase || undefined,
+      };
+    });
 }
 
 describe('parseAgentLogs', () => {
@@ -274,5 +356,61 @@ describe('Game Log Types', () => {
     expect(entry.step).toBe(1);
     expect(entry.player_color).toBe('brown');
     expect(entry.player_role).toBe('Crewmate');
+  });
+});
+
+describe('parseGameTimeline', () => {
+  it('skips system voting summary entries that do not belong to a player', () => {
+    const turnLog: TurnLogEntry[] = [
+      {
+        timestep: 6,
+        phase: 'meeting',
+        player: 'Player 2: brown',
+        action: 'VOTE Player 6: red',
+      },
+      {
+        timestep: 6,
+        phase: 'voting_results',
+        player: 'None',
+        action: 'VOTE_SUMMARY',
+      },
+    ];
+
+    const agentLogs: RawAgentLog[] = [
+      {
+        step: 6,
+        timestamp: '2026-04-16T16:35:46Z',
+        player: {
+          name: 'Player 2: brown',
+          identity: 'Crewmate',
+          personality: null,
+          model: 'glm-5.1',
+          location: 'Cafeteria',
+        },
+        interaction: {
+          response: { Action: 'VOTE Player 6: red' },
+        },
+      },
+    ];
+
+    const summary: GameSummary = {
+      config: { num_players: 7, num_impostors: 2 } as GameSummary['config'],
+      winner: 2,
+      winner_reason: 'Crewmates win!',
+      'Player 2': {
+        name: 'Player 2: brown',
+        color: 'brown',
+        identity: 'Crewmate',
+        model: 'glm-5.1',
+        personality: null,
+        tasks: [],
+      },
+    };
+
+    const result = parseGameTimeline(turnLog, agentLogs, summary);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].player_name).toBe('Player 2: brown');
+    expect(result[0].action).toBe('VOTE Player 6: red');
   });
 });

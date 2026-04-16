@@ -138,92 +138,94 @@ function parseGameTimeline(
     }
   }
 
-  return turnLog.map((entry) => {
-    // Parse "Player N: color" format
-    const playerStr = entry.player || '';
-    const playerNumMatch = playerStr.match(/Player (\d+)/);
-    const playerNumber = playerNumMatch ? parseInt(playerNumMatch[1]) : null;
+  return turnLog
+    .filter((entry) => /Player\s+\d+/i.test(entry.player || ''))
+    .map((entry) => {
+      // Parse "Player N: color" format
+      const playerStr = entry.player || '';
+      const playerNumMatch = playerStr.match(/Player (\d+)/);
+      const playerNumber = playerNumMatch ? parseInt(playerNumMatch[1]) : null;
 
-    let playerColor = 'gray';
-    if (playerStr.includes(':')) {
-      playerColor = playerStr.split(':')[1].trim();
-    }
-
-    // Look up model and identity from summary
-    let modelName = 'Human';
-    let playerRole = 'Unknown';
-    if (summary && playerNumber !== null) {
-      const summaryPlayer = summary[`Player ${playerNumber}`];
-      if (isPlayerSummary(summaryPlayer)) {
-        modelName = summaryPlayer.model;
-        playerRole = summaryPlayer.identity;
+      let playerColor = 'gray';
+      if (playerStr.includes(':')) {
+        playerColor = playerStr.split(':')[1].trim();
       }
-    }
 
-    // Try to enrich with agent_log data (thinking, memory, timestamp)
-    let thinking: string | null = null;
-    let memory: string | null = null;
-    let timestamp = '';
-    let location = 'Unknown';
-    let rawPrompt: string | undefined;
-    let fullResponse: string | undefined;
+      // Look up model and identity from summary
+      let modelName = 'Human';
+      let playerRole = 'Unknown';
+      if (summary && playerNumber !== null) {
+        const summaryPlayer = summary[`Player ${playerNumber}`];
+        if (isPlayerSummary(summaryPlayer)) {
+          modelName = summaryPlayer.model;
+          playerRole = summaryPlayer.identity;
+        }
+      }
 
-    if (playerNumber !== null) {
-      const agentLog = agentLogMap.get(`${entry.timestep}-${playerNumber}`);
-      if (agentLog) {
-        timestamp = agentLog.timestamp || '';
-        location = agentLog.player?.location || 'Unknown';
-        const response = agentLog.interaction?.response;
-        if (response && typeof response === 'object') {
-          const thinkingVal = response['Thinking Process'];
-          if (thinkingVal) {
-            if (typeof thinkingVal === 'string') {
-              thinking = thinkingVal;
-            } else if (typeof thinkingVal === 'object') {
-              const thought = thinkingVal.thought;
-              thinking = typeof thought === 'string' ? thought : JSON.stringify(thinkingVal);
+      // Try to enrich with agent_log data (thinking, memory, timestamp)
+      let thinking: string | null = null;
+      let memory: string | null = null;
+      let timestamp = '';
+      let location = 'Unknown';
+      let rawPrompt: string | undefined;
+      let fullResponse: string | undefined;
+
+      if (playerNumber !== null) {
+        const agentLog = agentLogMap.get(`${entry.timestep}-${playerNumber}`);
+        if (agentLog) {
+          timestamp = agentLog.timestamp || '';
+          location = agentLog.player?.location || 'Unknown';
+          const response = agentLog.interaction?.response;
+          if (response && typeof response === 'object') {
+            const thinkingVal = response['Thinking Process'];
+            if (thinkingVal) {
+              if (typeof thinkingVal === 'string') {
+                thinking = thinkingVal;
+              } else if (typeof thinkingVal === 'object') {
+                const thought = thinkingVal.thought;
+                thinking = typeof thought === 'string' ? thought : JSON.stringify(thinkingVal);
+              }
+            }
+            const memoryVal = response['Condensed Memory'];
+            if (typeof memoryVal === 'string') {
+              memory = memoryVal;
+            } else if (memoryVal) {
+              memory = JSON.stringify(memoryVal);
             }
           }
-          const memoryVal = response['Condensed Memory'];
-          if (typeof memoryVal === 'string') {
-            memory = memoryVal;
-          } else if (memoryVal) {
-            memory = JSON.stringify(memoryVal);
+          const prompt = agentLog.interaction?.prompt;
+          rawPrompt = prompt?.['All Info'] || undefined;
+          fullResponse = agentLog.interaction?.full_response || undefined;
+          // Override model from agent_log if summary not available
+          if (agentLog.player?.model && modelName === 'Human') {
+            modelName = agentLog.player.model;
+          }
+          // Override identity from agent_log if summary not available
+          if (agentLog.player?.identity && playerRole === 'Unknown') {
+            playerRole = agentLog.player.identity;
           }
         }
-        const prompt = agentLog.interaction?.prompt;
-        rawPrompt = prompt?.['All Info'] || undefined;
-        fullResponse = agentLog.interaction?.full_response || undefined;
-        // Override model from agent_log if summary not available
-        if (agentLog.player?.model && modelName === 'Human') {
-          modelName = agentLog.player.model;
-        }
-        // Override identity from agent_log if summary not available
-        if (agentLog.player?.identity && playerRole === 'Unknown') {
-          playerRole = agentLog.player.identity;
-        }
       }
-    }
 
-    // Ensure action is always a string
-    const action = typeof entry.action === 'string' ? entry.action : String(entry.action || '');
+      // Ensure action is always a string
+      const action = typeof entry.action === 'string' ? entry.action : String(entry.action || '');
 
-    return {
-      step: entry.timestep,
-      timestamp,
-      player_name: playerStr,
-      player_color: playerColor,
-      player_role: playerRole,
-      model: modelName,
-      location,
-      action,
-      thinking,
-      memory,
-      phase: entry.phase || undefined,
-      raw_prompt: rawPrompt,
-      full_response: fullResponse,
-    };
-  });
+      return {
+        step: entry.timestep,
+        timestamp,
+        player_name: playerStr,
+        player_color: playerColor,
+        player_role: playerRole,
+        model: modelName,
+        location,
+        action,
+        thinking,
+        memory,
+        phase: entry.phase || undefined,
+        raw_prompt: rawPrompt,
+        full_response: fullResponse,
+      };
+    });
 }
 
 function PlayerBadge({ name, color, role, playerNumber }: { name: string; color: string; role: string; playerNumber: number }) {
