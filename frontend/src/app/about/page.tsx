@@ -4,7 +4,6 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import posthog from "posthog-js";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { useSeasons } from "@/lib/hooks/useSeasons";
 
 function BlockMath({ tex }: { tex: string }) {
   const html = katex.renderToString(tex, {
@@ -61,15 +60,7 @@ function ExternalLink({
   );
 }
 
-function formatSeasonCount(gameCount: number | undefined, fallback: string) {
-  return gameCount != null ? gameCount.toLocaleString() : fallback;
-}
-
 export default function AboutPage() {
-  const { seasons } = useSeasons();
-  const season0 = seasons.find((season) => season.version === 0);
-  const season1 = seasons.find((season) => season.version === 1);
-
   return (
     <PageLayout activePage="/about" maxWidth="4xl">
       <section className="mb-8 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
@@ -109,9 +100,8 @@ export default function AboutPage() {
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            Many AI benchmarks focus on short, tidy tasks where one model works
-            alone. Social deduction gaming is different. It is multi-turn,
-            adversarial, and messy by design.
+            Most AI benchmarks test single models on short, isolated tasks.
+            Social deduction is multi-turn, adversarial, and messy by design.
           </p>
           <ul className="list-disc space-y-3 pl-5">
             <li>
@@ -139,17 +129,16 @@ export default function AboutPage() {
         </h2>
         <div className="space-y-5 text-gray-700 dark:text-gray-300">
           <p>
-            A season is a specific game and prompting setup. When the setup
-            changes, we indicated this with a new season instead of mixing those
-            games into the same pool. For instance, Season 1 features a limited
+            A season is a specific game and prompting setup. We indicate a new
+            season when the setup changes, rather than mixing games from
+            different setups together. Season 1, for example, features a limited
             pool of humans consenting to be in our published long-context SDG
             study.
           </p>
           <p>
             Season ratings are only comparable <strong>within</strong> a season.
-            Cross-season comparisons are the subject of our soon-to-be published
-            study under highly considered evaluation criteria; the skill ratings
-            only reflect a singular season of play.
+            Cross-season comparisons are the subject of a soon-to-be-published
+            study; these ratings reflect a single season of play only.
           </p>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -340,11 +329,11 @@ export default function AboutPage() {
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <ul className="list-disc space-y-3 pl-5">
             <li>
-              A higher rating means stronger performance in this game setting.
+              Higher ratings mean stronger performance in this game setting.
             </li>
             <li>
-              A model can be strong as an Impostor and weaker as a Crewmate, or
-              vice versa.
+              A model can excel as an Impostor while being weaker as a Crewmate,
+              or vice versa.
             </li>
           </ul>
         </div>
@@ -357,15 +346,14 @@ export default function AboutPage() {
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <ul className="list-disc space-y-3 pl-5">
             <li>
-              Human data is still limited, and people get tired, bored, or
-              tilted.
+              Human data is limited; participants fatigue, disengage, or tilt
+              over time.
             </li>
             <li>The current human baseline is an aggregate bucket.</li>
-            <li>This is one game, not proof of broad social intelligence.</li>
+            <li>One game doesn&apos;t prove broad social intelligence.</li>
             <li>
-              Modern models may use adaptive reasoning where they choose not to
-              output thinking tokens; we currently do not force those models to
-              output anything if they choose not to.
+              Some models use adaptive reasoning and may choose not to output
+              thinking tokens; we don&apos;t currently force them to.
             </li>
           </ul>
         </div>
@@ -377,7 +365,7 @@ export default function AboutPage() {
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            The benchmark builds most directly on{" "}
+            Built on{" "}
             <ExternalLink
               href="https://arxiv.org/abs/2504.04072"
               linkType="paper"
@@ -391,9 +379,8 @@ export default function AboutPage() {
             >
               open-source codebase
             </ExternalLink>
-            . Our public leaderboard extends that environment with a live site,
-            season tracking, model coverage, public logs, and ongoing behavior
-            analysis.
+            , this project extends it with a live leaderboard, season tracking,
+            expanded model coverage, public logs, and ongoing behavior analysis.
           </p>
           <p>
             Related work includes{" "}
@@ -410,8 +397,8 @@ export default function AboutPage() {
             >
               Among Them
             </ExternalLink>
-            , which study social deduction, persuasion, and strategic play in
-            similar settings.
+            , which study social deduction and strategic play in similar
+            settings.
           </p>
           <p>
             Infrastructure and API access for this project are generously

@@ -5,16 +5,23 @@ from app.models import Game, GameParticipant, GameStatus, Model, PlayerRole
 from app.core.constants import CURRENT_ENGINE_VERSION
 
 
-def select_participants(db: Session, num_players: int = 7) -> list[str]:
+HUMAN_MODEL_ID = "brain-1.0"
+
+
+def select_participants(db: Session, num_players: int = 7, min_games: int = 1) -> list[str]:
     """
     Select participants for a new game to balance participation.
 
     Returns a list of 7 model UUIDs.
     The first 2 are the intended Impostors.
     The remaining 5 are Crewmates.
+
+    Args:
+        min_games: Minimum completed games a model must have to be eligible.
+                   Defaults to 1 (excludes models with 0 games).
     """
-    # 1. Get all models
-    models = db.query(Model).all()
+    # 1. Get all models, excluding the human model
+    models = db.query(Model).filter(Model.model_id != HUMAN_MODEL_ID).all()
     if len(models) < num_players:
         raise ValueError(f"Not enough models. Need {num_players}, have {len(models)}")
 
@@ -72,11 +79,21 @@ def select_participants(db: Session, num_players: int = 7) -> list[str]:
                 if i < 2 and mid in impostor_counts:
                     impostor_counts[mid] += 1
 
-    # 4. Select top candidates by total games played
+    # 4. Filter candidates by min_games, then select by total games played
     # Sort by: count ASC, then random (to break ties)
 
     # Create a list of (model_id, count)
     candidates = [(mid, participant_counts[mid]) for mid in all_model_ids]
+
+    # Exclude models below the minimum game threshold
+    candidates = [(mid, count) for mid, count in candidates if count >= min_games]
+
+    if len(candidates) < num_players:
+        raise ValueError(
+            f"Not enough eligible models with >={min_games} games. "
+            f"Need {num_players}, have {len(candidates)}"
+        )
+
     random.shuffle(candidates)  # Shuffle first to randomize ties
     candidates.sort(key=lambda x: x[1])  # Stable sort
 

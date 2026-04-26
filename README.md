@@ -118,6 +118,24 @@ curl -X POST "$API_URL/api/games/trigger" \
     "webhook_url": "https://your-webhook.com/callback"
   }'
 
+# Trigger a matchmade game (picks the 7 least-used AI models)
+# Excludes the human model (brain-1.0) and models with 0 completed games
+curl -X POST "$API_URL/api/games/matchmake" \
+  -H "X-API-Key: $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Trigger a bulk tournament (multiple concurrent games)
+# model_ids is optional; omit to use all registered models
+curl -X POST "$API_URL/api/games/trigger-bulk" \
+  -H "X-API-Key: $OPENROUTER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "num_games": 50,
+    "model_ids": ["claude-3.5-haiku", "gemini-3-flash", "...5 more"],
+    "rate_limit": 10
+  }'
+
 # Delete a specific game
 curl -X DELETE "$API_URL/api/games/{game_id}" \
   -H "X-API-Key: $OPENROUTER_API_KEY"
@@ -287,8 +305,12 @@ The workflow will:
 
 - Set up Python environment
 - Install dependencies
-- Execute `python -m scripts.run_games --games N --yes` (API mode)
+- Execute `python -m scripts.run_games --games N --yes` (API mode, matchmaking)
 - Show results in the workflow logs
+
+Matchmaking selects the 7 AI models with the fewest completed games this season,
+excluding the human model (`brain-1.0`) and models with 0 games. This keeps
+the tournament focused on underplayed models that already have results on the board.
 
 For local runs where the backend database is available, you can avoid API calls by
 using the direct runner (mirrors AmongLLMs' multi-game entrypoint and skips live log

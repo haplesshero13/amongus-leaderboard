@@ -124,19 +124,23 @@ function parseGameTimeline(
   agentLogs: RawAgentLog[],
   summary?: GameSummary | null,
 ): GameLogEntry[] {
-  // Build a lookup from agent_logs keyed by (step, playerNumber)
-  const agentLogMap = new Map<string, RawAgentLog>();
+  // Build per-key queues from agent_logs so that multiple rounds at the same timestep
+  // (e.g., three SPEAK rounds + one VOTE round all at timestep 8) each consume their
+  // own agent_log entry in order rather than all sharing the first one.
+  const agentLogQueues = new Map<string, RawAgentLog[]>();
   for (const log of agentLogs) {
     const playerName = log.player?.name || '';
     const playerNumMatch = playerName.match(/Player (\d+)/);
     if (playerNumMatch) {
       const key = `${log.step}-${playerNumMatch[1]}`;
-      // Only keep first occurrence per (step, player) to avoid overwrites
-      if (!agentLogMap.has(key)) {
-        agentLogMap.set(key, log);
+      if (!agentLogQueues.has(key)) {
+        agentLogQueues.set(key, []);
       }
+      agentLogQueues.get(key)!.push(log);
     }
   }
+  // Consumption index per key — incremented as each turn_log entry is mapped.
+  const agentLogIndex = new Map<string, number>();
 
   return turnLog
     .filter((entry) => /Player\s+\d+/i.test(entry.player || ''))
@@ -171,7 +175,13 @@ function parseGameTimeline(
       let fullResponse: string | undefined;
 
       if (playerNumber !== null) {
-        const agentLog = agentLogMap.get(`${entry.timestep}-${playerNumber}`);
+        const key = `${entry.timestep}-${playerNumber}`;
+        const queue = agentLogQueues.get(key);
+        const idx = agentLogIndex.get(key) ?? 0;
+        // Clamp to last available entry so rounds with no corresponding agent_log
+        // still get enriched with whatever data exists (safe for older game formats).
+        const agentLog = queue && queue.length > 0 ? queue[Math.min(idx, queue.length - 1)] : undefined;
+        agentLogIndex.set(key, idx + 1);
         if (agentLog) {
           timestamp = agentLog.timestamp || '';
           location = agentLog.player?.location || 'Unknown';

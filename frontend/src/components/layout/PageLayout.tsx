@@ -78,6 +78,7 @@ export function PageLayout({
   const navLinks = [
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/games', label: 'View Games' },
+    { href: '/methodology', label: 'Methodology' },
     { href: '/about', label: 'About' },
   ];
 
@@ -320,6 +321,14 @@ export function PageLayout({
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 Games
+              </Link>
+              <Link
+                href="/methodology"
+                prefetch={false}
+                onClick={() => handleFooterNavClick('/methodology', 'Methodology')}
+                className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Methodology
               </Link>
               <Link
                 href="/about"

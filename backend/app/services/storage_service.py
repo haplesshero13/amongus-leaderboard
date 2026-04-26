@@ -65,6 +65,7 @@ def upload_game_logs(
     summary: dict[str, Any],
     agent_logs: list[dict[str, Any]],
     client=None,
+    game_date: datetime | None = None,
 ) -> tuple[str, str]:
     """
     Upload game logs to S3.
@@ -74,6 +75,7 @@ def upload_game_logs(
         summary: Game summary JSON (structured data)
         agent_logs: List of agent interaction logs (unstructured)
         client: Optional S3 client (for testing)
+        game_date: Date to use for the S3 key prefix (defaults to now)
 
     Returns:
         Tuple of (bucket_name, object_key) for the uploaded logs
@@ -97,7 +99,7 @@ def upload_game_logs(
     }
 
     # Generate key with date prefix for organization
-    date_prefix = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+    date_prefix = (game_date or datetime.now(timezone.utc)).strftime("%Y/%m/%d")
     key = f"games/{date_prefix}/{game_id}.json"
 
     # Upload as JSON
