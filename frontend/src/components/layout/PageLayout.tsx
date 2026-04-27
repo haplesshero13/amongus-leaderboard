@@ -307,8 +307,11 @@ export function PageLayout({
             {/* Citations */}
             <div className="mb-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
               <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Featured in the paper "The Long Con: Emergent Behaviors and the
-                Pragmatics Gap in Human-AI Social Deduction Gaming"
+                Featured in our paper{" "}
+                <em>
+                  The Long Con: Emergent Behaviors and the Pragmatics Gap in
+                  Human-AI Social Deduction Gaming
+                </em>
               </h3>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p>
