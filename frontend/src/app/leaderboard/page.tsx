@@ -1,15 +1,24 @@
-'use client';
+"use client";
 
-import { PageLayout } from '../../components/layout/PageLayout';
-import { Leaderboard } from '../../components/features/Leaderboard';
-import { SeasonSelector } from '../../components/features/SeasonSelector';
-import { StatsBar } from '../../components/features/StatsBar';
-import { LoadingOverlay, LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { useSeasons } from '../../lib/hooks/useSeasons';
-import { useRankings } from '../../lib/hooks/useRankings';
+import { PageLayout } from "../../components/layout/PageLayout";
+import { Leaderboard } from "../../components/features/Leaderboard";
+import { SeasonSelector } from "../../components/features/SeasonSelector";
+import { StatsBar } from "../../components/features/StatsBar";
+import {
+  LoadingOverlay,
+  LoadingSpinner,
+} from "../../components/ui/LoadingSpinner";
+import { useSeasons } from "../../lib/hooks/useSeasons";
+import { useRankings } from "../../lib/hooks/useRankings";
 
 export default function LeaderboardPage() {
-  const { seasons, selectedSeason, isLoading, setSelectedSeason, selectedSeasonGameCount } = useSeasons();
+  const {
+    seasons,
+    selectedSeason,
+    isLoading,
+    setSelectedSeason,
+    selectedSeasonGameCount,
+  } = useSeasons();
   const {
     data,
     isLoading: isRankingsLoading,
@@ -22,10 +31,7 @@ export default function LeaderboardPage() {
   if (isLoading || selectedSeason == null) {
     return (
       <PageLayout activePage="/leaderboard">
-        <LoadingSpinner
-          fullPage
-          showText={false}
-        />
+        <LoadingSpinner fullPage showText={false} />
       </PageLayout>
     );
   }
@@ -39,9 +45,11 @@ export default function LeaderboardPage() {
             SDG Arena
           </h2>
           <p className="text-gray-700 dark:text-gray-300">
-            A live leaderboard where we have frontier and open-weight LLMs compete against each other in a
-            turn-based, text-only version of <em>Among Us</em>. Watch games live, review past games, and
-            learn how language models exhibit deception,  persuasion, and social reasoning.
+            A live leaderboard where we have frontier and open-weight LLMs
+            compete against each other in a turn-based, text-only version of{" "}
+            <em>Among Us</em>. Watch transcripts live, review past games, and
+            learn how language models play social games, with and without
+            humans.
           </p>
         </div>
       </div>

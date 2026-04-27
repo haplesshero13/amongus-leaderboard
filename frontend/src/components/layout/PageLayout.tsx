@@ -1,44 +1,61 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { ReactNode, useEffect, useState } from 'react';
-import posthog from 'posthog-js';
+import Link from "next/link";
+import { ReactNode, useEffect, useState } from "react";
+import posthog from "posthog-js";
 import {
   applyThemeMode,
   getSystemThemeMode,
   hasManualThemeModeOverride,
   resolveThemeMode,
   type ThemeMode,
-} from '../../lib/theme/themeMode';
+} from "../../lib/theme/themeMode";
 
 interface PageLayoutProps {
   activePage: string;
   children: ReactNode;
-  maxWidth?: 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl';
+  maxWidth?: "md" | "lg" | "xl" | "2xl" | "4xl" | "6xl";
   showFooter?: boolean;
 }
 
 const widthClasses = {
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
-  '2xl': 'max-w-2xl',
-  '4xl': 'max-w-4xl',
-  '6xl': 'max-w-6xl',
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-xl",
+  "2xl": "max-w-2xl",
+  "4xl": "max-w-4xl",
+  "6xl": "max-w-6xl",
 };
 
 function SunIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="4" />
-      <path strokeLinecap="round" d="M12 2.5v2.25M12 19.25v2.25M4.93 4.93l1.6 1.6M17.47 17.47l1.6 1.6M2.5 12h2.25M19.25 12h2.25M4.93 19.07l1.6-1.6M17.47 6.53l1.6-1.6" />
+      <path
+        strokeLinecap="round"
+        d="M12 2.5v2.25M12 19.25v2.25M4.93 4.93l1.6 1.6M17.47 17.47l1.6 1.6M2.5 12h2.25M19.25 12h2.25M4.93 19.07l1.6-1.6M17.47 6.53l1.6-1.6"
+      />
     </svg>
   );
 }
 
 function MoonIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -50,7 +67,14 @@ function MoonIcon() {
 
 function MenuIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
       <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
     </svg>
   );
@@ -58,7 +82,14 @@ function MenuIcon() {
 
 function CloseIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
       <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
     </svg>
   );
@@ -67,70 +98,73 @@ function CloseIcon() {
 export function PageLayout({
   activePage,
   children,
-  maxWidth = '6xl',
+  maxWidth = "6xl",
   showFooter = true,
 }: PageLayoutProps) {
   const containerClass = `mx-auto ${widthClasses[maxWidth]} px-4 sm:px-6 lg:px-8`;
   const headerClass = `mx-auto max-w-6xl px-4 sm:px-6 lg:px-8`;
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/games', label: 'View Games' },
-    { href: '/methodology', label: 'Methodology' },
-    { href: '/about', label: 'About' },
+    { href: "/leaderboard", label: "Leaderboard" },
+    { href: "/games", label: "View Games" },
+    { href: "/methodology", label: "Methodology" },
+    { href: "/about", label: "About" },
   ];
 
   const handleNavClick = (href: string, label: string) => {
-    posthog.capture('navigation_clicked', {
+    posthog.capture("navigation_clicked", {
       from_page: activePage,
       to_page: href,
       link_label: label,
-      location: 'header',
+      location: "header",
     });
   };
 
   const handleFooterNavClick = (href: string, label: string) => {
-    posthog.capture('navigation_clicked', {
+    posthog.capture("navigation_clicked", {
       from_page: activePage,
       to_page: href,
       link_label: label,
-      location: 'footer',
+      location: "footer",
     });
   };
 
   const handleExternalLinkClick = (url: string, label: string) => {
-    posthog.capture('external_link_clicked', {
+    posthog.capture("external_link_clicked", {
       url,
       link_text: label,
-      link_type: url.includes('arxiv') ? 'paper' : 'github',
-      location: 'footer',
+      link_type: url.includes("arxiv") ? "paper" : "github",
+      location: "footer",
     });
   };
 
   useEffect(() => {
     setThemeMode(resolveThemeMode());
 
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
       return undefined;
     }
 
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = () => {
       if (hasManualThemeModeOverride()) {
         return;
       }
 
       const nextTheme = getSystemThemeMode();
-      applyThemeMode(nextTheme, 'system');
+      applyThemeMode(nextTheme, "system");
       setThemeMode(nextTheme);
     };
 
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
 
     return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
   }, []);
 
@@ -144,19 +178,19 @@ export function PageLayout({
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setMobileMenuOpen(false);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [mobileMenuOpen]);
 
   const toggleThemeMode = () => {
-    const nextTheme = themeMode === 'dark' ? 'light' : 'dark';
+    const nextTheme = themeMode === "dark" ? "light" : "dark";
     applyThemeMode(nextTheme);
     setThemeMode(nextTheme);
   };
@@ -164,14 +198,14 @@ export function PageLayout({
   const renderNavLink = (href: string, label: string, mobile = false) => {
     const isActive = activePage === href;
     const baseClass = mobile
-      ? 'block rounded-xl px-4 py-3 text-sm transition-colors'
-      : 'rounded-lg px-4 py-2 text-sm transition-colors';
+      ? "block rounded-xl px-4 py-3 text-sm transition-colors"
+      : "rounded-lg px-4 py-2 text-sm transition-colors";
     const activeClass = mobile
-      ? 'bg-gray-100 font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-      : 'bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700';
+      ? "bg-gray-100 font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+      : "bg-gray-100 font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
     const inactiveClass = mobile
-      ? 'font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-gray-100'
-      : 'font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100';
+      ? "font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-gray-100"
+      : "font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
 
     return (
       <Link
@@ -213,23 +247,38 @@ export function PageLayout({
               <button
                 type="button"
                 onClick={toggleThemeMode}
-                aria-label={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-label={
+                  themeMode === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                title={
+                  themeMode === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-100"
               >
-                {themeMode === 'dark' ? <SunIcon /> : <MoonIcon />}
+                {themeMode === "dark" ? <SunIcon /> : <MoonIcon />}
               </button>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((open) => !open)}
-                aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-label={
+                  mobileMenuOpen
+                    ? "Close navigation menu"
+                    : "Open navigation menu"
+                }
                 aria-expanded={mobileMenuOpen}
                 aria-controls="mobile-navigation"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-100 md:hidden"
               >
                 {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
               </button>
-              <nav aria-label="Primary navigation" className="hidden items-center gap-1 md:flex">
+              <nav
+                aria-label="Primary navigation"
+                className="hidden items-center gap-1 md:flex"
+              >
                 {navLinks.map((link) => renderNavLink(link.href, link.label))}
               </nav>
             </div>
@@ -240,7 +289,9 @@ export function PageLayout({
               aria-label="Mobile navigation"
               className="mt-4 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-800 md:hidden"
             >
-              {navLinks.map((link) => renderNavLink(link.href, link.label, true))}
+              {navLinks.map((link) =>
+                renderNavLink(link.href, link.label, true),
+              )}
             </nav>
           )}
         </div>
@@ -256,40 +307,39 @@ export function PageLayout({
             {/* Citations */}
             <div className="mb-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
               <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Based on Original Research by Satvik Golechha, Adria Garriga-Alonso
+                Featured in the paper "The Long Con: Emergent Behaviors and the
+                Pragmatics Gap in Human-AI Social Deduction Gaming"
               </h3>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p>
-                  <strong>Paper:</strong>{' '}
+                  <strong>Preprint:</strong>{" "}
                   <a
-                    href="https://arxiv.org/abs/2504.04072"
+                    href="https://doi.org/10.13140/RG.2.2.24117.44003"
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleExternalLinkClick('https://arxiv.org/abs/2504.04072', 'arxiv.org/abs/2504.04072')}
+                    onClick={() =>
+                      handleExternalLinkClick(
+                        "https://doi.org/10.13140/RG.2.2.24117.44003",
+                        "doi.org/10.13140/RG.2.2.24117.44003",
+                      )
+                    }
                     className="break-words text-blue-600 hover:underline dark:text-blue-400"
                   >
-                    arxiv.org/abs/2504.04072
+                    doi.org/10.13140/RG.2.2.24117.44003
                   </a>
                 </p>
                 <p>
-                  <strong>Original Code:</strong>{' '}
-                  <a
-                    href="https://github.com/7vik/AmongUs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => handleExternalLinkClick('https://github.com/7vik/AmongUs', 'github.com/7vik/AmongUs')}
-                    className="break-words text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    github.com/7vik/AmongUs
-                  </a>
-                </p>
-                <p>
-                  <strong>Our Fork:</strong>{' '}
+                  <strong>Our Code:</strong>{" "}
                   <a
                     href="https://github.com/haplesshero13/AmongLLMs"
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleExternalLinkClick('https://github.com/haplesshero13/AmongLLMs', 'github.com/haplesshero13/AmongLLMs')}
+                    onClick={() =>
+                      handleExternalLinkClick(
+                        "https://github.com/haplesshero13/AmongLLMs",
+                        "github.com/haplesshero13/AmongLLMs",
+                      )
+                    }
                     className="break-words text-blue-600 hover:underline dark:text-blue-400"
                   >
                     github.com/haplesshero13/AmongLLMs
@@ -300,8 +350,9 @@ export function PageLayout({
 
             {/* Disclaimer */}
             <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
-              <strong>Disclaimer:</strong> This website is not affiliated with, funded by, or
-              endorsed by FAR.AI, Golechha et al., or InnerSloth LLC.
+              <strong>Disclaimer:</strong> This website is not affiliated with,
+              funded by, or endorsed by FAR.AI, Golechha et al., or InnerSloth
+              LLC.
             </p>
 
             {/* Links */}
@@ -309,7 +360,9 @@ export function PageLayout({
               <Link
                 href="/leaderboard"
                 prefetch={false}
-                onClick={() => handleFooterNavClick('/leaderboard', 'Leaderboard')}
+                onClick={() =>
+                  handleFooterNavClick("/leaderboard", "Leaderboard")
+                }
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 Leaderboard
@@ -317,7 +370,7 @@ export function PageLayout({
               <Link
                 href="/games"
                 prefetch={false}
-                onClick={() => handleFooterNavClick('/games', 'Games')}
+                onClick={() => handleFooterNavClick("/games", "Games")}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 Games
@@ -325,7 +378,9 @@ export function PageLayout({
               <Link
                 href="/methodology"
                 prefetch={false}
-                onClick={() => handleFooterNavClick('/methodology', 'Methodology')}
+                onClick={() =>
+                  handleFooterNavClick("/methodology", "Methodology")
+                }
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 Methodology
@@ -333,7 +388,7 @@ export function PageLayout({
               <Link
                 href="/about"
                 prefetch={false}
-                onClick={() => handleFooterNavClick('/about', 'About')}
+                onClick={() => handleFooterNavClick("/about", "About")}
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 About
@@ -342,7 +397,12 @@ export function PageLayout({
                 href="https://github.com/haplesshero13/AmongLLMs"
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => handleExternalLinkClick('https://github.com/haplesshero13/AmongLLMs', 'GitHub')}
+                onClick={() =>
+                  handleExternalLinkClick(
+                    "https://github.com/haplesshero13/AmongLLMs",
+                    "GitHub",
+                  )
+                }
                 className="text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
               >
                 GitHub

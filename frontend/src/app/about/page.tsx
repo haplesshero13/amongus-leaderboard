@@ -82,8 +82,9 @@ export default function AboutPage() {
           <p>
             The site has two goals. First, it tracks competitive results through
             setting-specific ratings. Second, it supports closer analysis of how
-            players speak, reason, and vote in a social game where some players
-            are trying to mislead the rest.
+            players speak, reason, and vote in a social game that demands
+            long-context coherence, persuasion, fact-finding, and long-horizon
+            goal-orientation.
           </p>
           <p>
             All logs are made fully public for closer study and analysis.
@@ -365,7 +366,19 @@ export default function AboutPage() {
         </h2>
         <div className="space-y-4 text-gray-700 dark:text-gray-300">
           <p>
-            Built on{" "}
+            <strong>Our Paper:</strong>{" "}
+            <ExternalLink
+              href="https://doi.org/10.13140/RG.2.2.24117.44003"
+              linkType="paper"
+            >
+              Read our preprint
+            </ExternalLink>{" "}
+            detailing how language models exhibit long-context coherence,
+            persuasion, fact-finding, and long-horizon goal-orientation in this
+            environment.
+          </p>
+          <p>
+            Originally built on{" "}
             <ExternalLink
               href="https://arxiv.org/abs/2504.04072"
               linkType="paper"
